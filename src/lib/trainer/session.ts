@@ -1,4 +1,7 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NotSignedInError } from "@/lib/trainer/errors";
 import { findTrainer, type Trainer } from "@/lib/trainer/trainer";
 
 /**
@@ -20,4 +23,18 @@ export async function currentTrainer(): Promise<Trainer | null> {
   if (!user) return null;
 
   return findTrainer(client, user.id);
+}
+
+/**
+ * The signed-in trainer's id, for a client that already carries their
+ * session. Throws rather than returning null — for server actions that need
+ * to act as someone, not merely read for someone if present.
+ */
+export async function requireTrainerId(client: SupabaseClient): Promise<string> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+
+  if (!user) throw new NotSignedInError();
+  return user.id;
 }

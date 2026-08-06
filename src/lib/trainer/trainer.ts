@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { DatabaseError } from "@/lib/supabase/errors";
+import { DatabaseError, unwrap } from "@/lib/supabase/errors";
 
 /**
  * A trainer, as the app reads one. The database column names are an
@@ -104,4 +104,29 @@ export async function findTrainer(
   }
 
   return data ? toTrainer(data) : null;
+}
+
+/**
+ * Sets the trainer's daily target. A target below 1 would make every absent
+ * day neutral, so neglect would earn Pokémon instead of costing them — the
+ * check constraint refuses it, not this function (ADR-0001).
+ *
+ * Only ever future-facing: nothing already settled reads today's target, so
+ * changing it cannot rewrite what a past day was worth.
+ */
+export async function updateDailyTarget(
+  client: SupabaseClient,
+  trainerId: string,
+  target: number,
+): Promise<Trainer> {
+  const row = unwrap(
+    "Setting daily target",
+    await client
+      .from("trainer")
+      .update({ daily_target: target })
+      .eq("id", trainerId)
+      .select(COLUMNS)
+      .single<TrainerRow>(),
+  );
+  return toTrainer(row);
 }

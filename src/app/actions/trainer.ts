@@ -1,11 +1,13 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { isAllowListed } from "@/lib/auth/allow-list";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireTrainerId } from "@/lib/trainer/session";
 import { NotAllowListedError, NotSignedInError } from "@/lib/trainer/errors";
-import { provisionTrainer, type Trainer } from "@/lib/trainer/trainer";
+import { provisionTrainer, updateDailyTarget, type Trainer } from "@/lib/trainer/trainer";
 
 /**
  * Every write goes through a server action; the browser never talks to the
@@ -48,6 +50,25 @@ export async function ensureTrainer(): Promise<Trainer> {
     email: user.email,
     displayName: typeof fullName === "string" ? fullName : null,
   });
+}
+
+/**
+ * Sets the signed-in trainer's daily target. Only ever future-facing — see
+ * {@link updateDailyTarget}. A target below 1 is refused by the database, not
+ * validated here (ADR-0001).
+ *
+ * Takes a `FormData`, not a typed parameter, so it can be bound directly to a
+ * `<form action>` — see the settings page.
+ */
+export async function updateDailyTargetAction(formData: FormData): Promise<Trainer> {
+  const client = await createSupabaseServerClient();
+  const trainerId = await requireTrainerId(client);
+
+  const target = Number(formData.get("target"));
+
+  const trainer = await updateDailyTarget(client, trainerId, target);
+  revalidatePath("/settings");
+  return trainer;
 }
 
 /** Ends the session, clears the auth cookies, and returns to sign-in. */
