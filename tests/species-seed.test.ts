@@ -1,9 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createCookieJar } from "./helpers/cookie-jar";
-import { adminClient, clientForJar, createAccount, signIn } from "./helpers/supabase";
+import { adminClient, clientForJar, createAccount, deleteAccount, signIn } from "./helpers/supabase";
 
 /**
  * The species table is seeded by a migration generated once from PokéAPI
@@ -19,6 +19,14 @@ const CHARIZARD_ID = 6;
 const EEVEE_ID = 133;
 
 describe("the seeded species table", () => {
+  const created: string[] = [];
+
+  afterEach(async () => {
+    while (created.length > 0) {
+      await deleteAccount(created.pop() as string);
+    }
+  });
+
   it("has exactly the original 151", async () => {
     const { count, error } = await adminClient()
       .from("species")
@@ -58,6 +66,7 @@ describe("the seeded species table", () => {
     process.env.POKE_TRACKER_ALLOWED_EMAILS = "ash@pallet.example";
     const jar = createCookieJar();
     const account = await createAccount("ash@pallet.example");
+    created.push(account.id);
     await signIn(jar, account);
 
     const { data, error } = await clientForJar(jar).from("species").select("id").eq("id", CHARMANDER_ID);
@@ -70,6 +79,7 @@ describe("the seeded species table", () => {
     process.env.POKE_TRACKER_ALLOWED_EMAILS = "misty@cerulean.example";
     const jar = createCookieJar();
     const account = await createAccount("misty@cerulean.example");
+    created.push(account.id);
     await signIn(jar, account);
 
     const { error } = await clientForJar(jar)

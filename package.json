@@ -13,7 +13,7 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "generate:species": "node scripts/generate-species.mts"
+    "species:generate": "node scripts/generate-species.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
