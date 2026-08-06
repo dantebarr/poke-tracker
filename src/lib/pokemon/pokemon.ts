@@ -34,6 +34,25 @@ type InstanceRow = {
   };
 };
 
+const ACTIVE_INSTANCE_COLUMNS =
+  "id, nickname, bond_level, species:species_id(id, name, sprite_path, bond_requirement)";
+
+function toActivePokemon(instance: InstanceRow, happiness: number): ActivePokemon {
+  return {
+    instanceId: instance.id,
+    nickname: instance.nickname,
+    happiness,
+    bondLevel: instance.bond_level,
+    bondRequirement: instance.species.bond_requirement,
+    distanceToBondRequirement: Math.max(instance.species.bond_requirement - instance.bond_level, 0),
+    species: {
+      id: instance.species.id,
+      name: instance.species.name,
+      spritePath: instance.species.sprite_path,
+    },
+  };
+}
+
 /**
  * The signed-in trainer's active Pokémon, or null when they have none — no
  * pool yet, or the one they had has left. Under row-level security this can
@@ -58,7 +77,7 @@ export async function findActivePokemon(
 
   const { data: instanceRow, error: instanceError } = await client
     .from("instance")
-    .select("id, nickname, bond_level, species:species_id(id, name, sprite_path, bond_requirement)")
+    .select(ACTIVE_INSTANCE_COLUMNS)
     .eq("id", trainerRow.active_instance_id)
     .single<InstanceRow>();
 
@@ -66,19 +85,7 @@ export async function findActivePokemon(
     throw new DatabaseError("Reading active instance", instanceError);
   }
 
-  return {
-    instanceId: instanceRow.id,
-    nickname: instanceRow.nickname,
-    happiness: trainerRow.happiness,
-    bondLevel: instanceRow.bond_level,
-    bondRequirement: instanceRow.species.bond_requirement,
-    distanceToBondRequirement: Math.max(instanceRow.species.bond_requirement - instanceRow.bond_level, 0),
-    species: {
-      id: instanceRow.species.id,
-      name: instanceRow.species.name,
-      spritePath: instanceRow.species.sprite_path,
-    },
-  };
+  return toActivePokemon(instanceRow, trainerRow.happiness);
 }
 
 /**

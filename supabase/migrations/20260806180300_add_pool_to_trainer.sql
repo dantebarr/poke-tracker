@@ -13,12 +13,12 @@ comment on column public.trainer.active_instance_id is
 comment on column public.trainer.happiness is
   'How well the active Pokémon is being cared for. Belongs to the trainer, not the instance, and resets to zero whenever one leaves.';
 
--- Creates a trainer's whole 81-instance pool and activates its first slot, in
--- one transaction. Security definer because both writes it performs — the
--- insert into instance and the update of trainer.active_instance_id and
--- happiness — have no grant for authenticated; this function is the one door
--- into either, and it authorises itself against auth.uid() rather than
--- trusting a caller-supplied trainer id.
+-- Creates a trainer's whole 81-instance pool and activates its slot-0
+-- instance, in one transaction. Security definer because both writes it
+-- performs — the insert into instance and the update of
+-- trainer.active_instance_id and happiness — have no grant for authenticated;
+-- this function is the one door into either, and it authorises itself
+-- against auth.uid() rather than trusting a caller-supplied trainer id.
 --
 -- Idempotent the same way provisionTrainer is: a second call for a trainer
 -- who already has instances is a no-op rather than an error, so it is safe
