@@ -220,10 +220,15 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Google is the only way in. Email sign-up stays off so nobody can mint an
-# account against this project directly. The admin API still creates users,
-# which is how the integration tests get a real session to run actions under.
-enable_signup = false
+# Kept on for the local stack only: this flag maps to GOTRUE_EXTERNAL_EMAIL_ENABLED,
+# which governs email sign-*in* as well as sign-up, and the integration tests need
+# password sign-in to get a real session to run server actions under.
+#
+# It is not the access boundary and never was. The allow-list is checked inside
+# `ensureTrainer`, the only place a trainer record is created, so an account minted
+# any other way still gets no trainer record and no data. The deployed project
+# enables Google alone — see issue #15.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
