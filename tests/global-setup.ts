@@ -28,6 +28,38 @@ function parseStatus(output: string): Record<string, string> {
   return values;
 }
 
+/**
+ * `db reset` restarts the auth and REST services. They accept connections again
+ * before they are ready to serve, so tests that start immediately afterwards
+ * fail in ways that look like application bugs. Wait for both to answer.
+ */
+async function waitUntilReady(apiUrl: string, anonKey: string) {
+  const deadline = Date.now() + 60_000;
+  const probes: { name: string; url: string; headers: Record<string, string> }[] = [
+    { name: "auth", url: `${apiUrl}/auth/v1/health`, headers: {} },
+    { name: "rest", url: `${apiUrl}/rest/v1/`, headers: { apikey: anonKey } },
+  ];
+
+  for (const probe of probes) {
+    let lastError = "never attempted";
+
+    while (Date.now() < deadline) {
+      try {
+        const response = await fetch(probe.url, { headers: probe.headers });
+        if (response.ok) break;
+        lastError = `HTTP ${response.status}`;
+      } catch (thrown) {
+        lastError = thrown instanceof Error ? thrown.message : String(thrown);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    if (Date.now() >= deadline) {
+      throw new Error(`Supabase ${probe.name} never became ready: ${lastError}`);
+    }
+  }
+}
+
 export default async function setup(project: TestProject) {
   // Idempotent: a stack that is already up is left alone.
   supabase(["start"]);
@@ -43,6 +75,8 @@ export default async function setup(project: TestProject) {
       throw new Error(`supabase status did not report ${key}`);
     }
   }
+
+  await waitUntilReady(status.API_URL, status.ANON_KEY);
 
   project.provide("supabaseEnv", {
     url: status.API_URL,

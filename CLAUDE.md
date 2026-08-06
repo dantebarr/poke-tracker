@@ -11,6 +11,20 @@ to the database. Schema changes are Supabase CLI migrations under `supabase/migr
 `npm test` replays every migration into a local Supabase and runs the suite against it. The
 database is never mocked.
 
+Two conventions that `CONTEXT.md` does not yet cover:
+
+- **"Account"** in this codebase means the Supabase `auth.users` identity — the thing Google
+  sign-in produces. It is deliberately *not* a **Trainer**: every account that completes
+  sign-in has one, including the ones the allow-list turns away, and only an admitted account
+  gets a trainer record. `CONTEXT.md` lists "account" under `_Avoid_` for **Trainer**, which
+  still holds — never use it as a synonym for one. Worth putting through `/domain-modeling`.
+- **Writes go through server actions.** The one exception is `/auth/callback`, which must be a
+  route handler because Google arrives there by GET redirect. It performs no write of its own;
+  it calls the `ensureTrainer` action.
+
+New columns get a **column-level** `grant update` or none at all, so anything a later slice
+derives (happiness, the day ledger) is read-only to a trainer's own JWT by default.
+
 ## Agent skills
 
 ### Issue tracker

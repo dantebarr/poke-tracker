@@ -68,6 +68,14 @@ the database is never mocked. A violated constraint surfaces as a genuine failur
 the point: the invariants live in the database (ADR-0001), so that is where they have to be
 proved.
 
+## Deploying
+
+Not yet deployed — the production cutover is its own piece of work. When it happens, Vercel
+needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
+`POKE_TRACKER_ALLOWED_EMAILS`; the hosted Supabase project needs the Google provider enabled
+and `https://<domain>/auth/callback` added to its redirect allow-list. The Google OAuth client
+needs `https://<supabase-project>.supabase.co/auth/v1/callback` as an authorised redirect URI.
+
 ## Issues
 
 Issues live in [GitLab](https://gitlab.com/Infernite/poke-tracker/-/issues), driven by

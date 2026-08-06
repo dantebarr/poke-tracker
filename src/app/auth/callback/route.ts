@@ -1,67 +1,60 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { NotAllowListedError } from "@/lib/trainer/errors";
-import { ensureTrainerForSession } from "@/lib/trainer/session";
+import { completeSignIn } from "@/lib/trainer/sign-in";
 
 /**
- * Where Google sends the trainer back to. This is the allow-list's only
- * enforcement point, and the only place a trainer record is created.
+ * Where Google sends the trainer back to.
  *
- * An account that fails the allow-list is signed straight back out here, so it
- * leaves with no session and no trainer record — and therefore no data. The app
- * being on the public internet does not make it public.
+ * A route handler rather than a server action because Google arrives here by
+ * GET redirect — a server action cannot be the target of one. The write itself
+ * still goes through the `ensureTrainer` action, reached via `completeSignIn`,
+ * so this file stays URL handling and nothing else.
  */
 export async function GET(request: NextRequest) {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const providerError = url.searchParams.get("error_description");
+  const code = request.nextUrl.searchParams.get("code");
+  const providerError = request.nextUrl.searchParams.get("error_description");
 
   if (providerError) {
-    return NextResponse.redirect(
-      destination(request, `/sign-in?error=${encodeURIComponent(providerError)}`),
-    );
+    return NextResponse.redirect(signInWithError(request, providerError));
   }
   if (!code) {
-    return NextResponse.redirect(destination(request, "/sign-in?error=missing_code"));
+    return NextResponse.redirect(signInWithError(request, "missing_code"));
   }
 
   const client = await createSupabaseServerClient();
   const { error } = await client.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(
-      destination(request, `/sign-in?error=${encodeURIComponent(error.message)}`),
-    );
+    return NextResponse.redirect(signInWithError(request, error.message));
   }
 
-  try {
-    await ensureTrainerForSession();
-  } catch (thrown) {
-    // Whatever went wrong, the session does not survive it. Signing out here is
-    // what makes rejection stick: the browser leaves holding no credentials.
-    await client.auth.signOut();
+  const outcome = await completeSignIn();
 
-    if (thrown instanceof NotAllowListedError) {
-      return NextResponse.redirect(destination(request, "/sign-in?error=not_allow_listed"));
-    }
-    throw thrown;
+  switch (outcome.status) {
+    case "signed-in":
+      return NextResponse.redirect(absoluteUrl(request, "/"));
+    case "rejected":
+      return NextResponse.redirect(signInWithError(request, "not_allow_listed"));
+    case "failed":
+      return NextResponse.redirect(signInWithError(request, "unavailable"));
   }
+}
 
-  return NextResponse.redirect(destination(request, "/"));
+function signInWithError(request: NextRequest, reason: string): string {
+  return absoluteUrl(request, `/sign-in?error=${encodeURIComponent(reason)}`);
 }
 
 /**
- * Builds an absolute URL for the redirect. `request.url` is the internal origin
- * once the app is behind Vercel's proxy, so the forwarded host is preferred
- * where present.
+ * Builds an absolute URL for a redirect. `request.url` carries the internal
+ * origin once the app is behind Vercel's proxy, so the forwarded host wins
+ * where there is one.
  */
-function destination(request: NextRequest, path: string): string {
-  const url = new URL(request.url);
+function absoluteUrl(request: NextRequest, path: string): string {
   const forwardedHost = request.headers.get("x-forwarded-host");
 
   if (forwardedHost && process.env.NODE_ENV === "production") {
     const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
     return `${forwardedProto}://${forwardedHost}${path}`;
   }
-  return new URL(path, url.origin).toString();
+  return new URL(path, request.nextUrl.origin).toString();
 }

@@ -28,6 +28,7 @@ vi.mock("next/headers", () => ({
 
 const { ensureTrainer } = await import("@/app/actions/trainer");
 const { currentTrainer } = await import("@/lib/trainer/session");
+const { completeSignIn } = await import("@/lib/trainer/sign-in");
 const { NotAllowListedError, NotSignedInError } = await import("@/lib/trainer/errors");
 const { DatabaseError, unwrap } = await import("@/lib/supabase/errors");
 
@@ -78,14 +79,10 @@ describe("signing in with an allow-listed account", () => {
     expect(await currentTrainer()).toEqual(trainer);
   });
 
-  it("starts them at the lowest daily target and neutral happiness", async () => {
+  it("starts them at the lowest daily target", async () => {
     await signedIn(ALLOW_LISTED);
 
-    const trainer = await ensureTrainer();
-
-    expect(trainer.dailyTarget).toBe(1);
-    expect(trainer.happiness).toBe(0);
-    expect(trainer.lastSettledDay).toBeNull();
+    expect((await ensureTrainer()).dailyTarget).toBe(1);
   });
 });
 
@@ -111,16 +108,13 @@ describe("signing in a second time", () => {
       "Raising daily target",
       await clientForJar(jar)
         .from("trainer")
-        .update({ daily_target: 5, happiness: 12 })
+        .update({ daily_target: 5 })
         .eq("id", ash.id)
         .select("daily_target")
         .single(),
     );
 
-    const returning = await ensureTrainer();
-
-    expect(returning.dailyTarget).toBe(5);
-    expect(returning.happiness).toBe(12);
+    expect((await ensureTrainer()).dailyTarget).toBe(5);
   });
 });
 
@@ -145,6 +139,38 @@ describe("an account that is not on the allow-list", () => {
 describe("with no session at all", () => {
   it("refuses to provision anything", async () => {
     await expect(ensureTrainer()).rejects.toBeInstanceOf(NotSignedInError);
+    expect(await countTrainers()).toBe(0);
+  });
+});
+
+/**
+ * What the auth callback does once the OAuth code has been exchanged. The
+ * exchange itself needs Google, so it is the one step left to the route; from
+ * here on the session is real and so is everything asserted.
+ */
+describe("completing a sign-in at the callback", () => {
+  it("admits an allow-listed account", async () => {
+    await signedIn(ALLOW_LISTED);
+
+    expect(await completeSignIn()).toEqual({ status: "signed-in" });
+    expect(await countTrainers()).toBe(1);
+  });
+
+  it("rejects an account that is not on the allow-list, leaving it no session", async () => {
+    await signedIn(NOT_ALLOW_LISTED);
+    expect(jar.getAll().length).toBeGreaterThan(0);
+
+    expect(await completeSignIn()).toEqual({ status: "rejected" });
+
+    // No trainer record, and no credentials to go back with.
+    expect(await countTrainers()).toBe(0);
+    expect(await currentTrainer()).toBeNull();
+  });
+
+  it("reports a failure rather than throwing when there is no session", async () => {
+    // NotSignedInError is not a rejection: nothing was turned away, the
+    // callback simply arrived without one.
+    expect(await completeSignIn()).toEqual({ status: "failed" });
     expect(await countTrainers()).toBe(0);
   });
 });

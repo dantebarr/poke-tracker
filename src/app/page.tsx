@@ -5,10 +5,9 @@ import { signOut } from "@/app/actions/trainer";
 import { currentTrainer } from "@/lib/trainer/session";
 
 /**
- * Home. Everything the trainer needs is meant to land here — stats and task
- * creation on the left, the Pokémon in the centre, the task list on the right.
- * For now it does the one thing this slice promises: proves the app knows who
- * is signed in.
+ * Home. Eventually three panels — stats and task creation, the Pokémon, the
+ * task list. For now it does the one thing this slice promises: shows the
+ * signed-in trainer, proving the app knows who they are.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -36,16 +35,6 @@ export default async function HomePage() {
         </h2>
         <p className="mt-2 text-lg">{trainer.displayName ?? trainer.email}</p>
         <p className="text-sm text-black/60">{trainer.email}</p>
-        <dl className="mt-4 flex gap-8 text-sm">
-          <div>
-            <dt className="text-black/60">Daily target</dt>
-            <dd className="text-lg">{trainer.dailyTarget}</dd>
-          </div>
-          <div>
-            <dt className="text-black/60">Happiness</dt>
-            <dd className="text-lg">{trainer.happiness}</dd>
-          </div>
-        </dl>
       </section>
 
       <nav className="flex gap-4 text-sm">
