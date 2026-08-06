@@ -88,3 +88,19 @@ export async function countTrainers(): Promise<number> {
   }
   return count ?? 0;
 }
+
+/** A trainer's label rows as an auditor would see them, ignoring row-level security. */
+export async function labelsFor(trainerId: string): Promise<
+  { id: string; name: string; color: string; position: number }[]
+> {
+  const { data, error } = await adminClient()
+    .from("label")
+    .select("id, name, color, position")
+    .eq("trainer_id", trainerId)
+    .order("position");
+
+  if (error) {
+    throw new Error(`Listing labels failed: ${JSON.stringify(error)}`);
+  }
+  return data;
+}

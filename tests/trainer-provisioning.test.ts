@@ -79,10 +79,10 @@ describe("signing in with an allow-listed account", () => {
     expect(await currentTrainer()).toEqual(trainer);
   });
 
-  it("starts them at the lowest daily target", async () => {
+  it("starts them at the default daily target", async () => {
     await signedIn(ALLOW_LISTED);
 
-    expect((await ensureTrainer()).dailyTarget).toBe(1);
+    expect((await ensureTrainer()).dailyTarget).toBe(3);
   });
 });
 
