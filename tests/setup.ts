@@ -9,3 +9,4 @@ const supabaseEnv = inject("supabaseEnv");
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = supabaseEnv.url;
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = supabaseEnv.anonKey;
+process.env.SUPABASE_SERVICE_ROLE_KEY = supabaseEnv.serviceRoleKey;

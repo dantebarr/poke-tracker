@@ -38,3 +38,12 @@ export function supabaseAnonKey(): string {
 export function allowListSetting(): string | undefined {
   return process.env.POKE_TRACKER_ALLOWED_EMAILS;
 }
+
+/**
+ * Server-only, like {@link allowListSetting}, and reached from exactly one
+ * place: `@/lib/supabase/service` — see its comment for why settlement's
+ * commit is the one write in this app that needs it.
+ */
+export function supabaseServiceRoleKey(): string {
+  return required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
