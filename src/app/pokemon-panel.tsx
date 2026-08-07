@@ -1,6 +1,7 @@
 import Image from "next/image";
 
-import { setNickname } from "@/app/actions/pokemon";
+import { evolvePokemon, setNickname } from "@/app/actions/pokemon";
+import type { EvolutionOption } from "@/lib/pokemon/evolution";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 import { capitalise } from "@/lib/text";
 
@@ -9,7 +10,13 @@ import { capitalise } from "@/lib/text";
  * statement that they have none. Full layout and theming land with the home
  * layout slice — this panel just needs to show what it shows.
  */
-export function PokemonPanel({ pokemon }: { pokemon: ActivePokemon | null }) {
+export function PokemonPanel({
+  pokemon,
+  evolutionOptions,
+}: {
+  pokemon: ActivePokemon | null;
+  evolutionOptions: EvolutionOption[];
+}) {
   if (!pokemon) {
     return (
       <section className="rounded-lg border border-black/10 p-6 text-center">
@@ -71,7 +78,48 @@ export function PokemonPanel({ pokemon }: { pokemon: ActivePokemon | null }) {
             </dd>
           </div>
         </dl>
+
+        {metBondRequirement && evolutionOptions.length > 0 && (
+          <EvolveForm pokemon={pokemon} evolutionOptions={evolutionOptions} />
+        )}
       </div>
     </section>
+  );
+}
+
+/**
+ * The evolve control: a picker when the current species branches, a single
+ * choice otherwise — same form either way, so there is no special case to
+ * get wrong. `expectedSpeciesId` pins the request to the species this render
+ * actually saw, so a resubmission after the instance has already moved on
+ * (a double-click racing itself) is refused server-side rather than
+ * chaining an unintended second evolution — see `evolvePokemon`.
+ */
+function EvolveForm({
+  pokemon,
+  evolutionOptions,
+}: {
+  pokemon: ActivePokemon;
+  evolutionOptions: EvolutionOption[];
+}) {
+  return (
+    <form action={evolvePokemon} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="instanceId" value={pokemon.instanceId} />
+      <input type="hidden" name="expectedSpeciesId" value={pokemon.species.id} />
+      <select
+        name="targetSpeciesId"
+        aria-label="Evolve into"
+        className="rounded-md border border-black/15 px-2 py-1 text-sm"
+      >
+        {evolutionOptions.map((option) => (
+          <option key={option.speciesId} value={option.speciesId}>
+            {capitalise(option.name)}
+          </option>
+        ))}
+      </select>
+      <button type="submit" className="rounded-md border border-black/15 px-3 py-1 text-xs font-medium">
+        Evolve
+      </button>
+    </form>
   );
 }

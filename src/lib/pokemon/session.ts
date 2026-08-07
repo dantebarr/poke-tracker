@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findEvolutionOptions, type EvolutionOption } from "@/lib/pokemon/evolution";
 import { findActivePokemon, type ActivePokemon } from "@/lib/pokemon/pokemon";
 
 /**
@@ -19,4 +20,19 @@ export async function currentActivePokemon(): Promise<ActivePokemon | null> {
   if (!user) return null;
 
   return findActivePokemon(client, user.id);
+}
+
+/**
+ * The species `currentSpeciesId` could evolve into for the given trainer.
+ * Row-level security scopes this to the caller's own, the same way
+ * `currentTasks`/`currentLabels` trust their `trainerId` argument. Callers
+ * only need this once an instance has met its bond requirement — see the
+ * pokemon panel.
+ */
+export async function currentEvolutionOptions(
+  trainerId: string,
+  currentSpeciesId: number,
+): Promise<EvolutionOption[]> {
+  const client = await createSupabaseServerClient();
+  return findEvolutionOptions(client, trainerId, currentSpeciesId);
 }
