@@ -28,10 +28,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short" });
 const MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
-// `due_date` is a plain `date` column ('YYYY-MM-DD'); parsing it with
-// `new Date(string)` reads it as UTC midnight and can land on the wrong
-// local day. Build the Date from components instead.
-function parseDateOnly(dateStr: string): Date {
+// A plain `date` column ('YYYY-MM-DD'); parsing it with `new Date(string)`
+// reads it as UTC midnight and can land on the wrong local day. Build the
+// Date from components instead. Exported for other date columns of the same
+// shape — day_ledger's `day`, currently — that need the same treatment.
+export function parseDateOnly(dateStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
   return new Date(year, month - 1, day);
 }

@@ -62,6 +62,9 @@ export default async function HomePage() {
         <Link className="underline underline-offset-4" href="/pokedex">
           Pokédex
         </Link>
+        <Link className="underline underline-offset-4" href="/history">
+          History
+        </Link>
       </nav>
     </main>
   );
