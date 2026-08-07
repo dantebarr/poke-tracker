@@ -12,10 +12,11 @@ import {
   humanizeDueDate,
 } from "@/lib/task/dates";
 import type { Label } from "@/lib/label/label";
-import type { Task, TaskSize } from "@/lib/task/task";
+import { TASK_SIZES, type Task } from "@/lib/task/task";
 import { capitalise } from "@/lib/text";
 
-const SIZES: TaskSize[] = ["small", "medium", "large"];
+/** A `<form action>` must return `void`; both the task panel and the create-task panel wrap their server actions in one of these to discard the return value. */
+export type FormAction = (formData: FormData) => Promise<void>;
 
 /**
  * The trainer's tasks: open ones grouped into urgency buckets, with controls
@@ -143,8 +144,6 @@ function DoneTaskRow({ task, today }: { task: Task; today: Date }) {
   );
 }
 
-type FormAction = (formData: FormData) => Promise<void>;
-
 function OpenTaskRow({
   task,
   today,
@@ -222,7 +221,7 @@ function OpenTaskRow({
               aria-label="Size"
               className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
             >
-              {SIZES.map((size) => (
+              {TASK_SIZES.map((size) => (
                 <option key={size} value={size}>
                   {capitalise(size)}
                 </option>

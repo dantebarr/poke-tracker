@@ -57,6 +57,7 @@ export default async function HomePage() {
         <div>
           <h1 className="text-2xl font-semibold">Poke Tracker</h1>
           <p className="text-sm text-muted">{trainer.displayName ?? trainer.email}</p>
+          {trainer.displayName && <p className="text-xs text-muted">{trainer.email}</p>}
         </div>
 
         <nav className="flex flex-wrap items-baseline gap-4 text-sm">
@@ -81,15 +82,15 @@ export default async function HomePage() {
         <PokemonPanel
           pokemon={activePokemon}
           evolutionOptions={evolutionOptions}
-          className="lg:col-start-2 lg:row-start-1"
+          className="lg:col-start-2"
         />
 
-        <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-1">
+        <div className="flex flex-col gap-6 lg:col-start-1">
           <StatsPanel tasks={tasks} dailyTarget={trainer.dailyTarget} />
           <CreateTaskPanel labels={labels} onCreate={submitCreateTask} />
         </div>
 
-        <TaskPanel tasks={tasks} labels={labels} className="lg:col-start-3 lg:row-start-1" />
+        <TaskPanel tasks={tasks} labels={labels} className="lg:col-start-3" />
       </div>
     </main>
   );

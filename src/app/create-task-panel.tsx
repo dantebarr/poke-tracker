@@ -1,10 +1,7 @@
+import type { FormAction } from "@/app/task-panel";
 import type { Label } from "@/lib/label/label";
-import type { TaskSize } from "@/lib/task/task";
+import { TASK_SIZES } from "@/lib/task/task";
 import { capitalise } from "@/lib/text";
-
-const SIZES: TaskSize[] = ["small", "medium", "large"];
-
-type FormAction = (formData: FormData) => Promise<void>;
 
 /**
  * Task creation, split out from the task list (#14): it sits in the left
@@ -76,7 +73,7 @@ export function CreateTaskPanel({
             required
             className="rounded-md border border-border bg-surface px-3 py-2 text-sm transition-colors focus:border-accent"
           >
-            {SIZES.map((size) => (
+            {TASK_SIZES.map((size) => (
               <option key={size} value={size}>
                 {capitalise(size)}
               </option>
