@@ -104,3 +104,36 @@ export async function labelsFor(trainerId: string): Promise<
   }
   return data;
 }
+
+/**
+ * Inserts a task directly, bypassing row-level security. #7 ships no
+ * creation path of its own, so this is how tests arrange rows to read.
+ */
+export async function insertTask(fields: {
+  trainerId: string;
+  labelId: string;
+  task?: string;
+  dueDate?: string;
+  size?: "small" | "medium" | "large";
+  status?: "open" | "done";
+  completedAt?: string | null;
+}): Promise<{ id: string }> {
+  const { data, error } = await adminClient()
+    .from("tasks")
+    .insert({
+      trainer_id: fields.trainerId,
+      label_id: fields.labelId,
+      task: fields.task ?? "Do the thing",
+      due_date: fields.dueDate ?? "2024-01-15",
+      size: fields.size ?? "small",
+      status: fields.status ?? "open",
+      completed_at: fields.completedAt ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Inserting task failed: ${JSON.stringify(error)}`);
+  }
+  return data;
+}

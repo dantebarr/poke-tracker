@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import { setNickname } from "@/app/actions/pokemon";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
+import { capitalise } from "@/lib/text";
 
 /**
  * The home screen's centrepiece: the trainer's active Pokémon, or a plain
@@ -73,8 +74,4 @@ export function PokemonPanel({ pokemon }: { pokemon: ActivePokemon | null }) {
       </div>
     </section>
   );
-}
-
-function capitalise(name: string): string {
-  return name.charAt(0).toUpperCase() + name.slice(1);
 }
