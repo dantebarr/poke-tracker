@@ -6,7 +6,7 @@ import { PokemonPanel } from "@/app/pokemon-panel";
 import { StatsPanel } from "@/app/stats-panel";
 import { TaskPanel } from "@/app/task-panel";
 import { currentLabels } from "@/lib/label/session";
-import { currentActivePokemon } from "@/lib/pokemon/session";
+import { currentActivePokemon, currentEvolutionOptions } from "@/lib/pokemon/session";
 import { currentTasks } from "@/lib/task/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
@@ -30,6 +30,14 @@ export default async function HomePage() {
     currentLabels(trainer.id),
   ]);
 
+  // Only queried once the bond requirement is actually met — the same gate
+  // the evolve button itself is under, so a trainer who isn't there yet
+  // costs nothing extra.
+  const evolutionOptions =
+    activePokemon && activePokemon.distanceToBondRequirement === 0
+      ? await currentEvolutionOptions(trainer.id, activePokemon.species.id)
+      : [];
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-8">
       <header className="flex items-baseline justify-between gap-4">
@@ -51,7 +59,7 @@ export default async function HomePage() {
 
       <StatsPanel tasks={tasks} dailyTarget={trainer.dailyTarget} />
 
-      <PokemonPanel pokemon={activePokemon} />
+      <PokemonPanel pokemon={activePokemon} evolutionOptions={evolutionOptions} />
 
       <TaskPanel tasks={tasks} labels={labels} />
 
