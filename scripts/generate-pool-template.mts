@@ -30,7 +30,7 @@ const MIGRATION_PATH = path.join(
   REPO_ROOT,
   "supabase",
   "migrations",
-  "20260806180100_seed_pool_template.sql",
+  "20260806180500_seed_pool_template.sql",
 );
 
 const EXPECTED_SPECIES_COUNT = 151;
