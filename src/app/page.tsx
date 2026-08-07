@@ -3,13 +3,15 @@ import { redirect } from "next/navigation";
 
 import { signOut } from "@/app/actions/trainer";
 import { PokemonPanel } from "@/app/pokemon-panel";
+import { TaskPanel } from "@/app/task-panel";
 import { currentActivePokemon } from "@/lib/pokemon/session";
+import { currentTasks } from "@/lib/task/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
 /**
  * Home. Eventually three panels — stats and task creation, the Pokémon, the
- * task list. For now it shows the signed-in trainer and their active
- * Pokémon, the centrepiece the rest of the game loop feeds.
+ * task list. For now it shows the signed-in trainer, their active Pokémon,
+ * and their tasks read-only.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -20,7 +22,10 @@ export default async function HomePage() {
     redirect("/sign-in");
   }
 
-  const activePokemon = await currentActivePokemon();
+  const [activePokemon, tasks] = await Promise.all([
+    currentActivePokemon(),
+    currentTasks(trainer.id),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-8">
@@ -42,6 +47,8 @@ export default async function HomePage() {
       </section>
 
       <PokemonPanel pokemon={activePokemon} />
+
+      <TaskPanel tasks={tasks} />
 
       <nav className="flex gap-4 text-sm">
         <Link className="underline underline-offset-4" href="/settings">
