@@ -16,10 +16,9 @@ import {
  * same way the label and pool suites do — see trainer-provisioning.test.ts
  * for the fuller rationale on the `next/headers` mock.
  *
- * #7 ships no task creation, editing or completion action, so every test
- * here arranges rows with `insertTask` (a service-role insert) rather than
- * through the app — the same way pool-provisioning.test.ts simulates a
- * Pokémon leaving, a state not reachable through the app yet either.
+ * This suite is about reading tasks, so it arranges rows with `insertTask`
+ * (a service-role insert) rather than through the app's write actions —
+ * see tests/task-writes.test.ts for those.
  */
 const jarRef = vi.hoisted(() => ({ current: null as CookieJar | null }));
 
@@ -144,25 +143,12 @@ describe("row-level security, not the application, isolates one trainer's tasks 
   });
 });
 
-describe("#7 ships tasks as read-only", () => {
-  it("grants authenticated no insert, update or delete", async () => {
-    const trainer = await signedInTrainer(ALLOW_LISTED);
-    const [personal] = await labelsFor(trainer.id);
-    const task = await insertTask({ trainerId: trainer.id, labelId: personal.id });
-    const client = clientForJar(jar);
-
-    const insertResult = await client
-      .from("tasks")
-      .insert({ trainer_id: trainer.id, label_id: personal.id, task: "Sneaky", due_date: "2024-01-15", size: "small" });
-    expect(insertResult.error?.code).toBe("42501");
-
-    const updateResult = await client.from("tasks").update({ status: "done" }).eq("id", task.id);
-    expect(updateResult.error?.code).toBe("42501");
-
-    const deleteResult = await client.from("tasks").delete().eq("id", task.id);
-    expect(deleteResult.error?.code).toBe("42501");
-  });
-});
+// #7 shipped tasks read-only, and had a test here proving `authenticated`
+// held no insert, update or delete grant at all. #8 supersedes that
+// invariant deliberately — see tests/task-writes.test.ts for the write
+// suite, including the row-level security tests that replace this one
+// (a trainer can now write their own open tasks, but never another
+// trainer's, and never a done one — ADR-0002).
 
 describe("the task invariant lives in the database (ADR-0001)", () => {
   it("refuses a null due date, label or size", async () => {

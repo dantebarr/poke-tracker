@@ -10,6 +10,8 @@
  * separate "today" accent for callers to reach for.
  */
 
+import { effortPoints, type TaskSize } from "@/lib/task/task";
+
 export type Bucket = "overdue" | "today" | "this_week" | "later";
 
 export const BUCKET_ORDER: Bucket[] = ["overdue", "today", "this_week", "later"];
@@ -120,4 +122,22 @@ export function groupDoneByDay<T extends { completedAt: string }>(
   }
 
   return Array.from(groups.values()).sort((a, b) => (a.key < b.key ? 1 : -1));
+}
+
+/**
+ * Effort points earned today, derived by summing today's completions —
+ * never a stored counter (CONTEXT.md), so this is the only place "today's
+ * total" is computed.
+ */
+export function todayPoints(
+  tasks: { status: "open" | "done"; completedAt: string | null; size: TaskSize }[],
+  today: Date = new Date(),
+): number {
+  const todayKey = dayKey(today);
+  return tasks
+    .filter(
+      (task): task is { status: "done"; completedAt: string; size: TaskSize } =>
+        task.status === "done" && task.completedAt !== null && dayKey(new Date(task.completedAt)) === todayKey,
+    )
+    .reduce((sum, task) => sum + effortPoints(task.size), 0);
 }

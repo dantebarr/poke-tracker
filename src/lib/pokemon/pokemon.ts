@@ -89,6 +89,27 @@ export async function findActivePokemon(
 }
 
 /**
+ * The signed-in trainer's active instance id, or null when they currently
+ * have none. Used to stamp a task with the Pokémon active at completion —
+ * see `completeTask` in `@/lib/task/task`.
+ */
+export async function activeInstanceId(
+  client: SupabaseClient,
+  trainerId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("trainer")
+    .select("active_instance_id")
+    .eq("id", trainerId)
+    .maybeSingle<{ active_instance_id: string | null }>();
+
+  if (error) {
+    throw new DatabaseError("Reading trainer's active instance", error);
+  }
+  return data?.active_instance_id ?? null;
+}
+
+/**
  * Creates the trainer's whole pool and activates its first instance, or does
  * nothing if they already have one. Safe to call on every sign-in — the
  * underlying database function is the idempotent one.

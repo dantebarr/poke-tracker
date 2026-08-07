@@ -7,6 +7,7 @@ import {
   getBucket,
   groupDoneByDay,
   humanizeDueDate,
+  todayPoints,
 } from "@/lib/task/dates";
 
 /**
@@ -104,5 +105,22 @@ describe("groupDoneByDay", () => {
     expect(groups[0].tasks.map((t) => t.id)).toEqual(["a", "c"]);
     expect(groups[1].tasks.map((t) => t.id)).toEqual(["b"]);
     expect(groups[2].tasks.map((t) => t.id)).toEqual(["d"]);
+  });
+});
+
+describe("todayPoints", () => {
+  it("sums effort points for tasks completed today, ignoring other days and open tasks", () => {
+    const tasks = [
+      { status: "done" as const, completedAt: "2024-01-15T09:00:00.000", size: "small" as const },
+      { status: "done" as const, completedAt: "2024-01-15T18:00:00.000", size: "medium" as const },
+      { status: "done" as const, completedAt: "2024-01-14T09:00:00.000", size: "large" as const },
+      { status: "open" as const, completedAt: null, size: "large" as const },
+    ];
+
+    expect(todayPoints(tasks, TODAY)).toBe(1 + 2);
+  });
+
+  it("is zero when nothing was completed today", () => {
+    expect(todayPoints([], TODAY)).toBe(0);
   });
 });

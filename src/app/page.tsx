@@ -3,15 +3,17 @@ import { redirect } from "next/navigation";
 
 import { signOut } from "@/app/actions/trainer";
 import { PokemonPanel } from "@/app/pokemon-panel";
+import { StatsPanel } from "@/app/stats-panel";
 import { TaskPanel } from "@/app/task-panel";
+import { currentLabels } from "@/lib/label/session";
 import { currentActivePokemon } from "@/lib/pokemon/session";
 import { currentTasks } from "@/lib/task/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
 /**
- * Home. Eventually three panels — stats and task creation, the Pokémon, the
- * task list. For now it shows the signed-in trainer, their active Pokémon,
- * and their tasks read-only.
+ * Home: the signed-in trainer, today's stats, their active Pokémon, and
+ * their tasks. Full layout and theming land with the home layout slice
+ * (#14) — this arrangement just needs to show what it shows.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -22,9 +24,10 @@ export default async function HomePage() {
     redirect("/sign-in");
   }
 
-  const [activePokemon, tasks] = await Promise.all([
+  const [activePokemon, tasks, labels] = await Promise.all([
     currentActivePokemon(),
     currentTasks(trainer.id),
+    currentLabels(trainer.id),
   ]);
 
   return (
@@ -46,9 +49,11 @@ export default async function HomePage() {
         <p className="text-sm text-black/60">{trainer.email}</p>
       </section>
 
+      <StatsPanel tasks={tasks} dailyTarget={trainer.dailyTarget} />
+
       <PokemonPanel pokemon={activePokemon} />
 
-      <TaskPanel tasks={tasks} />
+      <TaskPanel tasks={tasks} labels={labels} />
 
       <nav className="flex gap-4 text-sm">
         <Link className="underline underline-offset-4" href="/settings">
