@@ -69,7 +69,7 @@ export default async function setup(project: TestProject) {
 
   const status = parseStatus(supabase(["status", "-o", "env"]));
 
-  const required = ["API_URL", "ANON_KEY", "SERVICE_ROLE_KEY"] as const;
+  const required = ["API_URL", "ANON_KEY", "SERVICE_ROLE_KEY", "DB_URL"] as const;
   for (const key of required) {
     if (!status[key]) {
       throw new Error(`supabase status did not report ${key}`);
@@ -82,11 +82,12 @@ export default async function setup(project: TestProject) {
     url: status.API_URL,
     anonKey: status.ANON_KEY,
     serviceRoleKey: status.SERVICE_ROLE_KEY,
+    dbUrl: status.DB_URL,
   });
 }
 
 declare module "vitest" {
   export interface ProvidedContext {
-    supabaseEnv: { url: string; anonKey: string; serviceRoleKey: string };
+    supabaseEnv: { url: string; anonKey: string; serviceRoleKey: string; dbUrl: string };
   }
 }
