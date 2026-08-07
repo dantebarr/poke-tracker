@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { isAllowListed } from "@/lib/auth/allow-list";
+import { provisionPool } from "@/lib/pokemon/pokemon";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireTrainerId } from "@/lib/trainer/session";
 import { NotAllowListedError, NotSignedInError } from "@/lib/trainer/errors";
@@ -45,11 +46,18 @@ export async function ensureTrainer(): Promise<Trainer> {
 
   const fullName = user.user_metadata?.full_name;
 
-  return provisionTrainer(client, {
+  const trainer = await provisionTrainer(client, {
     id: user.id,
     email: user.email,
     displayName: typeof fullName === "string" ? fullName : null,
   });
+
+  // Grants the trainer's first Pokémon the moment they exist, not after a
+  // qualifying day. Idempotent, like provisionTrainer above, so a later
+  // sign-in that reuses the trainer record leaves the pool untouched.
+  await provisionPool(client);
+
+  return trainer;
 }
 
 /**
