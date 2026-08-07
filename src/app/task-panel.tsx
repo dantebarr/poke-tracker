@@ -1,6 +1,5 @@
 import {
   completeTaskAction,
-  createTaskAction,
   deleteTaskAction,
   updateTaskAction,
 } from "@/app/actions/task";
@@ -23,6 +22,7 @@ const SIZES: TaskSize[] = ["small", "medium", "large"];
  * to complete, edit or delete each; done ones collapsed out of the way,
  * read-only. Done is terminal (ADR-0002) — no control here can reach a done
  * row, and row-level security refuses the underlying writes regardless.
+ * Creation lives in its own left-column panel (#14) — this one is the list.
  *
  * Every form here works before hydration: completing, editing and deleting
  * are plain `<form action>`s, and the edit and delete-confirmation
@@ -31,16 +31,20 @@ const SIZES: TaskSize[] = ["small", "medium", "large"];
  * Overdue is the only alarm state (#7's acceptance criteria) — Today gets no
  * competing accent of its own.
  */
-export function TaskPanel({ tasks, labels }: { tasks: Task[]; labels: Label[] }) {
-  // `createTaskAction`, `updateTaskAction` and `completeTaskAction` return
-  // the changed task — useful to callers that need it (the tests do). A
-  // `<form action>` must return `void`, so each is wrapped here to discard
-  // that value, the same way the settings page wraps the label actions.
-  // `deleteTaskAction` already returns `void` and needs no wrapper.
-  async function submitCreateTask(formData: FormData) {
-    "use server";
-    await createTaskAction(formData);
-  }
+export function TaskPanel({
+  tasks,
+  labels,
+  className = "",
+}: {
+  tasks: Task[];
+  labels: Label[];
+  className?: string;
+}) {
+  // `updateTaskAction` and `completeTaskAction` return the changed task —
+  // useful to callers that need it (the tests do). A `<form action>` must
+  // return `void`, so each is wrapped here to discard that value, the same
+  // way the settings page wraps the label actions. `deleteTaskAction`
+  // already returns `void` and needs no wrapper.
   async function submitUpdateTask(formData: FormData) {
     "use server";
     await updateTaskAction(formData);
@@ -62,14 +66,14 @@ export function TaskPanel({ tasks, labels }: { tasks: Task[]; labels: Label[] })
   const doneGroups = groupDoneByDay(doneTasks, today);
 
   return (
-    <section className="rounded-lg border border-black/10 p-6">
+    <section className={`rounded-lg border border-border bg-surface p-6 ${className}`}>
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-black/60">Tasks</h2>
-        <span className="font-mono text-xs text-black/60">{openTasks.length} open</span>
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted">Tasks</h2>
+        <span className="font-mono text-xs text-muted">{openTasks.length} open</span>
       </div>
 
       {openTasks.length === 0 ? (
-        <p className="mt-4 rounded-md border border-black/10 px-4 py-6 text-center text-sm text-black/60">
+        <p className="mt-4 rounded-md border border-border px-4 py-6 text-center text-sm text-muted">
           Nothing open — clear day.
         </p>
       ) : (
@@ -77,11 +81,11 @@ export function TaskPanel({ tasks, labels }: { tasks: Task[]; labels: Label[] })
           <div key={bucket} className="mt-4">
             <h3
               className={`mb-2 flex items-baseline gap-2 font-mono text-xs uppercase tracking-widest ${
-                bucket === "overdue" ? "text-red-700" : "text-black/60"
+                bucket === "overdue" ? "text-urgent" : "text-muted"
               }`}
             >
               {BUCKET_LABELS[bucket]}
-              <span className="text-black/40">{buckets[bucket].length}</span>
+              <span className="text-muted/70">{buckets[bucket].length}</span>
             </h3>
             <ul className="flex flex-col gap-2">
               {buckets[bucket].map((task) => (
@@ -101,14 +105,14 @@ export function TaskPanel({ tasks, labels }: { tasks: Task[]; labels: Label[] })
 
       {doneTasks.length > 0 && (
         <details className="mt-6">
-          <summary className="cursor-pointer font-mono text-xs uppercase tracking-widest text-black/60">
-            Done <span className="text-black/40">{doneTasks.length}</span>
+          <summary className="cursor-pointer font-mono text-xs uppercase tracking-widest text-muted">
+            Done <span className="text-muted/70">{doneTasks.length}</span>
           </summary>
           <div className="mt-3 flex flex-col gap-4">
             {doneGroups.map((group) => (
               <div key={group.key}>
-                <h4 className="mb-2 font-mono text-xs uppercase tracking-widest text-black/60">
-                  {group.label} <span className="text-black/40">{group.tasks.length}</span>
+                <h4 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted">
+                  {group.label} <span className="text-muted/70">{group.tasks.length}</span>
                 </h4>
                 <ul className="flex flex-col gap-2">
                   {group.tasks.map((task) => (
@@ -120,23 +124,21 @@ export function TaskPanel({ tasks, labels }: { tasks: Task[]; labels: Label[] })
           </div>
         </details>
       )}
-
-      <CreateTaskForm labels={labels} onCreate={submitCreateTask} />
     </section>
   );
 }
 
 function DoneTaskRow({ task, today }: { task: Task; today: Date }) {
   return (
-    <li className="rounded-lg border border-black/10 p-3 opacity-50">
+    <li className="rounded-lg border border-border p-3 opacity-50">
       <div className="flex items-baseline justify-between gap-2">
         <LabelChip label={task.label} />
-        <span className="shrink-0 font-mono text-[0.7rem] uppercase tracking-wide text-black/60">
+        <span className="shrink-0 font-mono text-[0.7rem] uppercase tracking-wide text-muted">
           {humanizeDueDate(task.dueDate, today, true)}
         </span>
       </div>
-      <p className="mt-1.5 text-sm text-black/60 line-through">{task.title}</p>
-      <p className="mt-1 text-xs text-black/60">{capitalise(task.size)}</p>
+      <p className="mt-1.5 text-sm text-muted line-through">{task.title}</p>
+      <p className="mt-1 text-xs text-muted">{capitalise(task.size)}</p>
     </li>
   );
 }
@@ -156,10 +158,10 @@ function OpenTaskRow({
   onComplete: FormAction;
   onUpdate: FormAction;
 }) {
-  const dueDateClass = getBucket(task.dueDate, today) === "overdue" ? "text-red-700" : "text-black/60";
+  const dueDateClass = getBucket(task.dueDate, today) === "overdue" ? "text-urgent" : "text-muted";
 
   return (
-    <li className="rounded-lg border border-black/10 p-3">
+    <li className="rounded-lg border border-border p-3">
       <div className="flex items-baseline justify-between gap-2">
         <LabelChip label={task.label} />
         <span className={`shrink-0 font-mono text-[0.7rem] uppercase tracking-wide ${dueDateClass}`}>
@@ -167,21 +169,23 @@ function OpenTaskRow({
         </span>
       </div>
       <p className="mt-1.5 text-sm">{task.title}</p>
-      <p className="mt-1 text-xs text-black/60">{capitalise(task.size)}</p>
+      <p className="mt-1 text-xs text-muted">{capitalise(task.size)}</p>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <form action={onComplete}>
           <input type="hidden" name="id" value={task.id} />
           <button
             type="submit"
-            className="rounded-md border border-black/15 px-2 py-1 text-xs font-medium"
+            className="rounded-md border border-border px-2 py-1 text-xs font-medium transition-colors hover:border-accent hover:text-accent"
           >
             Complete
           </button>
         </form>
 
         <details>
-          <summary className="cursor-pointer text-xs underline underline-offset-4">Edit</summary>
+          <summary className="cursor-pointer text-xs text-accent underline underline-offset-4">
+            Edit
+          </summary>
           <form action={onUpdate} className="mt-2 flex flex-col gap-2">
             <input type="hidden" name="id" value={task.id} />
             <input
@@ -190,7 +194,7 @@ function OpenTaskRow({
               defaultValue={task.title}
               required
               aria-label="Title"
-              className="rounded-md border border-black/15 px-2 py-1 text-sm"
+              className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
             />
             <input
               type="date"
@@ -198,13 +202,13 @@ function OpenTaskRow({
               defaultValue={task.dueDate}
               required
               aria-label="Due date"
-              className="rounded-md border border-black/15 px-2 py-1 text-sm"
+              className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
             />
             <select
               name="labelId"
               defaultValue={task.label.id}
               aria-label="Label"
-              className="rounded-md border border-black/15 px-2 py-1 text-sm"
+              className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
             >
               {labels.map((label) => (
                 <option key={label.id} value={label.id}>
@@ -216,7 +220,7 @@ function OpenTaskRow({
               name="size"
               defaultValue={task.size}
               aria-label="Size"
-              className="rounded-md border border-black/15 px-2 py-1 text-sm"
+              className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
             >
               {SIZES.map((size) => (
                 <option key={size} value={size}>
@@ -229,11 +233,11 @@ function OpenTaskRow({
               defaultValue={task.notes ?? ""}
               placeholder="Notes"
               aria-label="Notes"
-              className="rounded-md border border-black/15 px-2 py-1 text-sm"
+              className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
             />
             <button
               type="submit"
-              className="self-start rounded-md border border-black/15 px-3 py-1 text-xs font-medium"
+              className="self-start rounded-md border border-border px-3 py-1 text-xs font-medium transition-colors hover:border-accent hover:text-accent"
             >
               Save
             </button>
@@ -241,92 +245,18 @@ function OpenTaskRow({
         </details>
 
         <details>
-          <summary className="cursor-pointer text-xs text-red-700 underline underline-offset-4">
+          <summary className="cursor-pointer text-xs text-caution underline underline-offset-4">
             Delete
           </summary>
           <form action={deleteTaskAction} className="mt-2">
             <input type="hidden" name="id" value={task.id} />
-            <button type="submit" className="text-xs text-red-700 underline underline-offset-4">
+            <button type="submit" className="text-xs text-urgent underline underline-offset-4">
               Confirm delete
             </button>
           </form>
         </details>
       </div>
     </li>
-  );
-}
-
-function CreateTaskForm({ labels, onCreate }: { labels: Label[]; onCreate: FormAction }) {
-  return (
-    <form
-      action={onCreate}
-      className="mt-6 flex flex-wrap items-end gap-3 border-t border-black/10 pt-4"
-    >
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-black/60" htmlFor="new-task-title">
-          Title
-        </label>
-        <input
-          id="new-task-title"
-          type="text"
-          name="title"
-          required
-          className="w-40 rounded-md border border-black/15 px-3 py-2 text-sm"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-black/60" htmlFor="new-task-due-date">
-          Due
-        </label>
-        <input
-          id="new-task-due-date"
-          type="date"
-          name="dueDate"
-          required
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-black/60" htmlFor="new-task-label">
-          Label
-        </label>
-        <select
-          id="new-task-label"
-          name="labelId"
-          required
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-        >
-          {labels.map((label) => (
-            <option key={label.id} value={label.id}>
-              {label.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-black/60" htmlFor="new-task-size">
-          Size
-        </label>
-        <select
-          id="new-task-size"
-          name="size"
-          required
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-        >
-          {SIZES.map((size) => (
-            <option key={size} value={size}>
-              {capitalise(size)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <button
-        type="submit"
-        className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium"
-      >
-        Add task
-      </button>
-    </form>
   );
 }
 

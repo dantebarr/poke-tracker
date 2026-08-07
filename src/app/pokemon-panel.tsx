@@ -13,15 +13,17 @@ import { capitalise } from "@/lib/text";
 export function PokemonPanel({
   pokemon,
   evolutionOptions,
+  className = "",
 }: {
   pokemon: ActivePokemon | null;
   evolutionOptions: EvolutionOption[];
+  className?: string;
 }) {
   if (!pokemon) {
     return (
-      <section className="rounded-lg border border-black/10 p-6 text-center">
+      <section className={`rounded-lg border border-border bg-surface p-6 text-center ${className}`}>
         <p className="text-lg font-medium">No Pokémon right now</p>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted">
           Hit your daily target to bring one home.
         </p>
       </section>
@@ -32,7 +34,9 @@ export function PokemonPanel({
   const metBondRequirement = pokemon.distanceToBondRequirement === 0;
 
   return (
-    <section className="flex flex-col items-center gap-4 rounded-lg border border-black/10 p-6 text-center sm:flex-row sm:text-left">
+    <section
+      className={`flex flex-col items-center gap-4 rounded-lg border border-border bg-surface p-6 text-center sm:flex-row sm:text-left ${className}`}
+    >
       <Image
         src={pokemon.species.spritePath}
         alt={speciesName}
@@ -53,26 +57,26 @@ export function PokemonPanel({
               defaultValue={pokemon.nickname ?? ""}
               placeholder={speciesName}
               aria-label="Nickname"
-              className="w-40 border-b border-black/20 bg-transparent text-lg font-semibold outline-none focus:border-black/60"
+              className="w-40 border-b border-border bg-transparent text-lg font-semibold outline-none transition-colors focus:border-accent"
             />
-            <button type="submit" className="text-xs underline underline-offset-4">
+            <button type="submit" className="text-xs text-accent underline underline-offset-4">
               Save
             </button>
           </form>
-          {pokemon.nickname && <p className="text-xs text-black/60">{speciesName}</p>}
+          {pokemon.nickname && <p className="text-xs text-muted">{speciesName}</p>}
         </div>
 
         <dl className="grid grid-cols-3 gap-4 text-sm">
           <div>
-            <dt className="text-black/60">Happiness</dt>
+            <dt className="text-muted">Happiness</dt>
             <dd className="text-base font-medium">{pokemon.happiness}</dd>
           </div>
           <div>
-            <dt className="text-black/60">Bond level</dt>
+            <dt className="text-muted">Bond level</dt>
             <dd className="text-base font-medium">{pokemon.bondLevel}</dd>
           </div>
           <div>
-            <dt className="text-black/60">To next bond</dt>
+            <dt className="text-muted">To next bond</dt>
             <dd className="text-base font-medium">
               {metBondRequirement ? "Ready" : pokemon.distanceToBondRequirement}
             </dd>
@@ -109,7 +113,7 @@ function EvolveForm({
       <select
         name="targetSpeciesId"
         aria-label="Evolve into"
-        className="rounded-md border border-black/15 px-2 py-1 text-sm"
+        className="rounded-md border border-border px-2 py-1 text-sm focus:border-accent"
       >
         {evolutionOptions.map((option) => (
           <option key={option.speciesId} value={option.speciesId}>
@@ -117,7 +121,10 @@ function EvolveForm({
           </option>
         ))}
       </select>
-      <button type="submit" className="rounded-md border border-black/15 px-3 py-1 text-xs font-medium">
+      <button
+        type="submit"
+        className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90"
+      >
         Evolve
       </button>
     </form>

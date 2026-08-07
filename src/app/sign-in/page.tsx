@@ -22,11 +22,11 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 p-8">
       <div>
         <h1 className="text-2xl font-semibold">Poke Tracker</h1>
-        <p className="mt-1 text-sm text-black/60">Sign in to pick up where you left off.</p>
+        <p className="mt-1 text-sm text-muted">Sign in to pick up where you left off.</p>
       </div>
 
       {message && (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-md bg-urgent/10 p-3 text-sm text-urgent">
           {message}
         </p>
       )}

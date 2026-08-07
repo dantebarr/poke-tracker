@@ -18,10 +18,10 @@ export default function Error({
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 p-8 text-center">
       <p className="text-lg font-medium">Something went wrong.</p>
-      <p className="text-sm text-black/60">{error.message}</p>
+      <p className="text-sm text-muted">{error.message}</p>
       <button
         onClick={() => retry()}
-        className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium"
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90"
       >
         Try again
       </button>

@@ -1,23 +1,67 @@
 @import "tailwindcss";
 
+/*
+ * Poke Tracker is a light-theme app by specification — there is deliberately
+ * no dark-mode block here (#14). Warm off-white surfaces, one accent hue for
+ * anything interactive, and red/amber held in reserve for urgency only —
+ * Jarvis HUD's discipline, carried over with a token block written fresh
+ * rather than ported.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf3e7;
+  --surface: #ffffff;
+  --foreground: #2e2117;
+  --muted: #6b5d4c;
+  --border: #e4d6c3;
+  --accent: #146b62;
+  --accent-foreground: #ffffff;
+  --urgent: #b3261e;
+  --urgent-foreground: #ffffff;
+  --caution: #b45309;
+  --caution-foreground: #ffffff;
+  --success: #2f7d4f;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-urgent: var(--urgent);
+  --color-urgent-foreground: var(--urgent-foreground);
+  --color-caution: var(--caution);
+  --color-caution-foreground: var(--caution-foreground);
+  --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
-
-/* Poke Tracker is a light-theme app by specification — there is deliberately no
-   dark-mode block here. The warm off-white theme tokens land with the home
-   layout slice. */
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
+}
+
+/* One focus treatment, everywhere, in the accent hue — nothing here reaches
+   for red or amber, which stay reserved for urgency. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The only place motion preference is handled: every transition and
+   animation in the app collapses to effectively-instant, so nothing here has
+   to remember to guard itself individually. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

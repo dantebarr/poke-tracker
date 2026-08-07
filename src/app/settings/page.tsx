@@ -54,16 +54,16 @@ export default async function SettingsPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-8">
       <header className="flex items-baseline justify-between gap-4">
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <Link className="text-sm underline underline-offset-4" href="/">
+        <Link className="text-sm text-accent underline underline-offset-4" href="/">
           Back to home
         </Link>
       </header>
 
-      <section className="rounded-lg border border-black/10 p-6">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-black/60">
+      <section className="rounded-lg border border-border bg-surface p-6">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
           Daily target
         </h2>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted">
           Changing this only affects future days — already-settled days keep the target they had
           at the time.
         </p>
@@ -75,25 +75,25 @@ export default async function SettingsPage() {
             step={1}
             defaultValue={trainer.dailyTarget}
             required
-            className="w-24 rounded-md border border-black/15 px-3 py-2 text-sm"
+            className="w-24 rounded-md border border-border px-3 py-2 text-sm transition-colors focus:border-accent"
           />
           <button
             type="submit"
-            className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90"
           >
             Update target
           </button>
         </form>
       </section>
 
-      <section className="rounded-lg border border-black/10 p-6">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-black/60">Labels</h2>
+      <section className="rounded-lg border border-border bg-surface p-6">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted">Labels</h2>
 
         <ul className="mt-4 flex flex-col gap-3">
           {labels.map((label, index) => (
             <li
               key={label.id}
-              className="flex flex-wrap items-center gap-3 rounded-md border border-black/10 p-3"
+              className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3"
             >
               <div className="flex flex-col">
                 <form action={submitMoveLabel}>
@@ -103,7 +103,7 @@ export default async function SettingsPage() {
                     type="submit"
                     disabled={index === 0}
                     aria-label={`Move ${label.name} up`}
-                    className="block px-1 text-xs disabled:opacity-30"
+                    className="block px-1 text-xs text-muted transition-colors hover:text-accent disabled:opacity-30 disabled:hover:text-muted"
                   >
                     ▲
                   </button>
@@ -115,7 +115,7 @@ export default async function SettingsPage() {
                     type="submit"
                     disabled={index === labels.length - 1}
                     aria-label={`Move ${label.name} down`}
-                    className="block px-1 text-xs disabled:opacity-30"
+                    className="block px-1 text-xs text-muted transition-colors hover:text-accent disabled:opacity-30 disabled:hover:text-muted"
                   >
                     ▼
                   </button>
@@ -124,7 +124,7 @@ export default async function SettingsPage() {
 
               <span
                 aria-hidden
-                className="h-4 w-4 shrink-0 rounded-full border border-black/10"
+                className="h-4 w-4 shrink-0 rounded-full border border-border"
                 style={{ backgroundColor: label.color }}
               />
 
@@ -135,9 +135,9 @@ export default async function SettingsPage() {
                   name="name"
                   defaultValue={label.name}
                   required
-                  className="w-32 rounded-md border border-black/15 px-2 py-1 text-sm"
+                  className="w-32 rounded-md border border-border px-2 py-1 text-sm transition-colors focus:border-accent"
                 />
-                <button type="submit" className="text-xs underline underline-offset-4">
+                <button type="submit" className="text-xs text-accent underline underline-offset-4">
                   Rename
                 </button>
               </form>
@@ -149,16 +149,16 @@ export default async function SettingsPage() {
                   name="color"
                   defaultValue={label.color}
                   aria-label={`${label.name} colour`}
-                  className="h-8 w-8 rounded border border-black/15"
+                  className="h-8 w-8 rounded border border-border"
                 />
-                <button type="submit" className="text-xs underline underline-offset-4">
+                <button type="submit" className="text-xs text-accent underline underline-offset-4">
                   Recolour
                 </button>
               </form>
 
               <form action={deleteLabelAction} className="ml-auto">
                 <input type="hidden" name="id" value={label.id} />
-                <button type="submit" className="text-xs text-red-700 underline underline-offset-4">
+                <button type="submit" className="text-xs text-urgent underline underline-offset-4">
                   Delete
                 </button>
               </form>
@@ -172,18 +172,18 @@ export default async function SettingsPage() {
             name="name"
             placeholder="New label"
             required
-            className="w-40 rounded-md border border-black/15 px-3 py-2 text-sm"
+            className="w-40 rounded-md border border-border px-3 py-2 text-sm transition-colors focus:border-accent"
           />
           <input
             type="color"
             name="color"
-            defaultValue="#3B82F6"
+            defaultValue="#146B62"
             aria-label="New label colour"
-            className="h-9 w-9 rounded border border-black/15"
+            className="h-9 w-9 rounded border border-border"
           />
           <button
             type="submit"
-            className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90"
           >
             Add label
           </button>
