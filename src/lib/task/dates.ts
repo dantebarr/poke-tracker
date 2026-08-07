@@ -55,7 +55,7 @@ export function bucketOpenTasks<T extends { dueDate: string }>(
   tasks: T[],
   today: Date = new Date(),
 ): Record<Bucket, T[]> {
-  const buckets: Record<Bucket, T[]> = { overdue: [], today: [], this_week: [], later: [] };
+  const buckets = Object.fromEntries(BUCKET_ORDER.map((bucket) => [bucket, [] as T[]])) as Record<Bucket, T[]>;
   for (const task of tasks) {
     buckets[getBucket(task.dueDate, today)].push(task);
   }

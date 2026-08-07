@@ -81,6 +81,14 @@ alter table public.tasks
 comment on column public.tasks.status is
   'Open or done. Done is terminal (ADR-0002) — there is no third state (CONTEXT.md).';
 
+-- The backfill above guarantees every existing done row already has a
+-- completed_at, so this lands trivially now — it exists to stop a future
+-- write path from creating a done task with no completion time, which would
+-- silently vanish from the read model (it belongs to neither the open list
+-- nor a done-by-day group).
+alter table public.tasks
+  add constraint tasks_done_has_completed_at check (status <> 'done' or completed_at is not null);
+
 -- The invariant, in the database rather than at a TypeScript write seam
 -- (ADR-0001): every task has an owner, a due date, a label and a size.
 alter table public.tasks

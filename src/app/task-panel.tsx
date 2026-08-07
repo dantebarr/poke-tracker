@@ -7,6 +7,7 @@ import {
   humanizeDueDate,
 } from "@/lib/task/dates";
 import type { Task } from "@/lib/task/task";
+import { capitalise } from "@/lib/text";
 
 /**
  * The trainer's tasks, read-only: open tasks grouped into urgency buckets,
@@ -113,8 +114,4 @@ function LabelChip({ label }: { label: { name: string; color: string } }) {
       {label.name}
     </span>
   );
-}
-
-function capitalise(word: string): string {
-  return word.charAt(0).toUpperCase() + word.slice(1);
 }

@@ -6,6 +6,8 @@ alter table public.tasks
   add column size text,
   -- The instance active when the task was completed. Nullable forever, not
   -- just during backfill: an open task has no completion to record one for.
+  -- #7's acceptance criteria asks for this column explicitly even though
+  -- nothing reads it yet — a future settlement slice will.
   add column completed_instance_id uuid references public.instance (id);
 
 comment on column public.tasks.label_id is
