@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findEvolutionOptions, type EvolutionOption } from "@/lib/pokemon/evolution";
+import { listPokedex, type PokedexEntry } from "@/lib/pokemon/pokedex";
 import { findActivePokemon, type ActivePokemon } from "@/lib/pokemon/pokemon";
 
 /**
@@ -35,4 +36,14 @@ export async function currentEvolutionOptions(
 ): Promise<EvolutionOption[]> {
   const client = await createSupabaseServerClient();
   return findEvolutionOptions(client, trainerId, currentSpeciesId);
+}
+
+/**
+ * The trainer's Pokédex (#13): all 151, locked entries stripped of their
+ * name. Row-level security scopes the unlock check to the caller's own, the
+ * same way `currentEvolutionOptions`'s `trainerId` argument does.
+ */
+export async function currentPokedex(trainerId: string): Promise<PokedexEntry[]> {
+  const client = await createSupabaseServerClient();
+  return listPokedex(client, trainerId);
 }
