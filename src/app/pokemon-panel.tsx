@@ -7,22 +7,40 @@ import { capitalise } from "@/lib/text";
 
 /**
  * The home screen's centrepiece: the trainer's active Pokémon, or a plain
- * statement that they have none. Full layout and theming land with the home
- * layout slice — this panel just needs to show what it shows.
+ * statement that they have none — either way, led by today's effort against
+ * the daily target, since that figure matters whether or not there's a
+ * Pokémon to show for it yet.
  */
 export function PokemonPanel({
   pokemon,
   evolutionOptions,
+  points,
+  dailyTarget,
   className = "",
 }: {
   pokemon: ActivePokemon | null;
   evolutionOptions: EvolutionOption[];
+  points: number;
+  dailyTarget: number;
   className?: string;
 }) {
+  const metTarget = points >= dailyTarget;
+
+  const effortCell = (
+    <div>
+      <dt className="text-muted">Today&rsquo;s effort</dt>
+      <dd className={`text-base font-medium ${metTarget ? "text-success" : ""}`}>
+        {points}
+        <span className="font-normal text-muted"> / {dailyTarget}</span>
+      </dd>
+    </div>
+  );
+
   if (!pokemon) {
     return (
       <section className={`rounded-lg border border-border bg-surface p-6 text-center ${className}`}>
-        <p className="text-lg font-medium">No Pokémon right now</p>
+        <dl className="text-sm">{effortCell}</dl>
+        <p className="mt-4 text-lg font-medium">No Pokémon right now</p>
         <p className="mt-1 text-sm text-muted">
           Hit your daily target to bring one home.
         </p>
@@ -34,58 +52,53 @@ export function PokemonPanel({
   const metBondRequirement = pokemon.distanceToBondRequirement === 0;
 
   return (
-    <section
-      className={`flex flex-col items-center gap-4 rounded-lg border border-border bg-surface p-6 text-center sm:flex-row sm:text-left ${className}`}
-    >
-      <Image
-        src={pokemon.species.spritePath}
-        alt={speciesName}
-        width={96}
-        height={96}
-        className="shrink-0"
-      />
-
-      <div className="flex flex-1 flex-col gap-3">
+    <section className={`rounded-lg border border-border bg-surface p-6 ${className}`}>
+      <dl className="grid grid-cols-3 gap-4 text-center text-sm sm:text-left">
         <div>
-          <form
-            action={setNickname.bind(null, pokemon.instanceId)}
-            className="flex items-baseline justify-center gap-2 sm:justify-start"
-          >
-            <input
-              type="text"
-              name="nickname"
-              defaultValue={pokemon.nickname ?? ""}
-              placeholder={speciesName}
-              aria-label="Nickname"
-              className="w-40 border-b border-border bg-transparent text-lg font-semibold outline-none transition-colors focus:border-accent"
-            />
-            <button type="submit" className="text-xs text-accent underline underline-offset-4">
-              Save
-            </button>
-          </form>
-          {pokemon.nickname && <p className="text-xs text-muted">{speciesName}</p>}
+          <dt className="text-muted">Happiness</dt>
+          <dd className="text-base font-medium">{pokemon.happiness}</dd>
         </div>
+        <div>
+          <dt className="text-muted">Bond level</dt>
+          <dd className="text-base font-medium">{pokemon.bondLevel}</dd>
+        </div>
+        {effortCell}
+      </dl>
 
-        <dl className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <dt className="text-muted">Happiness</dt>
-            <dd className="text-base font-medium">{pokemon.happiness}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Bond level</dt>
-            <dd className="text-base font-medium">{pokemon.bondLevel}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">To next bond</dt>
-            <dd className="text-base font-medium">
-              {metBondRequirement ? "Ready" : pokemon.distanceToBondRequirement}
-            </dd>
-          </div>
-        </dl>
+      <div className="mt-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+        <Image
+          src={pokemon.species.spritePath}
+          alt={speciesName}
+          width={96}
+          height={96}
+          className="shrink-0"
+        />
 
-        {metBondRequirement && evolutionOptions.length > 0 && (
-          <EvolveForm pokemon={pokemon} evolutionOptions={evolutionOptions} />
-        )}
+        <div className="flex flex-1 flex-col gap-3">
+          <div>
+            <form
+              action={setNickname.bind(null, pokemon.instanceId)}
+              className="flex items-baseline justify-center gap-2 sm:justify-start"
+            >
+              <input
+                type="text"
+                name="nickname"
+                defaultValue={pokemon.nickname ?? ""}
+                placeholder={speciesName}
+                aria-label="Nickname"
+                className="w-40 border-b border-border bg-transparent text-lg font-semibold outline-none transition-colors focus:border-accent"
+              />
+              <button type="submit" className="text-xs text-accent underline underline-offset-4">
+                Save
+              </button>
+            </form>
+            {pokemon.nickname && <p className="text-xs text-muted">{speciesName}</p>}
+          </div>
+
+          {metBondRequirement && evolutionOptions.length > 0 && (
+            <EvolveForm pokemon={pokemon} evolutionOptions={evolutionOptions} />
+          )}
+        </div>
       </div>
     </section>
   );

@@ -5,19 +5,19 @@ import { signOut } from "@/app/actions/trainer";
 import { createTaskAction } from "@/app/actions/task";
 import { CreateTaskPanel } from "@/app/create-task-panel";
 import { PokemonPanel } from "@/app/pokemon-panel";
-import { StatsPanel } from "@/app/stats-panel";
 import { TaskPanel } from "@/app/task-panel";
 import { currentLabels } from "@/lib/label/session";
 import { currentActivePokemon, currentEvolutionOptions } from "@/lib/pokemon/session";
+import { todayPoints } from "@/lib/task/dates";
 import { currentTasks } from "@/lib/task/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
 /**
- * Home (#14): stats and task creation on the left, the active Pokémon in the
- * centre, the task list on the right. The three panels are placed by grid
- * column, independent of DOM order, so the Pokémon — first in the markup —
- * can lead the mobile stack (the acceptance criterion) while still landing
- * in the centre column at desktop widths.
+ * Home (#14): the active Pokémon and today's effort on the left, task
+ * creation and the task list on the right. Both columns are single grid
+ * children in DOM order — the Pokémon first, so it also leads the mobile
+ * stack (the acceptance criterion) — rather than placed by explicit
+ * `col-start`, which previously let the task panel wrap onto its own row.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -33,6 +33,8 @@ export default async function HomePage() {
     currentTasks(trainer.id),
     currentLabels(trainer.id),
   ]);
+
+  const points = todayPoints(tasks);
 
   // Only queried once the bond requirement is actually met — the same gate
   // the evolve button itself is under, so a trainer who isn't there yet
@@ -78,19 +80,18 @@ export default async function HomePage() {
         </nav>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(320px,1fr)_minmax(280px,340px)] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(360px,1fr)_minmax(320px,400px)] lg:items-start">
         <PokemonPanel
           pokemon={activePokemon}
           evolutionOptions={evolutionOptions}
-          className="lg:col-start-2"
+          points={points}
+          dailyTarget={trainer.dailyTarget}
         />
 
-        <div className="flex flex-col gap-6 lg:col-start-1">
-          <StatsPanel tasks={tasks} dailyTarget={trainer.dailyTarget} />
+        <div className="flex flex-col gap-6">
           <CreateTaskPanel labels={labels} onCreate={submitCreateTask} />
+          <TaskPanel tasks={tasks} labels={labels} />
         </div>
-
-        <TaskPanel tasks={tasks} labels={labels} className="lg:col-start-3" />
       </div>
     </main>
   );
