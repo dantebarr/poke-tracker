@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mockup B — Safari Gear</title>
 <style>
   @font-face { font-family: "PressStart"; src: url("assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
@@ -19,20 +19,29 @@
     --shadowtext: 2px 2px 0 rgba(0,0,0,.45);
     --box:    #f8f8f8;
     --boxink: #202020;
-    /* One height for both bottom trays — Baoba's dialogue box on the left and the
-       description box on the right. Real dialogue boxes are fixed-height and often
-       half-empty; matching them is what keeps the two columns squared off. */
+    /* One height for Baoba's dialogue box. The field log used to mirror this with
+       a `.describe` tray of its own so the two columns squared off — that tray is
+       gone now that rows are directly operable, so the log panel just grows to
+       fill the freed height and the columns still end level. */
     --tray:   118px;
     --hp-hi:  #3fbf4f;
     --hp-mid: #f0c020;
     --hp-lo:  #e04030;
     --alert:  #e04030;
+    --rsv:    #2f7d4f;
+    --rsh:    #146b62;
+    --adm:    #8a5a3b;
+    --rsv-done: #4a6a52;
+    --rsh-done: #3f5a56;
+    --adm-done: #6b5a4a;
   }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0;
+    height: 100dvh;
+    height: 100vh;
     background: #0a2a14;
     background-image:
       radial-gradient(120% 80% at 50% 0%, #17472a, transparent 70%),
@@ -43,6 +52,7 @@
   }
   img { display: block; image-rendering: pixelated; }
   button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+  input, textarea, select { font-family: inherit; color: inherit; }
 
   /* the classic rounded green panel: dark rim, lighter fill, white inner keyline */
   .panel {
@@ -65,9 +75,11 @@
   /* A definite height, not a minimum — with `min-height` the grid row below sized
      itself to the whole unscrolled task list and grew the page instead. */
   .app {
+    height: 100dvh;
     height: 100vh;
     max-width: 1440px; margin: 0 auto;
     padding: 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
     display: flex; flex-direction: column; gap: 12px;
   }
 
@@ -78,33 +90,45 @@
     font-family: "PressStart", monospace; font-size: 10px;
     text-shadow: var(--shadowtext);
   }
-  .strip .ball { width: 18px; height: 18px; border-radius: 50%;
+  .strip .ball { flex: none; width: 18px; height: 18px; border-radius: 50%;
     background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
     border: 2px solid #101010; }
-  .strip nav { margin-left: auto; display: flex; gap: 8px; }
-  .strip nav button {
-    font-family: "PressStart", monospace; font-size: 9px;
+  .identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .identity .who { display: flex; align-items: center; gap: 14px; }
+  .strip nav { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .strip nav button.icobtn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px;
     background: linear-gradient(180deg, var(--light), var(--mid));
     border: 3px solid var(--edge); border-radius: 7px;
-    padding: 6px 9px; text-shadow: var(--shadowtext);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 3px 0 rgba(0,0,0,.35);
   }
-  .strip nav button:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
+  .strip nav button.icobtn:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
+  .strip nav button.icobtn svg { width: 16px; height: 16px; }
+  /* Mockup-only scaffolding for replaying the intro — kept visually distinct
+     (text label, different palette) from the three real navigation icons so it
+     never reads as app chrome. */
+  .strip nav button.replay {
+    font-family: "PressStart", monospace; font-size: 8px;
+    background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+    border: 3px solid var(--edge); border-radius: 7px;
+    padding: 7px 8px; box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
 
   /* The stage owns the height: it fills the viewport but never drops below this,
      so the field log is always a fixed box that scrolls its own contents rather
      than a list that grows the page. */
-  .stage {
-    flex: 1; min-height: 640px;
+  .stage { flex: 1; min-height: 640px; min-width: 0; }
+  .panes {
+    height: 100%;
     display: grid;
     grid-template-columns: 1.1fr .9fr;
     grid-template-rows: minmax(0, 1fr);   /* the row must be allowed to shrink below its content */
     gap: 12px;
   }
-  @media (max-width: 960px) { .stage { grid-template-columns: 1fr; } }
 
   /* ── left: the encounter view ──────────────────────────── */
-  .field { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .field { position: relative; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
   .scene {
     position: relative; flex: 1; min-height: 0;
     border: 4px solid var(--edge); border-radius: 12px;
@@ -163,9 +187,11 @@
     background: #303030; border-radius: 3px; padding: 3px 4px; justify-self: start;
   }
   .track { height: 10px; background: #303030; border-radius: 5px; padding: 2px; }
-  .track i { display: block; height: 6px; border-radius: 3px; background: var(--hp-hi); transition: width .2s ease; }
+  .track i { display: block; height: 6px; border-radius: 3px; background: var(--hp-hi); }
 
-  /* the evolve prompt — the one thing on screen allowed to flash */
+  /* the evolve prompt — the one thing on screen allowed to flash. Desktop only:
+     on mobile the same content takes over the dialogue tray instead, so it
+     never collides with the status box on a narrow screen. */
   .evolve {
     position: absolute; right: 16px; top: 16px; z-index: 5;
     padding: 11px 13px; text-align: center; max-width: 220px;
@@ -189,6 +215,14 @@
   .dialogue img { width: 56px; height: 56px; flex: none; }
   .dialogue .who { font-family: "PressStart", monospace; font-size: 9px; color: #383838; }
   .dialogue .said { font-size: 21px; line-height: 1.25; color: var(--boxink); margin-top: 6px; }
+  .dialogue .evolvesay { display: none; }
+  .dialogue .evolvesay .who { color: var(--alert); }
+  .dialogue .evolvesay button {
+    margin-top: 8px; font-family: "PressStart", monospace; font-size: 9px;
+    background: linear-gradient(180deg, var(--light), var(--mid)); color: #fff;
+    border: 3px solid var(--edge); border-radius: 7px; padding: 8px 10px;
+    text-shadow: var(--shadowtext); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
   .dialogue .next {
     position: absolute; right: 14px; bottom: 10px; color: #202020; font-size: 16px;
     animation: bob .8s steps(2) infinite;
@@ -196,7 +230,7 @@
   @keyframes bob { 50% { transform: translateY(3px); } }
 
   /* ── right: the field log menu ─────────────────────────── */
-  .log { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .log { position: relative; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
   .logpanel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px; }
 
   .logtop {
@@ -209,49 +243,128 @@
   .quota .track { width: 92px; height: 11px; background: rgba(0,0,0,.4); border-radius: 6px; padding: 2px; }
   .quota .track i { display: block; height: 7px; width: 60%; border-radius: 4px; background: var(--sel); }
 
+  /* ── pinned add row (desktop) ──────────────────────────── */
+  .addrow { flex: none; padding: 10px 4px 0; }
+  .addbtn {
+    width: 100%; text-align: left; padding: 10px 10px;
+    font-family: "PressStart", monospace; font-size: 10px; color: var(--sel);
+    border: 2px dashed rgba(242,245,200,.5); border-radius: 8px;
+  }
+  .addbtn:hover { background: rgba(0,0,0,.16); }
+  .addeditor { padding: 10px 6px 14px; border-bottom: 3px solid rgba(0,0,0,.28); }
+  .addeditor[hidden] { display: none; }
+  .addeditor .rowhead { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .addeditor .circle.ghost { opacity: .35; }
+
   .scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 2px 2px; }
   .scroll::-webkit-scrollbar { width: 8px; }
   .scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.35); border-radius: 4px; }
 
   .grouphead {
-    font-family: "PressStart", monospace; font-size: 8px;
+    width: 100%; font-family: "PressStart", monospace; font-size: 8px;
     color: var(--pale); text-shadow: var(--shadowtext);
     margin: 13px 4px 6px; display: flex; align-items: center; gap: 8px;
+    text-align: left;
   }
   .grouphead::after { content: ""; flex: 1; height: 2px; background: rgba(0,0,0,.25); }
   .grouphead.late { color: #ffd0c8; }
   .grouphead.late b { color: #fff; background: var(--alert); padding: 3px 5px; border-radius: 3px; }
+  .grouphead .count {
+    font-size: 8px; color: var(--pale); background: rgba(0,0,0,.28);
+    border-radius: 3px; padding: 2px 5px;
+  }
+  .grouphead .chev { font-size: 10px; }
+  button.grouphead { cursor: default; }
 
-  .row {
+  /* ── task rows ──────────────────────────────────────────── */
+  .taskrow { border-radius: 7px; }
+  .taskrow:hover { background: rgba(0,0,0,.16); }
+  .taskrow.expanded { background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 2px rgba(242,245,200,.5); }
+  .rowhead {
     display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-    padding: 8px 8px 8px 4px; border-radius: 7px;
+    padding: 8px 8px 8px 6px;
     text-shadow: var(--shadowtext);
   }
-  .row .cursor { width: 14px; font-size: 20px; line-height: 1; opacity: 0; color: var(--sel); }
-  .row[aria-selected="true"] { background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 2px rgba(242,245,200,.5); }
-  .row[aria-selected="true"] .cursor { opacity: 1; }
-  .row:hover { background: rgba(0,0,0,.16); }
-  .row .name { flex: 1; font-size: 20px; line-height: 1.1; }
-  .row .tag { font-family: "PressStart", monospace; font-size: 7px; padding: 4px 5px; border-radius: 3px; color: #fff; }
-  .row .sz { font-family: "PressStart", monospace; font-size: 8px; color: var(--pale); min-width: 16px; text-align: center; }
-  .row .when { font-size: 17px; color: var(--pale); min-width: 62px; text-align: right; }
-  .row .when.late { color: #ffb9ae; }
-  .row.done .name { color: rgba(255,255,255,.5); text-decoration: line-through; }
+  .taskrow.done .rowhead:hover { background: none; }
 
-  .actions { display: flex; gap: 8px; padding-top: 11px; border-top: 3px solid rgba(0,0,0,.28); margin-top: 8px; }
-  .actions button {
-    flex: 1; font-family: "PressStart", monospace; font-size: 9px;
-    background: linear-gradient(180deg, var(--light), var(--mid));
-    border: 3px solid var(--edge); border-radius: 7px; padding: 9px 4px;
-    text-shadow: var(--shadowtext); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 3px 0 rgba(0,0,0,.35);
+  /* Circle to complete — a one-way door. No hover affordance that reads as a
+     toggle: it only ever darkens slightly, never fills, so it can't be mistaken
+     for a checkbox that comes back. */
+  .circle {
+    flex: none; width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--pale); background: transparent;
   }
-  .actions button:hover { background: linear-gradient(180deg, #7ad78d, var(--light)); }
-  .actions button.primary { background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f; text-shadow: none; }
+  .circle:hover { background: rgba(184,232,194,.25); }
+  .circle.check {
+    border-color: rgba(255,255,255,.5); background: rgba(255,255,255,.15);
+    position: relative;
+  }
+  .circle.check::after {
+    content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; line-height: 1; color: rgba(255,255,255,.7);
+  }
 
-  /* Same fixed tray height as Baoba's box, so the two columns end level. */
-  .describe { height: var(--tray); flex: none; overflow: auto; padding: 12px 15px 14px; }
-  .describe .t { font-family: "PressStart", monospace; font-size: 9px; color: #202020; line-height: 1.5; }
-  .describe .d { font-size: 20px; color: #404040; margin-top: 8px; line-height: 1.2; }
+  .tag { font-family: "PressStart", monospace; font-size: 7px; padding: 4px 5px; border-radius: 3px; color: #fff; flex: none; }
+
+  .rowhead .title {
+    flex: 1; min-width: 0; font-size: 20px; line-height: 1.1;
+    background: none; border: none; padding: 0; width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  input.title { font-family: "VT323", monospace; }
+  input.title[readonly] { cursor: pointer; }
+  input.title:focus { outline: none; }
+  .taskrow.expanded input.title { text-decoration: underline dotted rgba(255,255,255,.4); }
+  span.title { flex: 1; min-width: 0; font-size: 20px; line-height: 1.1; }
+  .taskrow.done span.title { color: rgba(255,255,255,.5); text-decoration: line-through; }
+
+  .sz { font-family: "PressStart", monospace; font-size: 8px; color: var(--pale); min-width: 16px; text-align: center; flex: none; }
+
+  /* the expander — fades in via opacity only, per UI-CONSTRAINTS: never height.
+     Collapsed by default; only an `.expanded` row shows it. */
+  .expander { display: none; padding: 2px 8px 14px 39px; }
+  .taskrow.expanded .expander { display: block; animation: fadein .12s ease; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .expander textarea.notes {
+    width: 100%; min-height: 52px; resize: vertical;
+    background: rgba(0,0,0,.22); color: #fff; border: 1px solid rgba(255,255,255,.25);
+    border-radius: 6px; padding: 7px 9px; font-size: 16px; line-height: 1.3;
+  }
+  .chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    font-family: "PressStart", monospace; font-size: 7px; color: var(--pale);
+    background: rgba(0,0,0,.28); border-radius: 6px; padding: 6px 8px;
+  }
+  .chip input, .chip select {
+    font-size: 16px; background: transparent; color: #fff; border: none;
+  }
+  .chip input[type="date"] { color-scheme: dark; }
+  .chip select { cursor: pointer; }
+  .chip select option { color: #202020; }
+  .delbtn {
+    margin-left: auto;
+    font-family: "PressStart", monospace; font-size: 8px; color: #ffb9ae;
+    padding: 7px 9px; border-radius: 6px;
+  }
+  .delbtn:hover { background: rgba(224,64,48,.25); }
+
+  .editactions { display: flex; align-items: center; gap: 8px; margin-top: 10px; margin-left: auto; }
+  .ghostbtn {
+    font-family: "PressStart", monospace; font-size: 9px; color: var(--pale);
+    padding: 8px 10px; border-radius: 7px; border: 2px solid rgba(184,232,194,.4);
+  }
+  .primary {
+    font-family: "PressStart", monospace; font-size: 9px;
+    background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+    border: 3px solid var(--edge); border-radius: 7px; padding: 9px 14px;
+    box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  .primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Logged-today: a collapsible group. Always open on desktop (the media query
+     below forces it); collapsed behind a summary on mobile. */
+  .loggedrows { display: block; }
 
   /* ── the intro ─────────────────────────────────────────── */
   dialog { border: none; padding: 0; background: transparent; max-width: 720px; width: calc(100% - 28px); }
@@ -277,26 +390,160 @@
   }
   .intro footer small { color: #606060; font-size: 17px; }
 
-  /* Lives in the top strip rather than floating bottom-left, where it sat on top
-     of Baoba's dialogue — the box that now carries the happiness warning. */
-  .strip nav button.replay { background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f; text-shadow: none; }
+  /* ── mobile-only chrome, hidden on desktop ─────────────── */
+  .paneswitch, .fab, .detail, .sheet, .sheet-backdrop { display: none; }
+
+  /* ══════════════════════════════════════════════════════════
+     MOBILE (~390px and up to 900px): two full-screen panes,
+     reached by explicit buttons — never a swipe, never a stack.
+     ══════════════════════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    .app { padding: 10px; gap: 8px; }
+
+    /* the identity text stacks so the icons still fit */
+    .strip { padding: 9px 11px; gap: 10px; align-items: flex-start; }
+    .identity { flex-direction: column; align-items: flex-start; gap: 3px; }
+    .identity .zone { font-size: 9px; }
+    .identity .who { gap: 8px; font-size: 7px; }
+    .strip .ball { margin-top: 2px; }
+
+    /* the two panes sit side by side at double width; translateX shows one */
+    .stage { min-height: 0; overflow: hidden; }
+    .panes {
+      display: flex; width: 200%; height: 100%; gap: 0;
+      transition: transform .22s ease;
+    }
+    .panes > section { width: 50%; flex: none; min-width: 0; }
+    .app.show-log .panes { transform: translateX(-50%); }
+
+    /* no add-task affordance belongs on the Pokémon pane — a third floating
+       button would sit on top of the scene art */
+    .paneswitch {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; bottom: 16px; z-index: 6;
+      width: 48px; height: 48px; border-radius: 50%;
+      font-size: 20px;
+      background: linear-gradient(180deg, var(--light), var(--mid));
+      border: 3px solid var(--edge); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+    }
+    .field .paneswitch { right: 16px; }
+    .log .paneswitch { left: 16px; }
+
+    .evolve { display: none; }
+    .dialogue .normalsay { display: none; }
+    .dialogue .evolvesay { display: flex; flex-direction: column; }
+
+    .logpanel { padding: 10px; }
+    .actions { display: none; }
+
+    /* the floating add button — always within thumb reach */
+    .fab {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; right: 16px; bottom: 16px; z-index: 6;
+      width: 52px; height: 52px; border-radius: 50%; font-size: 26px;
+      background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+      border: 3px solid var(--edge); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+    }
+
+    /* rows: no inline expander — tapping opens the full-screen detail screen */
+    .expander { display: none; }
+    .circle { width: 26px; height: 26px; }
+    .rowhead { padding: 12px 8px; }
+    .addrow, .addeditor { display: none; }
+
+    .loggedhead { cursor: pointer; }
+    .loggedrows { display: none; }
+    .loggedrows.expanded { display: block; }
+
+    /* ── task detail: a full-screen pane below the persistent strip ── */
+    .app.detail-open .stage { display: none; }
+    .detail { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .detailbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 6px; flex: none;
+    }
+    .detailbar .back {
+      display: flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px; font-size: 20px;
+      background: linear-gradient(180deg, var(--light), var(--mid));
+      border: 3px solid var(--edge); border-radius: 8px; box-shadow: 0 3px 0 rgba(0,0,0,.35);
+    }
+    .detailbar .pixel { font-size: 10px; text-shadow: var(--shadowtext); }
+    .detailbody {
+      flex: 1; min-height: 0; overflow: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .detailbody .rowline { display: flex; align-items: center; gap: 10px; }
+    .detailbody input.title {
+      font-size: 22px; background: rgba(0,0,0,.28); border-radius: 8px; padding: 10px 12px;
+    }
+    .detailbody textarea.notes {
+      width: 100%; min-height: 90px; resize: vertical;
+      background: rgba(0,0,0,.22); color: #fff; border: 1px solid rgba(255,255,255,.25);
+      border-radius: 8px; padding: 10px 12px; font-size: 16px; line-height: 1.35;
+    }
+    .detailbody .chips { margin-top: 0; }
+    .detailbody .chip { font-size: 8px; padding: 9px 10px; }
+    .detailbody .delbtn { margin: 6px auto 0; }
+    .detailfoot { flex: none; padding: 14px; }
+    .detailfoot .complete { width: 100%; padding: 16px; font-size: 12px; }
+
+    /* ── mobile add sheet: rises from the bottom, title focused ── */
+    .sheet-backdrop {
+      display: block; position: fixed; inset: 0; z-index: 20;
+      background: rgba(4,18,9,.75); opacity: 0; pointer-events: none;
+      transition: opacity .18s ease;
+    }
+    .sheet {
+      display: flex; flex-direction: column; gap: 10px;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+      max-height: 82dvh; overflow: auto;
+      padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+      border-radius: 16px 16px 0 0;
+      transform: translateY(100%); opacity: 0;
+      transition: transform .22s ease, opacity .22s ease;
+    }
+    body.sheet-open .sheet-backdrop { opacity: 1; pointer-events: auto; }
+    body.sheet-open .sheet { transform: translateY(0); opacity: 1; }
+    .sheet .handle { align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #c8c8c8; }
+    .sheet input.title {
+      font-size: 20px; background: rgba(0,0,0,.06); border-radius: 8px; padding: 10px 12px;
+      border: 1px solid rgba(0,0,0,.15);
+    }
+    .sheet textarea.notes {
+      width: 100%; min-height: 64px; resize: vertical; font-size: 16px; line-height: 1.3;
+      background: rgba(0,0,0,.06); border: 1px solid rgba(0,0,0,.15); border-radius: 8px; padding: 10px 12px;
+    }
+    .sheet .chips { margin-top: 0; }
+    .sheet .chip { background: rgba(0,0,0,.08); color: #404040; font-size: 8px; }
+    .sheet .chip input, .sheet .chip select { color: #202020; }
+    .sheet .chip input[type="date"] { color-scheme: light; }
+    .sheet .primary { align-self: stretch; text-align: center; }
+  }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
 
   <div class="strip">
     <span class="ball"></span>
-    <span>SAFARI ZONE</span>
-    <span style="color:var(--pale)">RANGER DANTE</span>
-    <span style="color:var(--pale)">DAY 118</span>
+    <div class="identity">
+      <span class="zone">SAFARI ZONE</span>
+      <span class="who">
+        <span style="color:var(--pale)">RANGER DANTE</span>
+        <span style="color:var(--pale)" id="daycount">DAY 119</span>
+      </span>
+    </div>
     <nav>
-      <button class="replay" onclick="intro.showModal()">▶ INTRO</button>
-      <button>POKéDEX</button><button>LOGBOOK</button><button>OPTIONS</button><button>EXIT</button>
+      <button class="replay" onclick="intro.showModal()">▶ REPLAY INTRO</button>
+      <button class="icobtn" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="dex"></svg></button>
+      <button class="icobtn" title="Logbook" aria-label="Logbook"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="book"></svg></button>
+      <button class="icobtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="gear"></svg></button>
     </nav>
   </div>
 
   <div class="stage">
+   <div class="panes">
 
     <!-- ── encounter view ──────────────────────────────── -->
     <section class="field">
@@ -334,13 +581,20 @@
 
       <div class="dialogue textbox">
         <img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
-        <div class="lines">
+        <div class="lines normalsay">
           <div class="who">WARDEN BAOBA</div>
           <div class="said" id="baoba-says">Two points short of the day's share, Ranger. Thistle's been
             following you around the meadow all morning — don't waste its afternoon.</div>
         </div>
+        <div class="lines evolvesay">
+          <div class="who">! READY TO CHANGE</div>
+          <div class="said">THISTLE trusts you enough to evolve.</div>
+          <button>EVOLVE → NIDOQUEEN</button>
+        </div>
         <span class="next">▼</span>
       </div>
+
+      <button class="paneswitch" id="toLog" aria-label="View the field log" title="Field log">→</button>
     </section>
 
     <!-- ── field log menu ──────────────────────────────── -->
@@ -348,148 +602,374 @@
       <div class="logpanel panel">
         <div class="logtop">
           <span>FIELD LOG</span>
-          <span style="color:var(--pale)">FRI 7 AUG</span>
+          <span style="color:var(--pale)">SAT 8 AUG</span>
           <span class="quota">
             <span>3/5</span>
             <span class="track"><i></i></span>
           </span>
         </div>
 
+        <div class="addrow" id="addRow">
+          <button class="addbtn" id="addBtn">+ ADD A TASK</button>
+          <div class="addeditor" id="addEditor" hidden>
+            <div class="rowhead">
+              <span class="circle ghost"></span>
+              <input class="title" id="addTitle" type="text" placeholder="Task title">
+            </div>
+            <textarea class="notes" id="addNotes" placeholder="Notes (optional)"></textarea>
+            <div class="chips">
+              <label class="chip">DUE <input type="date" id="addDue"></label>
+              <label class="chip">LABEL
+                <select id="addLabel">
+                  <option value="">—</option>
+                  <option value="RESERVE">RESERVE</option>
+                  <option value="RESEARCH">RESEARCH</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </label>
+              <label class="chip">SIZE
+                <select id="addSize">
+                  <option value="">—</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                </select>
+              </label>
+              <div class="editactions">
+                <button class="ghostbtn" id="addCancel">CANCEL</button>
+                <button class="primary" id="addSave" disabled>SAVE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="scroll" id="rows">
 
-          <div class="grouphead late"><b>OVERDUE</b></div>
-          <button class="row" aria-selected="true"
-                  data-t="REFILL THE NORTH WATER TROUGHS"
-                  data-d="RESERVE · MEDIUM · worth 2 pts · due 2 days ago. The east herd has been walking to the river instead.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#2f7d4f">RSV</span>
-            <span class="name">Refill the north water troughs</span>
-            <span class="sz">M</span>
-            <span class="when late">2d late</span>
-          </button>
+          <div class="bucket" data-bucket="overdue">
+            <div class="grouphead late"><b>OVERDUE</b></div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-06">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Refill the north water troughs" readonly>
+                <span class="sz">M</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">The east herd has been walking to the river instead.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-06"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div class="grouphead">TODAY</div>
-          <button class="row"
-                  data-t="LOG THE NIDORINA SIGHTINGS IN AREA 2"
-                  data-d="RESEARCH · SMALL · worth 1 pt · due today. Thistle's own kind — the entry writes itself if you keep counting.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#146b62">RSH</span>
-            <span class="name">Log the Nidorina sightings in Area 2</span>
-            <span class="sz">S</span>
-            <span class="when">Today</span>
-          </button>
-          <button class="row"
-                  data-t="REPAIR THE EAST FENCE LINE"
-                  data-d="RESERVE · LARGE · worth 3 pts · due today. On its own this clears the day's share.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#2f7d4f">RSV</span>
-            <span class="name">Repair the east fence line</span>
-            <span class="sz">L</span>
-            <span class="when">Today</span>
-          </button>
-          <button class="row"
-                  data-t="ANSWER BAOBA'S SUPPLY REQUEST"
-                  data-d="ADMIN · SMALL · worth 1 pt · due today. He asked twice.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#8a5a3b">ADM</span>
-            <span class="name">Answer Baoba's supply request</span>
-            <span class="sz">S</span>
-            <span class="when">Today</span>
-          </button>
+          <div class="bucket" data-bucket="today">
+            <div class="grouphead">TODAY</div>
+            <div class="taskrow" data-label="RESEARCH" data-due="2026-08-08">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsh)">RSH</span>
+                <input class="title" type="text" value="Log the Nidorina sightings in Area 2" readonly>
+                <span class="sz">S</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">Thistle's own kind — the entry writes itself if you keep counting.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-08"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH" selected>RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S" selected>S</option><option value="M">M</option><option value="L">L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-08">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Repair the east fence line" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">On its own this clears the day's share.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-08"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="ADMIN" data-due="2026-08-08">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--adm)">ADM</span>
+                <input class="title" type="text" value="Answer Baoba's supply request" readonly>
+                <span class="sz">S</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">He asked twice.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-08"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN" selected>ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S" selected>S</option><option value="M">M</option><option value="L">L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div class="grouphead">THIS WEEK</div>
-          <button class="row"
-                  data-t="WEIGH AND RECORD THE CHANSEY CLUTCH"
-                  data-d="RESEARCH · MEDIUM · worth 2 pts · due Sunday.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#146b62">RSH</span>
-            <span class="name">Weigh and record the Chansey clutch</span>
-            <span class="sz">M</span>
-            <span class="when">Sun</span>
-          </button>
-          <button class="row"
-                  data-t="CLEAR SCRUB FROM THE SAVANNAH PATH"
-                  data-d="RESERVE · LARGE · worth 3 pts · due Wednesday.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#2f7d4f">RSV</span>
-            <span class="name">Clear scrub from the savannah path</span>
-            <span class="sz">L</span>
-            <span class="when">Wed</span>
-          </button>
+          <div class="bucket" data-bucket="tomorrow">
+            <div class="grouphead">TOMORROW</div>
+            <div class="taskrow" data-label="RESEARCH" data-due="2026-08-09">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsh)">RSH</span>
+                <input class="title" type="text" value="Weigh and record the Chansey clutch" readonly>
+                <span class="sz">M</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-09"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH" selected>RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div class="grouphead">LATER</div>
-          <button class="row"
-                  data-t="QUARTERLY RESERVE REPORT"
-                  data-d="ADMIN · LARGE · worth 3 pts · due 22 Aug.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#8a5a3b">ADM</span>
-            <span class="name">Quarterly reserve report</span>
-            <span class="sz">L</span>
-            <span class="when">22 Aug</span>
-          </button>
-          <button class="row"
-                  data-t="RE-STAKE THE MARSHLAND BOARDWALK"
-                  data-d="RESERVE · LARGE · worth 3 pts · due 28 Aug. The far end has been sinking since spring.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#2f7d4f">RSV</span>
-            <span class="name">Re-stake the marshland boardwalk</span>
-            <span class="sz">L</span>
-            <span class="when">28 Aug</span>
-          </button>
-          <button class="row"
-                  data-t="COUNT THE TAUROS HERD"
-                  data-d="RESEARCH · MEDIUM · worth 2 pts · due 30 Aug. Baoba wants a number before the dry season.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#146b62">RSH</span>
-            <span class="name">Count the Tauros herd</span>
-            <span class="sz">M</span>
-            <span class="when">30 Aug</span>
-          </button>
-          <button class="row"
-                  data-t="SERVICE THE AREA 3 GATE"
-                  data-d="RESERVE · SMALL · worth 1 pt · due 2 Sep.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#2f7d4f">RSV</span>
-            <span class="name">Service the Area 3 gate</span>
-            <span class="sz">S</span>
-            <span class="when">2 Sep</span>
-          </button>
+          <div class="bucket" data-bucket="later">
+            <div class="grouphead">LATER</div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-13">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Clear scrub from the savannah path" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-13"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="ADMIN" data-due="2026-08-22">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--adm)">ADM</span>
+                <input class="title" type="text" value="Quarterly reserve report" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-22"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN" selected>ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-28">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Re-stake the marshland boardwalk" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">The far end has been sinking since spring.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-28"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESEARCH" data-due="2026-08-30">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsh)">RSH</span>
+                <input class="title" type="text" value="Count the Tauros herd" readonly>
+                <span class="sz">M</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">Baoba wants a number before the dry season.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-30"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH" selected>RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-09-02">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Service the Area 3 gate" readonly>
+                <span class="sz">S</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-09-02"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S" selected>S</option><option value="M">M</option><option value="L">L</option></select>
+                  </label>
+                  <button class="delbtn">DELETE</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div class="grouphead">LOGGED TODAY</div>
-          <button class="row done"
-                  data-t="MORNING PERIMETER WALK"
-                  data-d="RESERVE · SMALL · 1 pt earned with THISTLE. Done is done — this one can't be undone.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#4a6a52">RSV</span>
-            <span class="name">Morning perimeter walk</span>
-            <span class="sz">S</span>
-            <span class="when">✓</span>
-          </button>
-          <button class="row done"
-                  data-t="RESTOCK THE SAFARI BALLS"
-                  data-d="ADMIN · MEDIUM · 2 pts earned with THISTLE.">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:#6b5a4a">ADM</span>
-            <span class="name">Restock the Safari Balls</span>
-            <span class="sz">M</span>
-            <span class="when">✓</span>
-          </button>
-        </div>
-
-        <div class="actions">
-          <button class="primary">COMPLETE</button>
-          <button>EDIT</button>
-          <button>DELETE</button>
-          <button>NEW</button>
+          <div class="bucket" data-bucket="done">
+            <button class="grouphead loggedhead" id="loggedHead">
+              <span>LOGGED TODAY</span>
+              <span class="count" id="loggedCount">2</span>
+              <span class="chev" id="loggedChev">▾</span>
+            </button>
+            <div class="loggedrows" id="loggedRows">
+              <div class="taskrow done" data-label="RESERVE">
+                <div class="rowhead">
+                  <span class="circle check" aria-hidden="true"></span>
+                  <span class="tag" style="background:var(--rsv-done)">RSV</span>
+                  <span class="title">Morning perimeter walk</span>
+                  <span class="sz">S</span>
+                </div>
+              </div>
+              <div class="taskrow done" data-label="ADMIN">
+                <div class="rowhead">
+                  <span class="circle check" aria-hidden="true"></span>
+                  <span class="tag" style="background:var(--adm-done)">ADM</span>
+                  <span class="title">Restock the Safari Balls</span>
+                  <span class="sz">M</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="describe textbox">
-        <div class="t" id="desc-t">REFILL THE NORTH WATER TROUGHS</div>
-        <div class="d" id="desc-d">RESERVE · MEDIUM · worth 2 pts · due 2 days ago. The east herd has been walking to the river instead.</div>
-      </div>
+      <button class="paneswitch" id="toField" aria-label="View the Pokémon" title="Pokémon">←</button>
+      <button class="fab" id="fabAdd" aria-label="Add a task">+</button>
     </section>
+
+   </div>
   </div>
+
+  <!-- ── mobile task detail screen: a sibling of .stage inside .app, so the
+       strip above it never moves and it swaps into the same flex column ── -->
+  <div class="detail" id="detail" style="display:none">
+    <div class="detailbar">
+      <button class="back" id="detailBack" aria-label="Back to the field log">←</button>
+      <span class="pixel">TASK DETAIL</span>
+    </div>
+    <div class="detailbody">
+      <div class="rowline">
+        <span class="circle" id="detailCircle" aria-hidden="true"></span>
+        <input class="title" id="detailTitle" type="text">
+      </div>
+      <textarea class="notes" id="detailNotes" placeholder="Notes (optional)"></textarea>
+      <div class="chips">
+        <label class="chip">DUE <input type="date" id="detailDue"></label>
+        <label class="chip">LABEL
+          <select id="detailLabel">
+            <option value="RESERVE">RESERVE</option>
+            <option value="RESEARCH">RESEARCH</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </label>
+        <label class="chip">SIZE
+          <select id="detailSize">
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+          </select>
+        </label>
+      </div>
+      <button class="delbtn" id="detailDelete">DELETE TASK</button>
+    </div>
+    <div class="detailfoot">
+      <button class="primary complete" id="detailComplete">COMPLETE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── mobile add sheet ───────────────────────────────────── -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet textbox" id="sheet">
+  <span class="handle"></span>
+  <input class="title" id="sheetTitle" type="text" placeholder="Task title">
+  <textarea class="notes" id="sheetNotes" placeholder="Notes (optional)"></textarea>
+  <div class="chips">
+    <label class="chip">DUE <input type="date" id="sheetDue"></label>
+    <label class="chip">LABEL
+      <select id="sheetLabel">
+        <option value="">—</option>
+        <option value="RESERVE">RESERVE</option>
+        <option value="RESEARCH">RESEARCH</option>
+        <option value="ADMIN">ADMIN</option>
+      </select>
+    </label>
+    <label class="chip">SIZE
+      <select id="sheetSize">
+        <option value="">—</option>
+        <option value="S">S</option>
+        <option value="M">M</option>
+        <option value="L">L</option>
+      </select>
+    </label>
+  </div>
+  <button class="primary" id="sheetSave" disabled>SAVE</button>
 </div>
 
 <dialog id="intro">
@@ -519,28 +999,350 @@
 
 
 <script>
-  // The cursor drives the description box, the way a Gen-2 menu does.
-  const rows = document.querySelectorAll('#rows .row');
-  const t = document.getElementById('desc-t');
-  const d = document.getElementById('desc-d');
-  rows.forEach(r => {
-    const select = () => {
-      rows.forEach(o => o.removeAttribute('aria-selected'));
-      r.setAttribute('aria-selected', 'true');
-      t.textContent = r.dataset.t;
-      d.textContent = r.dataset.d;
-    };
-    r.addEventListener('mouseenter', select);
-    r.addEventListener('focus', select);
-    r.addEventListener('click', select);
+  // ── pixel icons ──────────────────────────────────────────
+  // Drawn on the same 16×16 grid as assets/mood-*.svg, at build time here
+  // rather than as literal markup, so the bitmaps stay readable in source.
+  // Original work — no licensing question, same as the mood faces.
+  const ICONS = {
+    // a handheld scanner: body, a round lens, a screen line, three lights
+    dex: [
+      '................',
+      '..111111111111..',
+      '..1..........1..',
+      '..1..........1..',
+      '..1...111....1..',
+      '..1..11111...1..',
+      '..1..11111...1..',
+      '..1..11111...1..',
+      '..1...111....1..',
+      '..1..........1..',
+      '..1.11111111.1..',
+      '..1..1..1..1.1..',
+      '..1..........1..',
+      '..111111111111..',
+      '................',
+      '................',
+    ],
+    // a closed journal: spine down the left, ruled lines for entries
+    book: [
+      '................',
+      '................',
+      '...1111111111...',
+      '...1.1......1...',
+      '...1.1......1...',
+      '...1.1.111111...',
+      '...1.1......1...',
+      '...1.1.111111...',
+      '...1.1......1...',
+      '...1.1.111111...',
+      '...1.1......1...',
+      '...1.1111111...',
+      '...1.1......1...',
+      '...1111111111...',
+      '................',
+      '................',
+    ],
+    // a gear: a ring of teeth around a hollow hub
+    gear: [
+      '................',
+      '.......1........',
+      '.......1........',
+      '...1.111111.1...',
+      '....11....11....',
+      '...11......11...',
+      '...1...11...1...',
+      '...1..1..1..1...',
+      '.111..1..1..111.',
+      '...1...11...1...',
+      '...11......11...',
+      '....11....11....',
+      '...1.111111.1...',
+      '........1.......',
+      '........1.......',
+      '................',
+    ],
+  };
+  document.querySelectorAll('svg[data-icon]').forEach(svg => {
+    const bitmap = ICONS[svg.dataset.icon];
+    const frag = document.createDocumentFragment();
+    bitmap.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        if (row[x] === '1') {
+          const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          r.setAttribute('x', x); r.setAttribute('y', y);
+          r.setAttribute('width', 1); r.setAttribute('height', 1);
+          frag.appendChild(r);
+        }
+      }
+    });
+    svg.appendChild(frag);
   });
 
-  // Mockup-only: click the face to page through the happiness tiers so all four
-  // are visible without faking four screenshots. Happiness below zero means the
-  // Pokémon leaves, so `sad` is a state you only ever catch in passing.
-  // Happiness measured in daily targets — "quiet days in the bank". The number
-  // itself is never shown; the face is the whole readout, and Baoba's box carries
-  // the warning when the bank runs low. `slack` is happiness / dailyTarget.
+  // ── shared task-row plumbing ─────────────────────────────
+  const LABELS = {
+    RESERVE:  { abbr: 'RSV', color: 'var(--rsv)', done: 'var(--rsv-done)' },
+    RESEARCH: { abbr: 'RSH', color: 'var(--rsh)', done: 'var(--rsh-done)' },
+    ADMIN:    { abbr: 'ADM', color: 'var(--adm)', done: 'var(--adm-done)' },
+  };
+  const TODAY = new Date(2026, 7, 8); // SAT 8 AUG, matches the strip and log header
+  const rowsEl = document.getElementById('rows');
+  const app = document.getElementById('app');
+  const loggedCount = document.getElementById('loggedCount');
+
+  function isMobile() { return window.matchMedia('(max-width: 900px)').matches; }
+
+  function bucketFor(dueStr) {
+    const due = new Date(dueStr + 'T00:00:00');
+    const days = Math.round((due - TODAY) / 86400000);
+    if (days < 0) return 'overdue';
+    if (days === 0) return 'today';
+    if (days === 1) return 'tomorrow';
+    return 'later';
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  function labelOptions(selected) {
+    return Object.keys(LABELS).map(k =>
+      `<option value="${k}"${k === selected ? ' selected' : ''}>${k}</option>`).join('');
+  }
+  function sizeOptions(selected) {
+    return ['S', 'M', 'L'].map(s =>
+      `<option value="${s}"${s === selected ? ' selected' : ''}>${s}</option>`).join('');
+  }
+
+  function collapseAllRows() {
+    document.querySelectorAll('.taskrow.expanded').forEach(r => r.classList.remove('expanded'));
+    document.querySelectorAll('.taskrow input.title').forEach(i => { if (!i.closest('.done')) i.readOnly = true; });
+    closeAddEditor();
+  }
+
+  function expandRow(row) {
+    if (row.classList.contains('done') || row.classList.contains('expanded')) return;
+    collapseAllRows();
+    row.classList.add('expanded');
+    const titleInput = row.querySelector('.rowhead input.title');
+    titleInput.readOnly = false;
+  }
+
+  function completeTask(row) {
+    const meta = LABELS[row.dataset.label];
+    row.classList.remove('expanded');
+    row.classList.add('done');
+    const head = row.querySelector('.rowhead');
+    row.querySelector('.expander')?.remove();
+    const circleEl = head.querySelector('.circle');
+    const check = document.createElement('span');
+    check.className = 'circle check';
+    check.setAttribute('aria-hidden', 'true');
+    circleEl.replaceWith(check);
+    const titleInput = head.querySelector('input.title');
+    const span = document.createElement('span');
+    span.className = 'title';
+    span.textContent = titleInput.value;
+    titleInput.replaceWith(span);
+    head.querySelector('.tag').style.background = meta.done;
+
+    const loggedRows = document.getElementById('loggedRows');
+    loggedRows.insertBefore(row, loggedRows.firstChild);
+    loggedCount.textContent = loggedRows.querySelectorAll('.taskrow').length;
+  }
+
+  function insertSorted(bucketName, row) {
+    const bucket = document.querySelector(`.bucket[data-bucket="${bucketName}"]`);
+    const siblings = [...bucket.querySelectorAll(':scope > .taskrow')];
+    const due = row.dataset.due;
+    const next = siblings.find(s => s.dataset.due > due);
+    bucket.insertBefore(row, next || null);
+  }
+
+  function buildTaskRow({ title, notes, due, label, size }) {
+    const meta = LABELS[label];
+    const row = document.createElement('div');
+    row.className = 'taskrow';
+    row.dataset.label = label;
+    row.dataset.due = due;
+    row.innerHTML = `
+      <div class="rowhead">
+        <button class="circle" aria-label="Complete task" title="Complete"></button>
+        <span class="tag" style="background:${meta.color}">${meta.abbr}</span>
+        <input class="title" type="text" value="${escapeHtml(title)}" readonly>
+        <span class="sz">${size}</span>
+      </div>
+      <div class="expander">
+        <textarea class="notes" placeholder="Notes">${escapeHtml(notes)}</textarea>
+        <div class="chips">
+          <label class="chip">DUE <input type="date" value="${due}"></label>
+          <label class="chip">LABEL <select>${labelOptions(label)}</select></label>
+          <label class="chip">SIZE <select>${sizeOptions(size)}</select></label>
+          <button class="delbtn">DELETE</button>
+        </div>
+      </div>`;
+    return row;
+  }
+
+  // ── row interaction (event delegation, so newly-added rows just work) ──
+  rowsEl.addEventListener('click', e => {
+    const delBtn = e.target.closest('.delbtn');
+    if (delBtn) { delBtn.closest('.taskrow').remove(); return; }
+
+    const circle = e.target.closest('.circle:not(.check)');
+    const row = e.target.closest('.taskrow');
+    if (!row) return;
+
+    if (circle) { completeTask(row); return; }
+    if (row.classList.contains('done')) return;
+
+    if (isMobile()) { openDetail(row); return; }
+    expandRow(row);
+  });
+
+  document.getElementById('loggedHead').addEventListener('click', () => {
+    if (!isMobile()) return;
+    const rows = document.getElementById('loggedRows');
+    const expanded = rows.classList.toggle('expanded');
+    document.getElementById('loggedChev').textContent = expanded ? '▴' : '▾';
+  });
+
+  // ── desktop: pinned add row ──────────────────────────────
+  const addBtn = document.getElementById('addBtn');
+  const addEditor = document.getElementById('addEditor');
+  const addTitle = document.getElementById('addTitle');
+  const addDue = document.getElementById('addDue');
+  const addLabel = document.getElementById('addLabel');
+  const addSize = document.getElementById('addSize');
+  const addSave = document.getElementById('addSave');
+
+  function closeAddEditor() {
+    addEditor.hidden = true;
+    addBtn.hidden = false;
+    addTitle.value = ''; addDue.value = ''; addLabel.value = ''; addSize.value = '';
+    document.getElementById('addNotes').value = '';
+    addSave.disabled = true;
+  }
+  function checkAddValid() { addSave.disabled = !(addTitle.value.trim() && addDue.value && addLabel.value && addSize.value); }
+  [addTitle, addDue, addLabel, addSize].forEach(el => el.addEventListener('input', checkAddValid));
+
+  addBtn.addEventListener('click', () => {
+    collapseAllRows();
+    addBtn.hidden = true;
+    addEditor.hidden = false;
+    addTitle.focus();
+  });
+  document.getElementById('addCancel').addEventListener('click', closeAddEditor);
+  addSave.addEventListener('click', () => {
+    const title = addTitle.value.trim(), due = addDue.value, label = addLabel.value, size = addSize.value;
+    if (!title || !due || !label || !size) return;
+    const row = buildTaskRow({ title, notes: document.getElementById('addNotes').value, due, label, size });
+    insertSorted(bucketFor(due), row);
+    closeAddEditor();
+  });
+
+  // ── mobile: pane switching ───────────────────────────────
+  document.getElementById('toLog').addEventListener('click', () => app.classList.add('show-log'));
+  document.getElementById('toField').addEventListener('click', () => app.classList.remove('show-log'));
+
+  // ── mobile: task detail screen ───────────────────────────
+  const detail = document.getElementById('detail');
+  let detailRow = null;
+
+  const detailTitle = document.getElementById('detailTitle');
+  const detailNotes = document.getElementById('detailNotes');
+  const detailDue = document.getElementById('detailDue');
+  const detailLabel = document.getElementById('detailLabel');
+  const detailSize = document.getElementById('detailSize');
+
+  function openDetail(row) {
+    detailRow = row;
+    detailTitle.value = row.querySelector('.rowhead input.title').value;
+    detailNotes.value = row.querySelector('.expander textarea.notes').value;
+    detailDue.value = row.dataset.due;
+    detailLabel.value = row.dataset.label;
+    detailSize.value = row.querySelector('.sz').textContent;
+    detail.style.display = 'flex';
+    app.classList.add('detail-open');
+    history.pushState({ detail: true }, '');
+  }
+  function closeDetail() {
+    detail.style.display = 'none';
+    app.classList.remove('detail-open');
+    detailRow = null;
+  }
+  // Edits save live, the same "no Save button" model as the desktop expander —
+  // so back/complete/delete never have to reconcile a separate draft state.
+  function saveDetailToRow() {
+    if (!detailRow) return;
+    const meta = LABELS[detailLabel.value];
+    detailRow.dataset.label = detailLabel.value;
+    detailRow.dataset.due = detailDue.value;
+    const head = detailRow.querySelector('.rowhead');
+    head.querySelector('input.title').value = detailTitle.value;
+    const tag = head.querySelector('.tag');
+    tag.textContent = meta.abbr;
+    tag.style.background = meta.color;
+    head.querySelector('.sz').textContent = detailSize.value;
+    const expander = detailRow.querySelector('.expander');
+    expander.querySelector('textarea.notes').value = detailNotes.value;
+    expander.querySelector('input[type="date"]').value = detailDue.value;
+    const [labelSelect, sizeSelect] = expander.querySelectorAll('select');
+    labelSelect.value = detailLabel.value;
+    sizeSelect.value = detailSize.value;
+  }
+  [detailTitle, detailNotes, detailDue, detailLabel, detailSize].forEach(el =>
+    el.addEventListener('input', saveDetailToRow));
+
+  window.addEventListener('popstate', closeDetail);
+  document.getElementById('detailBack').addEventListener('click', () => history.back());
+  document.getElementById('detailDelete').addEventListener('click', () => {
+    detailRow?.remove();
+    detailRow = null;
+    history.back();
+  });
+  document.getElementById('detailComplete').addEventListener('click', () => {
+    if (detailRow) completeTask(detailRow);
+    history.back();
+  });
+
+  // ── mobile: add sheet ─────────────────────────────────────
+  const sheetTitle = document.getElementById('sheetTitle');
+  const sheetDue = document.getElementById('sheetDue');
+  const sheetLabel = document.getElementById('sheetLabel');
+  const sheetSize = document.getElementById('sheetSize');
+  const sheetSave = document.getElementById('sheetSave');
+
+  function openSheet() {
+    document.body.classList.add('sheet-open');
+    setTimeout(() => sheetTitle.focus(), 50);
+  }
+  function closeSheet() {
+    document.body.classList.remove('sheet-open');
+    sheetTitle.value = ''; sheetDue.value = ''; sheetLabel.value = ''; sheetSize.value = '';
+    document.getElementById('sheetNotes').value = '';
+    sheetSave.disabled = true;
+  }
+  function checkSheetValid() { sheetSave.disabled = !(sheetTitle.value.trim() && sheetDue.value && sheetLabel.value && sheetSize.value); }
+  [sheetTitle, sheetDue, sheetLabel, sheetSize].forEach(el => el.addEventListener('input', checkSheetValid));
+
+  document.getElementById('fabAdd').addEventListener('click', openSheet);
+  document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
+  sheetSave.addEventListener('click', () => {
+    const title = sheetTitle.value.trim(), due = sheetDue.value, label = sheetLabel.value, size = sheetSize.value;
+    if (!title || !due || !label || !size) return;
+    const row = buildTaskRow({ title, notes: document.getElementById('sheetNotes').value, due, label, size });
+    insertSorted(bucketFor(due), row);
+    closeSheet();
+  });
+
+  // The cursor drives the description box on desktop, the way a Gen-2 menu
+  // does. Mockup-only: click the face to page through the happiness tiers so
+  // all four are visible without faking four screenshots. Happiness below
+  // zero means the Pokémon leaves, so `sad` is a state you only ever catch in
+  // passing. Happiness measured in daily targets — "quiet days in the bank".
+  // The number itself is never shown; the face is the whole readout, and
+  // Baoba's box carries the warning when the bank runs low. `slack` is
+  // happiness / dailyTarget.
   const MOODS = [
     { face: 'sad',     slack: '< 0 days',  label: 'Gone',
       say: "That's Thistle away, then. Back into the reserve, bond and all — it'll remember you. Meet your share and something else will come by." },
