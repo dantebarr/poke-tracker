@@ -12,6 +12,10 @@ import { updateDailyTargetAction, updateTimeZoneAction } from "@/app/actions/tra
 import { currentLabels } from "@/lib/label/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
+// Static and identical for every trainer and every request — computed once
+// per server process rather than on every render of this page.
+const TIME_ZONES = Intl.supportedValuesOf("timeZone");
+
 /**
  * A trainer's labels and daily target. Every mutation here is its own plain
  * form bound to a server action — no client JavaScript is needed, so the
@@ -104,7 +108,7 @@ export default async function SettingsPage() {
             aria-label="Time zone"
             className="w-full max-w-sm rounded-md border border-border px-3 py-2 text-sm transition-colors focus:border-accent"
           >
-            {Intl.supportedValuesOf("timeZone").map((zone) => (
+            {TIME_ZONES.map((zone) => (
               <option key={zone} value={zone}>
                 {zone}
               </option>

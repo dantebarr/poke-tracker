@@ -35,7 +35,13 @@ begin
 end;
 $$;
 
-create trigger trainer_validate_time_zone
+-- Named `..._10_...` so it sorts, and therefore fires, before
+-- `..._20_seed_last_settled_day` below on INSERT — Postgres runs same-timing
+-- triggers in name order, and the seed trigger's own `at time zone` expression
+-- needs a zone this one has already vetted, not merely one Postgres's
+-- `AT TIME ZONE` happens to accept (which is a superset of `pg_timezone_names`:
+-- abbreviations like `PST` resolve there but are not real IANA names).
+create trigger trainer_10_validate_time_zone
   before insert or update of time_zone on public.trainer
   for each row
   execute function public.validate_trainer_time_zone();
@@ -48,8 +54,9 @@ create trigger trainer_validate_time_zone
 --
 -- The default is dropped; the column stays not null. A `BEFORE INSERT`
 -- trigger seeds it instead, to the day *before* the trainer's local creation
--- day, in their own (by-then-validated) zone — which is what makes the
--- creation day a real, settleable day rather than an already-settled one.
+-- day, in their own zone — already vetted by the `_10_` trigger above, which
+-- fires first — which is what makes the creation day a real, settleable day
+-- rather than an already-settled one.
 alter table public.trainer
   alter column last_settled_day drop default;
 
@@ -73,7 +80,7 @@ begin
 end;
 $$;
 
-create trigger trainer_seed_last_settled_day
+create trigger trainer_20_seed_last_settled_day
   before insert on public.trainer
   for each row
   execute function public.seed_trainer_last_settled_day();

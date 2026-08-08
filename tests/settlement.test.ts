@@ -155,14 +155,20 @@ describe("triggering settlement", () => {
 
   it("does nothing, and writes nothing, for a freshly-created trainer — their creation day isn't owed yet", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
+    // Seeded to the day before creation, in whatever zone was in effect at
+    // INSERT time (the schema default — `signedInTrainer`'s own
+    // `setTimeZone` call runs after the row already exists, so it has no
+    // effect on the seeded value). Read it back rather than recomputing it
+    // against a different zone, which trainer-time-zone.test.ts already
+    // covers directly.
+    const before = await trainerRow(trainer.id);
 
     await settleOnEntry();
 
-    // Seeded to the day before creation (#17); today is the creation day
-    // itself, which never settles while still in progress, so there is
-    // nothing to do yet and the watermark stays put.
+    // Today is the creation day itself, which never settles while still in
+    // progress, so there is nothing to do yet and the watermark stays put.
     expect(await ledgerFor(trainer.id)).toEqual([]);
-    expect((await trainerRow(trainer.id)).last_settled_day).toBe(dayKey(1));
+    expect((await trainerRow(trainer.id)).last_settled_day).toBe(before.last_settled_day);
   });
 });
 
