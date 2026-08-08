@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poke Tracker — home screen directions</title>
+<style>
+  @font-face { font-family: "Fraunces"; src: url("assets/fraunces.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+  @font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+  @font-face { font-family: "PressStart"; src: url("assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
+
+  :root { --ink:#241d16; --ink2:#7b6e5f; --ink3:#a99c8b; --hair:#ece2d3; --bg:#fbf7f0; --moss:#2f6b4a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Inter",system-ui,sans-serif; font-size:15px; -webkit-font-smoothing:antialiased; }
+  a { color: var(--moss); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 28px 80px; }
+  h1 { font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:38px; letter-spacing:-.02em; margin:0 0 10px; }
+  .lede { font-size:17px; line-height:1.6; color:#463a2c; max-width:60ch; margin:0 0 8px; }
+  .meta { color: var(--ink3); font-size:13px; margin-top:18px; }
+
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; margin-top:40px; }
+  .card {
+    display:flex; flex-direction:column; text-decoration:none; color:inherit;
+    border:1px solid var(--hair); border-radius:16px; background:#fff; overflow:hidden;
+    box-shadow:0 1px 2px rgba(44,32,18,.05), 0 10px 30px -16px rgba(44,32,18,.25);
+    transition:transform .14s ease, box-shadow .14s ease;
+  }
+  .card:hover { transform:translateY(-3px); box-shadow:0 1px 2px rgba(44,32,18,.06), 0 22px 46px -20px rgba(44,32,18,.4); }
+  .swatch { height:132px; position:relative; display:flex; align-items:flex-end; padding:12px; gap:8px; }
+  .swatch .tag {
+    font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    background:rgba(0,0,0,.55); color:#fff; padding:4px 9px; border-radius:999px; backdrop-filter:blur(4px);
+  }
+  .card .body { padding:18px 20px 22px; }
+  .card h2 { margin:0 0 4px; font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:21px; }
+  .card .sub { color:var(--ink3); font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; margin-bottom:11px; }
+  .card p { margin:0 0 12px; line-height:1.55; color:#4a3e30; font-size:14px; }
+  .card ul { margin:0; padding-left:18px; color:var(--ink2); font-size:13px; line-height:1.7; }
+  .card .open { margin-top:14px; font-size:13.5px; font-weight:600; color:var(--moss); }
+
+  .a .swatch { background:url("assets/johto-safari-zone-meadow-hgss.png") center/cover; image-rendering:pixelated; }
+  .b .swatch { background:linear-gradient(180deg,#2f8f47,#0d3a1c); }
+  .b .swatch::before { content:"FIELD LOG"; position:absolute; top:18px; left:14px; font-family:"PressStart",monospace; font-size:11px; color:#fff; text-shadow:2px 2px 0 rgba(0,0,0,.45); }
+  .c .swatch { background:linear-gradient(160deg,#f6f1e7,#e7efe8); }
+  .c .swatch::before { content:""; position:absolute; inset:0; background:radial-gradient(38% 60% at 50% 55%, rgba(47,107,74,.16), transparent 70%); }
+  .swatch img { position:absolute; right:14px; bottom:10px; image-rendering:pixelated; height:88px; }
+
+  h3.sec { font-family:"Fraunces",Georgia,serif; font-weight:600; font-size:21px; margin:52px 0 12px; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--hair); vertical-align:top; }
+  th { color:var(--ink3); font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
+  td:first-child { color:var(--ink2); width:26%; }
+  .note { border-left:3px solid var(--hair); padding:2px 0 2px 16px; color:var(--ink2); font-size:13.5px; line-height:1.65; margin-top:14px; }
+  code { background:#f1e9dc; padding:1px 5px; border-radius:4px; font-size:12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Three directions for the home screen</h1>
+  <p class="lede">All three answer the same two complaints: the sprite is now the biggest
+     thing on the page, and the tasks get their own half of the screen instead of a squeezed
+     column. What separates them is how much of the Safari Zone fiction leaks into the chrome.</p>
+  <p class="lede">Static HTML, fake data, nothing wired up. Everything down to the Baoba
+     intro is on the page — hit <b>▶ First-run intro</b> in the bottom corner of any of them.</p>
+
+  <div class="cards">
+
+    <a class="card a" href="a-field-station.html">
+      <div class="swatch"><span class="tag">Illustrative</span><img src="assets/ani-kangaskhan.gif" alt=""></div>
+      <div class="body">
+        <h2>A · Field Station</h2>
+        <div class="sub">Diorama + clipboard</div>
+        <p>The left half is a window onto the reserve — real HGSS Safari Zone art, sun and
+           vignette, tall grass in the foreground, the Pokémon standing in it at 300px+ with
+           a carved wooden nameplate sunk into the bottom of the scene.</p>
+        <p>The right half is the Ranger's field sheet: a clipboard, lined paper, jobs ticked
+           off in circles, <b>OVERDUE</b> stamped in red.</p>
+        <ul>
+          <li>Most "place"-feeling of the three</li>
+          <li>Game art used as scenery, not as UI</li>
+          <li>Warm mid-tone; furthest from the current light theme</li>
+        </ul>
+        <div class="open">Open mockup →</div>
+      </div>
+    </a>
+
+    <a class="card b" href="b-safari-gear.html">
+      <div class="swatch"><span class="tag">Authentic retro</span><img src="assets/ani-nidorina.gif" alt=""></div>
+      <div class="body">
+        <h2>B · Safari Gear</h2>
+        <div class="sub">Adapted HGSS menu</div>
+        <p>The unapologetic one. The whole app is a game screen: the rounded green panels
+           lifted off the HGSS Safari Zone menu, the classic white-on-black dialogue boxes,
+           a battle-style status box, scanlines, pixel type. Happiness has no number at
+           all — just a pixel-drawn face in the corner, tiered by how many quiet days
+           are banked; <b>bond</b> is the only bar. Click the face to page through the
+           five tiers and watch Baoba's line change with it.</p>
+        <p>The task list is a <b>menu</b> — ▶ cursor, section headers, and a description box
+           at the bottom that updates as the cursor moves. Baoba speaks from a real
+           dialogue box. Hover the rows.</p>
+        <ul>
+          <li>Directly borrows a real Pokémon screen, as asked</li>
+          <li>Highest personality, lowest legibility at long task lists</li>
+          <li>Dark green; would replace the light theme outright</li>
+        </ul>
+        <div class="open">Open mockup →</div>
+      </div>
+    </a>
+
+    <a class="card c" href="c-field-log.html">
+      <div class="swatch"><span class="tag">Modern</span><img src="assets/ani-eevee.gif" alt=""></div>
+      <div class="body">
+        <h2>C · Field Log</h2>
+        <div class="sub">Clean product design</div>
+        <p>No game chrome at all. The sprite floats in a bond ring over a barely-there
+           blur of the reserve, a serif name, three honest readouts, and the branching
+           evolve picker as real buttons.</p>
+        <p>Tasks get a true half: hairline groups, a large hit target per row, an inline
+           composer. The fiction lives entirely in the words and in Baoba's line in the header.</p>
+        <ul>
+          <li>Keeps the existing light-theme decision intact</li>
+          <li>Scales best as the list grows</li>
+          <li>Least "Pokémon" of the three</li>
+        </ul>
+        <div class="open">Open mockup →</div>
+      </div>
+    </a>
+  </div>
+
+  <h3 class="sec">What's identical across all three</h3>
+  <table>
+    <tr><th>Concern</th><th>Treatment</th></tr>
+    <tr><td>Sprite size</td><td>244–372px, animated, always the largest element on the page (was 96px)</td></tr>
+    <tr><td>Task column</td><td>~45–50% of the width, its own scroll region, never below the fold on desktop</td></tr>
+    <tr><td>Buckets</td><td>Overdue / Today / This week / Later, with Overdue as the only alarm state</td></tr>
+    <tr><td>Done</td><td>Collapsed, read-only, grouped by day — terminal, per ADR-0002</td></tr>
+    <tr><td>Readouts</td><td>Happiness, bond (against its requirement), today's points against target</td></tr>
+    <tr><td>Baoba</td><td>First-run modal, plus a persistent way back into it</td></tr>
+  </table>
+
+  <h3 class="sec">Notes worth knowing before you pick</h3>
+  <p class="note"><b>The sprites are not the ones the app ships.</b> These use animated Gen-5
+     sprites (79×61 and up) from Pokémon Showdown because a still 96×96 FRLG sprite scaled to
+     300px looks like a mistake. <code>public/species/</code> currently holds the static ones —
+     adopting any of these means adding an animated set. Mockup C's evolve picker does use the
+     repo's real 96×96 sprites at thumbnail size, which is the right use for them.</p>
+  <p class="note"><b>Baoba is real.</b> <code>public/npc/baoba-hgss.png</code> is his actual
+     HGSS overworld sprite, pulled from Bulbagarden Archives — he is the Johto Safari Zone's
+     warden, not the Fuchsia one, which is why it's a DS-era sprite. <code>baoba-gen3.png</code>
+     and <code>baoba-gen1.png</code> are there too if a chunkier look suits better.</p>
+  <p class="note"><b>A and B abandon the light theme</b> that <code>globals.css</code> commits
+     to ("Poke Tracker is a light-theme app by specification"). That's a real decision, not a
+     detail — C is the only one that keeps it.</p>
+  <p class="note"><b>Vocabulary.</b> These say <i>Ranger</i>, and the domain still says
+     <i>Trainer</i>. See the open questions in <code>docs/setting.md</code> — worth running
+     through <code>/domain-modeling</code> before any of this reaches the code.</p>
+
+  <p class="meta">Setting: <code>docs/setting.md</code> · Assets and attribution:
+     <code>docs/mockups/assets/README.md</code></p>
+</div>
+</body>
+</html>

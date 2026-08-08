@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup A — Field Station</title>
+<style>
+  @font-face { font-family: "Silkscreen"; src: url("assets/silkscreen.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Silkscreen"; src: url("assets/silkscreen-bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+  @font-face { font-family: "Fraunces"; src: url("assets/fraunces.woff2") format("woff2"); font-weight: 500 600; font-display: swap; }
+  @font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+
+  :root {
+    --paper:  #f4ecdb;
+    --paper-2:#e9dcc2;
+    --ink:    #382a1b;
+    --ink-2:  #7a6850;
+    --wood:   #7d5c36;
+    --wood-d: #4b3520;
+    --brass:  #c9a45e;
+    --moss:   #3f6b46;
+    --moss-d: #2f5a37;
+    --stamp:  #a8291f;
+    --line:   #d6c5a6;
+    --shadow: 0 2px 0 rgba(0,0,0,.18), 0 10px 24px rgba(52,38,22,.18);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: "Inter", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--paper-2);
+    -webkit-font-smoothing: antialiased;
+  }
+  img { display: block; }
+  .px { image-rendering: pixelated; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ── shell ─────────────────────────────────────────────── */
+  .app { min-height: 100%; display: flex; flex-direction: column; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px;
+    background: linear-gradient(180deg, var(--wood), var(--wood-d));
+    color: #f3e6cd;
+    border-bottom: 3px solid #2f2013;
+    box-shadow: 0 2px 0 rgba(0,0,0,.25);
+  }
+  .crest {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 32% 30%, #f0d79a, var(--brass) 60%, #8d6a2c);
+    border: 2px solid #2f2013;
+    display: grid; place-items: center;
+    font-family: "Silkscreen", monospace; font-size: 11px; color: #3a2a12;
+  }
+  .topbar h1 { font-family: "Silkscreen", monospace; font-size: 13px; margin: 0; letter-spacing: .04em; }
+  .topbar .sub { font-size: 12px; color: #d8c39a; margin-top: 2px; }
+  .topbar nav { margin-left: auto; display: flex; gap: 4px; }
+  .topbar nav a {
+    font-size: 12px; text-decoration: none; color: #f0e2c6;
+    padding: 6px 10px; border-radius: 6px; border: 1px solid transparent;
+  }
+  .topbar nav a:hover { background: rgba(0,0,0,.22); border-color: rgba(255,255,255,.14); }
+
+  .stage {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;   /* diorama ~55%, sheet ~45% */
+    gap: 0;
+    min-height: 0;
+  }
+  @media (max-width: 900px) { .stage { grid-template-columns: 1fr; } }
+
+  /* ── left: the diorama ─────────────────────────────────── */
+  .diorama {
+    position: relative;
+    overflow: hidden;
+    min-height: 660px;
+    background: url("assets/johto-safari-zone-meadow-hgss.png") center/cover no-repeat;
+    image-rendering: pixelated;
+    border-right: 3px solid var(--wood-d);
+  }
+  .diorama::after {           /* sun + vignette so overlays stay readable */
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(55% 40% at 50% 26%, rgba(255,244,205,.34), transparent 70%),
+      radial-gradient(64% 56% at 50% 38%, transparent 0%, rgba(20,36,18,.74));
+    pointer-events: none;
+  }
+  .grass-band {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 74px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='26' viewBox='0 0 34 26'%3E%3Cpath d='M0 26 L7 2 L14 26 L21 8 L27 26 L34 4 L34 26 Z' fill='%232f5a37'/%3E%3C/svg%3E");
+    background-repeat: repeat-x; background-position: bottom left; background-size: 34px 26px;
+    filter: drop-shadow(0 -2px 0 rgba(0,0,0,.15));
+    z-index: 3; pointer-events: none;
+  }
+
+  .signpost {
+    position: absolute; top: 18px; left: 18px; z-index: 4;
+    background: linear-gradient(180deg, #8b6739, #5c4123);
+    color: #f7ecd4;
+    border: 2px solid #2f2013; border-radius: 4px;
+    padding: 7px 12px 8px;
+    font-family: "Silkscreen", monospace; font-size: 11px; letter-spacing: .05em;
+    box-shadow: var(--shadow);
+  }
+  .signpost small { display: block; font-family: "Inter", sans-serif; font-size: 10px; color: #d6bd8e; letter-spacing: .1em; margin-bottom: 3px; }
+
+  .weather {
+    position: absolute; top: 18px; right: 18px; z-index: 4;
+    display: flex; gap: 6px; align-items: center;
+    background: rgba(30,24,14,.62); color: #f2e6cd;
+    border: 1px solid rgba(255,255,255,.16); border-radius: 999px;
+    padding: 6px 12px; font-size: 12px; backdrop-filter: blur(3px);
+  }
+
+  .creature {
+    position: absolute; left: 50%; bottom: 216px; transform: translateX(-50%);
+    z-index: 2; text-align: center;
+  }
+  .creature img { width: 372px; height: auto; margin: 0 auto; }
+  .creature .cast {
+    position: absolute; left: 50%; bottom: -20px; transform: translateX(-50%);
+    width: 250px; height: 38px; border-radius: 50%;
+    background: radial-gradient(50% 50%, rgba(24,40,20,.5), transparent 70%);
+  }
+
+  /* the wooden nameplate + stats, sunk into the bottom of the scene */
+  .plate {
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    z-index: 5; width: min(560px, calc(100% - 36px));
+    background: linear-gradient(180deg, #8a6539, #5b4023);
+    border: 3px solid #2f2013; border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 12px 16px 14px;
+    color: #f6ecd6;
+  }
+  .plate .row1 { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .plate .nick { font-family: "Fraunces", Georgia, serif; font-size: 26px; font-weight: 600; letter-spacing: .01em; }
+  .plate .species { font-family: "Silkscreen", monospace; font-size: 10px; color: var(--brass); letter-spacing: .08em; }
+  .plate .rename { margin-left: auto; font-size: 11px; color: #e2cda1; background: none; border: 1px solid rgba(255,255,255,.25); border-radius: 5px; padding: 3px 8px; }
+  .plate .rename:hover { background: rgba(0,0,0,.25); }
+
+  .gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .gauge {
+    background: rgba(20,14,8,.35);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 7px;
+    padding: 7px 9px 8px;
+  }
+  .gauge dt { font-family: "Silkscreen", monospace; font-size: 9px; letter-spacing: .06em; color: #d9c398; margin: 0 0 5px; }
+  .gauge dd { margin: 0; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .gauge dd .of { font-size: 12px; font-weight: 400; color: #cbb488; }
+  .pips { display: flex; gap: 3px; margin-top: 6px; }
+  .pips i { width: 100%; height: 6px; border-radius: 2px; background: rgba(255,255,255,.18); }
+  .pips i.on { background: var(--brass); }
+  .met { color: #a8dfae; }
+
+  .evolve-note {
+    margin-top: 10px; font-size: 12px; color: #e6d3aa;
+    border-top: 1px dashed rgba(255,255,255,.22); padding-top: 9px;
+  }
+
+  .warden-btn {
+    position: absolute; right: 18px; top: 66px; z-index: 6;
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(28,21,12,.8); color: #f4e8cf;
+    border: 2px solid #2f2013; border-radius: 999px;
+    padding: 6px 14px 6px 6px;
+    box-shadow: var(--shadow);
+  }
+  .warden-btn img { width: 40px; height: 40px; }
+  .warden-btn .ping { width: 8px; height: 8px; border-radius: 50%; background: var(--stamp); box-shadow: 0 0 0 3px rgba(168,41,31,.3); }
+  .warden-btn span { font-size: 12px; }
+
+  /* ── right: the field sheet (clipboard) ─────────────────── */
+  .sheet {
+    position: relative;
+    background: var(--paper-2);
+    padding: 34px 22px 28px;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .clip {
+    position: absolute; top: 22px; left: 50%; transform: translateX(-50%);
+    width: 108px; height: 26px; border-radius: 0 0 8px 8px;
+    background: linear-gradient(180deg, #b9b2a5, #7e786d);
+    border: 2px solid #4d4841; border-top: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,.2);
+    z-index: 3;
+  }
+  .paper {
+    flex: 1; min-height: 0;
+    background:
+      repeating-linear-gradient(180deg, transparent 0 33px, var(--line) 33px 34px),
+      var(--paper);
+    border: 1px solid #c6b393;
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    padding: 22px 20px 20px;
+    overflow: auto;
+  }
+
+  .sheet-head { display: flex; align-items: flex-end; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; }
+  .sheet-head h2 { margin: 0; font-family: "Silkscreen", monospace; font-size: 12px; letter-spacing: .06em; }
+  .sheet-head .date { font-size: 12px; color: var(--ink-2); }
+  .quota { margin-left: auto; text-align: right; }
+  .quota b { font-family: "Fraunces", Georgia, serif; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .quota span { font-size: 12px; color: var(--ink-2); }
+  .quota .bar { width: 108px; height: 7px; border: 1px solid var(--ink); border-radius: 999px; margin-top: 4px; overflow: hidden; background: #fff; }
+  .quota .bar i { display: block; height: 100%; width: 60%; background: var(--moss); }
+
+  .bucket { margin-top: 18px; }
+  .bucket > h3 {
+    margin: 0 0 8px; font-family: "Silkscreen", monospace; font-size: 10px;
+    letter-spacing: .1em; color: var(--ink-2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .bucket > h3::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .bucket.overdue > h3 { color: var(--stamp); }
+  .bucket.overdue > h3 .stamp {
+    border: 2px solid var(--stamp); border-radius: 3px; padding: 1px 5px;
+    transform: rotate(-3deg); font-size: 9px;
+  }
+
+  ul.jobs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .job { display: flex; align-items: flex-start; gap: 11px; padding: 7px 8px; border-radius: 6px; }
+  .job:hover { background: rgba(63,107,70,.08); }
+  .tick {
+    flex: none; width: 21px; height: 21px; margin-top: 1px;
+    border: 2px solid var(--ink); border-radius: 50%;
+    background: #fff;
+  }
+  .job:hover .tick { border-color: var(--moss); box-shadow: inset 0 0 0 3px rgba(63,107,70,.25); }
+  .job .body { flex: 1; min-width: 0; }
+  .job .title { font-size: 15px; line-height: 1.35; }
+  .job .meta { display: flex; align-items: center; gap: 9px; margin-top: 3px; flex-wrap: wrap; }
+  .chip { font-family: "Silkscreen", monospace; font-size: 8px; letter-spacing: .07em; padding: 3px 6px; border-radius: 3px; }
+  .size { display: flex; gap: 2px; align-items: center; }
+  .size i { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); opacity: .28; }
+  .size i.on { opacity: 1; }
+  .size b { font-size: 10px; font-weight: 500; color: var(--ink-2); margin-left: 3px; }
+  .due { margin-left: auto; font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .due.late { color: var(--stamp); font-weight: 600; }
+
+  .addwork {
+    margin-top: 20px; display: flex; align-items: center; gap: 10px;
+    border: 2px dashed #c3ae8b; border-radius: 8px; padding: 10px 12px;
+    color: var(--ink-2); font-size: 14px; background: rgba(255,255,255,.4);
+  }
+  .addwork .plus { width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--ink-2); display: grid; place-items: center; font-size: 14px; line-height: 1; }
+
+  details.logged { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+  details.logged summary { font-family: "Silkscreen", monospace; font-size: 10px; letter-spacing: .1em; color: var(--ink-2); cursor: pointer; }
+  details.logged .job .title { text-decoration: line-through; color: var(--ink-2); }
+  details.logged .tick { background: var(--moss); border-color: var(--moss); position: relative; }
+  details.logged .tick::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 13px; }
+
+  /* ── Baoba's intro ─────────────────────────────────────── */
+  dialog {
+    border: none; padding: 0; background: transparent;
+    max-width: 620px; width: calc(100% - 32px);
+  }
+  dialog::backdrop { background: rgba(28,22,12,.65); }
+  .notice {
+    background:
+      repeating-linear-gradient(180deg, transparent 0 29px, rgba(0,0,0,.045) 29px 30px),
+      var(--paper);
+    border: 3px solid var(--wood-d); border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    overflow: hidden;
+  }
+  .notice header {
+    background: linear-gradient(180deg, #8a6539, #5b4023);
+    color: #f6ecd6; padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 3px solid var(--wood-d);
+  }
+  .notice header img { width: 64px; height: 64px; }
+  .notice header h2 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 20px; font-weight: 600; }
+  .notice header p { margin: 3px 0 0; font-family: "Silkscreen", monospace; font-size: 9px; letter-spacing: .09em; color: var(--brass); }
+  .notice .say { padding: 20px 22px; font-size: 15px; line-height: 1.6; }
+  .notice .say p { margin: 0 0 13px; }
+  .notice .say p:last-child { margin-bottom: 0; }
+  .notice footer { display: flex; align-items: center; gap: 12px; padding: 0 22px 20px; }
+  .notice .ok {
+    background: var(--moss); color: #fff; border: 2px solid #2f2013; border-radius: 7px;
+    padding: 9px 18px; font-family: "Silkscreen", monospace; font-size: 11px; letter-spacing: .05em;
+  }
+  .notice .ok:hover { background: var(--moss-d); }
+  .notice footer small { color: var(--ink-2); font-size: 12px; }
+
+  .replay {
+    position: fixed; left: 16px; bottom: 16px; z-index: 20;
+    background: var(--ink); color: var(--paper);
+    border: none; border-radius: 999px; padding: 9px 15px; font-size: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.3);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="crest">SZ</div>
+    <div>
+      <h1>SAFARI ZONE &middot; RANGER STATION</h1>
+      <div class="sub">Ranger Dante &middot; Warden Baoba's reserve</div>
+    </div>
+    <nav>
+      <a href="#">Pokédex</a><a href="#">Logbook</a><a href="#">Settings</a><a href="#">Sign out</a>
+    </nav>
+  </div>
+
+  <div class="stage">
+
+    <!-- ── the reserve ─────────────────────────────────── -->
+    <section class="diorama">
+      <div class="signpost"><small>AREA 04</small>THE MEADOW</div>
+      <div class="weather">☀ Clear &middot; 24° &middot; Day 118 on the reserve</div>
+
+      <div class="creature">
+        <img class="px" src="assets/ani-kangaskhan.gif" alt="Kangaskhan">
+        <div class="cast"></div>
+      </div>
+
+      <div class="grass-band"></div>
+
+      <div class="plate">
+        <div class="row1">
+          <span class="nick">Boulder</span>
+          <span class="species">KANGASKHAN &middot; NO. 115</span>
+          <button class="rename">Rename</button>
+        </div>
+
+        <dl class="gauges">
+          <div class="gauge">
+            <dt>HAPPINESS</dt>
+            <dd>6</dd>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+          </div>
+          <div class="gauge">
+            <dt>BOND</dt>
+            <dd>5<span class="of"> / 7</span></dd>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+          </div>
+          <div class="gauge">
+            <dt>TODAY'S WORK</dt>
+            <dd>3<span class="of"> / 5</span></dd>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+          </div>
+        </dl>
+
+        <p class="evolve-note">Two more good days together and you'll know Kangaskhan well enough to write its entry.</p>
+      </div>
+
+      <button class="warden-btn" onclick="intro.showModal()">
+        <img class="px" src="../../public/npc/baoba-hgss.png" alt="">
+        <span class="ping"></span>
+        <span>Baoba has a word</span>
+      </button>
+    </section>
+
+    <!-- ── the field sheet ─────────────────────────────── -->
+    <section class="sheet">
+      <div class="clip"></div>
+      <div class="paper">
+
+        <div class="sheet-head">
+          <div>
+            <h2>FIELD SHEET</h2>
+            <div class="date">Friday, 7 August</div>
+          </div>
+          <div class="quota">
+            <b>3</b><span> / 5 pts</span>
+            <div class="bar"><i></i></div>
+          </div>
+        </div>
+
+        <div class="bucket overdue">
+          <h3><span class="stamp">OVERDUE</span></h3>
+          <ul class="jobs">
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Refill the north water troughs</div>
+                <div class="meta">
+                  <span class="chip" style="background:#3f6b461a;color:#3f6b46">RESERVE</span>
+                  <span class="size"><i class="on"></i><i class="on"></i><i></i><b>Medium</b></span>
+                  <span class="due late">2 days late</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bucket">
+          <h3>TODAY</h3>
+          <ul class="jobs">
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Log the Nidorina sightings in Area 2</div>
+                <div class="meta">
+                  <span class="chip" style="background:#146b621a;color:#146b62">RESEARCH</span>
+                  <span class="size"><i class="on"></i><i></i><i></i><b>Small</b></span>
+                  <span class="due">Today</span>
+                </div>
+              </div>
+            </li>
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Repair the east fence line</div>
+                <div class="meta">
+                  <span class="chip" style="background:#3f6b461a;color:#3f6b46">RESERVE</span>
+                  <span class="size"><i class="on"></i><i class="on"></i><i class="on"></i><b>Large</b></span>
+                  <span class="due">Today</span>
+                </div>
+              </div>
+            </li>
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Answer Baoba's supply request</div>
+                <div class="meta">
+                  <span class="chip" style="background:#8a5a3b1a;color:#8a5a3b">ADMIN</span>
+                  <span class="size"><i class="on"></i><i></i><i></i><b>Small</b></span>
+                  <span class="due">Today</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bucket">
+          <h3>THIS WEEK</h3>
+          <ul class="jobs">
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Weigh and record the Chansey clutch</div>
+                <div class="meta">
+                  <span class="chip" style="background:#146b621a;color:#146b62">RESEARCH</span>
+                  <span class="size"><i class="on"></i><i class="on"></i><i></i><b>Medium</b></span>
+                  <span class="due">Sun</span>
+                </div>
+              </div>
+            </li>
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Clear scrub from the savannah path</div>
+                <div class="meta">
+                  <span class="chip" style="background:#3f6b461a;color:#3f6b46">RESERVE</span>
+                  <span class="size"><i class="on"></i><i class="on"></i><i class="on"></i><b>Large</b></span>
+                  <span class="due">Wed</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bucket">
+          <h3>LATER</h3>
+          <ul class="jobs">
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Quarterly reserve report</div>
+                <div class="meta">
+                  <span class="chip" style="background:#8a5a3b1a;color:#8a5a3b">ADMIN</span>
+                  <span class="size"><i class="on"></i><i class="on"></i><i class="on"></i><b>Large</b></span>
+                  <span class="due">22 Aug</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="addwork"><span class="plus">+</span> Add work to the sheet</div>
+
+        <details class="logged">
+          <summary>LOGGED TODAY &middot; 2</summary>
+          <ul class="jobs" style="margin-top:10px">
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Morning perimeter walk</div>
+                <div class="meta"><span class="chip" style="background:#3f6b461a;color:#3f6b46">RESERVE</span><span class="size"><i class="on"></i><i></i><i></i><b>Small</b></span></div>
+              </div>
+            </li>
+            <li class="job">
+              <span class="tick"></span>
+              <div class="body">
+                <div class="title">Restock the Safari Balls</div>
+                <div class="meta"><span class="chip" style="background:#8a5a3b1a;color:#8a5a3b">ADMIN</span><span class="size"><i class="on"></i><i class="on"></i><i></i><b>Medium</b></span></div>
+              </div>
+            </li>
+          </ul>
+        </details>
+
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="intro">
+  <div class="notice">
+    <header>
+      <img class="px" src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <div>
+        <h2>Warden Baoba</h2>
+        <p>SAFARI ZONE &middot; RESERVE OFFICE</p>
+      </div>
+    </header>
+    <div class="say">
+      <p>So you're the new Ranger. Good. Sit down a moment.</p>
+      <p>This reserve doesn't run itself. Fences, water, records — there's a share of it
+         with your name on it every single day, and I'll expect it done.</p>
+      <p>Here's the part nobody tells you on the first day: <b>the Pokémon watch.</b>
+         Do the work and one of them will wander over, decide you're worth the trouble,
+         and stay. It'll help. It won't be caught, and it won't be told what to do.</p>
+      <p>Keep at it and you'll come to know that Pokémon well enough to write its entry
+         properly — and it'll trust you enough to change in front of you. Let it down often
+         enough and it'll wander off again. It'll remember you either way.</p>
+      <p>That's the whole job. Go on.</p>
+    </div>
+    <footer>
+      <button class="ok" onclick="intro.close()">UNDERSTOOD</button>
+      <small>Shown once, on a Ranger's first day.</small>
+    </footer>
+  </div>
+</dialog>
+
+<button class="replay" onclick="intro.showModal()">▶ First-run intro</button>
+</body>
+</html>
