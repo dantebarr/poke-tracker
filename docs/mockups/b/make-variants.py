@@ -171,10 +171,10 @@ for filename, v in VARIANTS.items():
 
     out = out.replace("<title>Mockup B — Safari Gear</title>", f"<title>{v['title']}</title>")
     out = out.replace('<div class="app evolve-ready" id="app">', '<div class="app" id="app">')
-    out = out.replace('assets/johto-safari-zone-savannah-hgss.png', f"assets/{v['bg']}")
+    out = out.replace('../assets/johto-safari-zone-savannah-hgss.png', f"../assets/{v['bg']}")
     out = out.replace(
-        '<img src="assets/ani-nidorina.gif" alt="Nidorina" style="width:260px">',
-        f'<img src="assets/{v["sprite"]}" alt="{v["alt"]}" style="width:{v["width"]}">')
+        '<img src="../assets/ani-nidorina.gif" alt="Nidorina" style="width:260px">',
+        f'<img src="../assets/{v["sprite"]}" alt="{v["alt"]}" style="width:{v["width"]}">')
 
     # status box (evolve box dropped entirely: neither variant is evolve-ready)
     out = cut(out, '<div class="statusbox textbox">', '<button class="paneswitch" id="toLog"',
@@ -182,7 +182,7 @@ f'''
           <div class="line1">
             <span class="nick">{v["nick"]}</span>
             <button class="mood{v["warn"]}" id="mood" title="{v["mood_title"]}">
-              <img src="assets/mood-{v["face"]}.svg" alt="{v["mood_alt"]}" id="mood-face">
+              <img src="../assets/mood-{v["face"]}.svg" alt="{v["mood_alt"]}" id="mood-face">
             </button>
           </div>
           <div class="species">{v["species"]}</div>
@@ -199,7 +199,7 @@ f'''
         ''')
 
     # Baoba's line (evolvesay dropped entirely: neither variant is evolve-ready)
-    out = cut(out, '<img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">', '<span class="next">',
+    out = cut(out, '<img src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">', '<span class="next">',
 f'''
         <div class="lines normalsay">
           <div class="who">WARDEN BAOBA</div>

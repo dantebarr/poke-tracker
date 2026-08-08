@@ -96,15 +96,16 @@
   .identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
   .identity .who { display: flex; align-items: center; gap: 14px; }
   .strip nav { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
-  .strip nav button.icobtn {
+  .strip nav button.icobtn, .strip nav a.icobtn {
     display: flex; align-items: center; justify-content: center;
     width: 30px; height: 30px;
     background: linear-gradient(180deg, var(--light), var(--mid));
     border: 3px solid var(--edge); border-radius: 7px;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 3px 0 rgba(0,0,0,.35);
+    color: inherit; text-decoration: none;
   }
-  .strip nav button.icobtn:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
-  .strip nav button.icobtn svg { width: 16px; height: 16px; }
+  .strip nav button.icobtn:hover, .strip nav a.icobtn:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
+  .strip nav button.icobtn svg, .strip nav a.icobtn svg { width: 16px; height: 16px; }
   /* Mockup-only scaffolding for replaying the intro — kept visually distinct
      (text label, different palette) from the three real navigation icons so it
      never reads as app chrome. */
@@ -554,9 +555,9 @@
     </div>
     <nav>
       <button class="replay" onclick="intro.showModal()">▶ REPLAY INTRO</button>
-      <button class="icobtn" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="dex"></svg></button>
-      <button class="icobtn" title="Logbook" aria-label="Logbook"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="book"></svg></button>
-      <button class="icobtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="gear"></svg></button>
+      <a class="icobtn" href="b-pokedex.html" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="dex"></svg></a>
+      <a class="icobtn" href="b-history.html" title="Logbook" aria-label="Logbook"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="book"></svg></a>
+      <a class="icobtn" href="b-settings.html" title="Settings" aria-label="Settings"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="gear"></svg></a>
     </nav>
   </div>
 

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup B — History</title>
+<style>
+  @font-face { font-family: "PressStart"; src: url("../assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "VT323"; src: url("../assets/vt323.woff2") format("woff2"); font-display: swap; }
+
+  :root {
+    --edge:   #0d3a1c;
+    --dark:   #1d6a33;
+    --mid:    #2f8f47;
+    --light:  #58ba6c;
+    --pale:   #b8e8c2;
+    --sel:    #f2f5c8;
+    --shadowtext: 2px 2px 0 rgba(0,0,0,.45);
+    --box:    #f8f8f8;
+    --boxink: #202020;
+    --hp-hi:  #3fbf4f;
+    --alert:  #e04030;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    height: 100dvh;
+    height: 100vh;
+    background: #0a2a14;
+    background-image:
+      radial-gradient(120% 80% at 50% 0%, #17472a, transparent 70%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 6px);
+    color: #fff;
+    font-family: "VT323", ui-monospace, monospace;
+    -webkit-font-smoothing: none;
+  }
+  img { display: block; image-rendering: pixelated; }
+  button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+
+  .panel {
+    background: linear-gradient(180deg, var(--mid), var(--dark));
+    border: 4px solid var(--edge);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.28), 0 6px 0 rgba(0,0,0,.35);
+  }
+  .pixel { font-family: "PressStart", monospace; letter-spacing: 0; }
+
+  .app {
+    height: 100dvh;
+    height: 100vh;
+    max-width: 1440px; margin: 0 auto;
+    padding: 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  /* ── status strip — identical to the field mockup ──────────── */
+  .strip {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 16px;
+    font-family: "PressStart", monospace; font-size: 10px;
+    text-shadow: var(--shadowtext);
+  }
+  .strip .ball { flex: none; width: 18px; height: 18px; border-radius: 50%;
+    background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
+    border: 2px solid #101010; }
+  .identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .identity .who { display: flex; align-items: center; gap: 14px; }
+  .strip nav { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .strip nav a.icobtn, .strip nav a.replay { text-decoration: none; }
+  .strip nav a.icobtn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    background: linear-gradient(180deg, var(--light), var(--mid));
+    border: 3px solid var(--edge); border-radius: 7px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 3px 0 rgba(0,0,0,.35);
+    color: inherit;
+  }
+  .strip nav a.icobtn:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
+  .strip nav a.icobtn.active { background: linear-gradient(180deg, var(--sel), #d8dd96); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2), 0 3px 0 rgba(0,0,0,.35); }
+  .strip nav a.icobtn.active svg { fill: #23330f; }
+  .strip nav a.icobtn svg { width: 16px; height: 16px; }
+  .strip nav a.replay {
+    display: flex; align-items: center;
+    font-family: "PressStart", monospace; font-size: 8px;
+    background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+    border: 3px solid var(--edge); border-radius: 7px;
+    padding: 7px 8px; box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+
+  .stage { flex: 1; min-height: 640px; min-width: 0; }
+
+  /* ── history panel ──────────────────────────────────────── */
+  .histpanel { height: 100%; display: flex; flex-direction: column; padding: 12px; max-width: 640px; margin: 0 auto; }
+  .histtop {
+    font-family: "PressStart", monospace; font-size: 10px; text-shadow: var(--shadowtext);
+    padding: 2px 4px 11px;
+    border-bottom: 3px solid rgba(0,0,0,.28);
+  }
+
+  .histscroll { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 4px 2px 2px; }
+  .histscroll::-webkit-scrollbar { width: 8px; }
+  .histscroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.35); border-radius: 4px; }
+
+  .grouphead {
+    width: 100%; font-family: "PressStart", monospace; font-size: 8px;
+    color: var(--pale); text-shadow: var(--shadowtext);
+    margin: 13px 4px 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .grouphead:first-child { margin-top: 0; }
+  .grouphead::after { content: ""; flex: 1; height: 2px; background: rgba(0,0,0,.25); }
+  .grouphead .count { font-size: 8px; color: var(--pale); background: rgba(0,0,0,.28); border-radius: 3px; padding: 2px 5px; }
+
+  .ledgerrow {
+    display: grid; grid-template-columns: auto auto 1fr; align-items: baseline;
+    gap: 6px 12px; padding: 9px 8px; border-radius: 7px;
+    text-shadow: var(--shadowtext);
+  }
+  .ledgerrow:hover { background: rgba(0,0,0,.14); }
+  .ledgerdate { font-family: "PressStart", monospace; font-size: 8px; color: var(--pale); }
+  .ledgerpts { font-family: "PressStart", monospace; font-size: 10px; color: var(--hp-hi); }
+  .ledgerpts .sign { color: rgba(255,255,255,.5); }
+  .ledgerpts.bad { color: var(--alert); }
+  .ledgerpts.muted { color: rgba(255,255,255,.4); }
+  .ledgerdesc { grid-column: 3; font-size: 19px; line-height: 1.15; color: #fff; }
+  .ledgerrow.none .ledgerdesc { color: rgba(255,255,255,.5); font-style: italic; }
+  .ledgerrow.left .ledgerdesc { color: #ffd0c8; }
+
+  @media (max-width: 900px) {
+    .app { padding: 10px; gap: 8px; }
+    .strip { padding: 9px 11px; gap: 10px; align-items: flex-start; }
+    .identity { flex-direction: column; align-items: flex-start; gap: 3px; }
+    .identity .zone { font-size: 9px; }
+    .identity .who { gap: 8px; font-size: 7px; }
+    .strip .ball { margin-top: 2px; }
+    .stage { min-height: 0; }
+    .histpanel { padding: 10px; max-width: none; }
+    .ledgerrow { grid-template-columns: auto auto; row-gap: 4px; }
+    .ledgerdesc { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="strip">
+    <span class="ball"></span>
+    <div class="identity">
+      <span class="zone">SAFARI ZONE</span>
+      <span class="who">
+        <span style="color:var(--pale)">RANGER DANTE</span>
+        <span style="color:var(--pale)">DAY 119</span>
+      </span>
+    </div>
+    <nav>
+      <a class="replay" href="b-safari-gear.html">← FIELD LOG</a>
+      <a class="icobtn" href="b-pokedex.html" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="dex"></svg></a>
+      <a class="icobtn active" href="b-history.html" title="Logbook" aria-label="Logbook"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="book"></svg></a>
+      <a class="icobtn" href="b-settings.html" title="Settings" aria-label="Settings"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="gear"></svg></a>
+    </nav>
+  </div>
+
+  <div class="stage">
+    <div class="histpanel panel">
+      <div class="histtop">LOGBOOK</div>
+      <div class="histscroll">
+
+        <div class="grouphead"><span>AUGUST 2026</span><span class="count">7</span></div>
+
+        <div class="ledgerrow">
+          <span class="ledgerdate">FRI 7 AUG</span>
+          <span class="ledgerpts">5<span class="sign">/5</span></span>
+          <span class="ledgerdesc">Thistle gained a bond point</span>
+        </div>
+        <div class="ledgerrow">
+          <span class="ledgerdate">THU 6 AUG</span>
+          <span class="ledgerpts">6<span class="sign">/5</span></span>
+          <span class="ledgerdesc">Thistle gained a bond point</span>
+        </div>
+        <div class="ledgerrow">
+          <span class="ledgerdate">WED 5 AUG</span>
+          <span class="ledgerpts">5<span class="sign">/5</span></span>
+          <span class="ledgerdesc">Thistle gained a bond point</span>
+        </div>
+        <div class="ledgerrow">
+          <span class="ledgerdate">TUE 4 AUG</span>
+          <span class="ledgerpts">5<span class="sign">/5</span></span>
+          <span class="ledgerdesc">Thistle arrived</span>
+        </div>
+        <div class="ledgerrow none">
+          <span class="ledgerdate">MON 3 AUG</span>
+          <span class="ledgerpts muted">—<span class="sign">/4</span></span>
+          <span class="ledgerdesc">No Pokémon</span>
+        </div>
+        <div class="ledgerrow none">
+          <span class="ledgerdate">SUN 2 AUG</span>
+          <span class="ledgerpts muted">—<span class="sign">/4</span></span>
+          <span class="ledgerdesc">No Pokémon</span>
+        </div>
+        <div class="ledgerrow left">
+          <span class="ledgerdate">SAT 1 AUG</span>
+          <span class="ledgerpts bad">1<span class="sign">/4</span></span>
+          <span class="ledgerdesc">Pebble left — missed target by 3</span>
+        </div>
+
+        <div class="grouphead"><span>JULY 2026</span><span class="count">4</span></div>
+
+        <div class="ledgerrow">
+          <span class="ledgerdate">FRI 31 JUL</span>
+          <span class="ledgerpts">4<span class="sign">/4</span></span>
+          <span class="ledgerdesc">Pebble gained a bond point</span>
+        </div>
+        <div class="ledgerrow">
+          <span class="ledgerdate">THU 30 JUL</span>
+          <span class="ledgerpts">5<span class="sign">/4</span></span>
+          <span class="ledgerdesc">Pebble gained a bond point</span>
+        </div>
+        <div class="ledgerrow">
+          <span class="ledgerdate">WED 29 JUL</span>
+          <span class="ledgerpts">4<span class="sign">/4</span></span>
+          <span class="ledgerdesc">Pebble gained a bond point</span>
+        </div>
+        <div class="ledgerrow">
+          <span class="ledgerdate">TUE 28 JUL</span>
+          <span class="ledgerpts">4<span class="sign">/4</span></span>
+          <span class="ledgerdesc">Pebble arrived</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const ICONS = {
+    dex: [
+      '................','..111111111111..','..1..........1..','..1..........1..',
+      '..1...111....1..','..1..11111...1..','..1..11111...1..','..1..11111...1..',
+      '..1...111....1..','..1..........1..','..1.11111111.1..','..1..1..1..1.1..',
+      '..1..........1..','..111111111111..','................','................',
+    ],
+    book: [
+      '................','................','...1111111111...','...1.1......1...',
+      '...1.1......1...','...1.1.111111...','...1.1......1...','...1.1.111111...',
+      '...1.1......1...','...1.1.111111...','...1.1......1...','...1.1111111...',
+      '...1.1......1...','...1111111111...','................','................',
+    ],
+    gear: [
+      '................','.......1........','.......1........','...1.111111.1...',
+      '....11....11....','...11......11...','...1...11...1...','...1..1..1..1...',
+      '.111..1..1..111.','...1...11...1...','...11......11...','....11....11....',
+      '...1.111111.1...','........1.......','........1.......','................',
+    ],
+  };
+  document.querySelectorAll('svg[data-icon]').forEach(svg => {
+    const bitmap = ICONS[svg.dataset.icon];
+    const frag = document.createDocumentFragment();
+    bitmap.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        if (row[x] === '1') {
+          const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          r.setAttribute('x', x); r.setAttribute('y', y);
+          r.setAttribute('width', 1); r.setAttribute('height', 1);
+          frag.appendChild(r);
+        }
+      }
+    });
+    svg.appendChild(frag);
+  });
+</script>
+</body>
+</html>

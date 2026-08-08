@@ -41,6 +41,7 @@
   .a .swatch { background:url("assets/johto-safari-zone-meadow-hgss.png") center/cover; image-rendering:pixelated; }
   .b .swatch { background:linear-gradient(180deg,#2f8f47,#0d3a1c); }
   .b .swatch::before { content:"FIELD LOG"; position:absolute; top:18px; left:14px; font-family:"PressStart",monospace; font-size:11px; color:#fff; text-shadow:2px 2px 0 rgba(0,0,0,.45); }
+  .bscreen .swatch { background:linear-gradient(180deg,#2f8f47,#0d3a1c); }
   .c .swatch { background:linear-gradient(160deg,#f6f1e7,#e7efe8); }
   .c .swatch::before { content:""; position:absolute; inset:0; background:radial-gradient(38% 60% at 50% 55%, rgba(47,107,74,.16), transparent 70%); }
   .swatch img { position:absolute; right:14px; bottom:10px; image-rendering:pixelated; height:88px; }
@@ -162,6 +163,48 @@
      <code>b/make-variants.py</code>, which copies <code>b-safari-gear.html</code>
      and swaps only the content. Change B's design and re-run it rather than editing three
      files by hand.</p>
+
+  <h3 class="sec">Other screens, in theme B</h3>
+  <p class="lede" style="font-size:15px">The three real secondary screens
+     (<code>src/app/settings</code>, <code>src/app/pokedex</code>,
+     <code>src/app/history</code>), reskinned into B's chrome rather than invented from
+     scratch — same fields, same copy where the source page had any. Reachable from
+     <b>B</b>'s own nav icons, which now link here instead of sitting inert.</p>
+
+  <div class="cards" style="margin-top:22px">
+    <a class="card bscreen" href="b/b-settings.html">
+      <div class="swatch"><span class="tag">Settings</span></div>
+      <div class="body">
+        <h2>Ranger Settings</h2>
+        <div class="sub">Daily target + labels</div>
+        <p>The daily target field and its retroactivity caveat, plus the label list —
+           reorder, recolour, rename, delete, add — all live-edited the way a task row is,
+           no separate Save button per field.</p>
+      </div>
+    </a>
+
+    <a class="card bscreen" href="b/b-pokedex.html">
+      <div class="swatch"><span class="tag">Pokédex</span></div>
+      <div class="body">
+        <h2>Pokédex</h2>
+        <div class="sub">All 151, read-only</div>
+        <p>Unlocked entries in full colour with a name; everything else a silhouette and
+           <code>???</code> — the exact rule the real <code>pokedex-panel.tsx</code> uses,
+           just drawn as a battle-menu grid instead of cards.</p>
+      </div>
+    </a>
+
+    <a class="card bscreen" href="b/b-history.html">
+      <div class="swatch"><span class="tag">History</span></div>
+      <div class="body">
+        <h2>Logbook</h2>
+        <div class="sub">The day ledger</div>
+        <p>Most recent first, grouped by month. Shows all four events the real ledger can
+           log — bond gained, arrived, left with the miss it cost, and a day with no
+           Pokémon at all.</p>
+      </div>
+    </a>
+  </div>
 
   <h3 class="sec">What's identical across all three</h3>
   <table>
