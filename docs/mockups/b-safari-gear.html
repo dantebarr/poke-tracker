@@ -191,8 +191,11 @@
 
   /* the evolve prompt — the one thing on screen allowed to flash. Desktop only:
      on mobile the same content takes over the dialogue tray instead, so it
-     never collides with the status box on a narrow screen. */
-  .evolve {
+     never collides with the status box on a narrow screen. Hidden unless
+     `.app` carries `.evolve-ready` — most days there's nothing to show. */
+  .evolve { display: none; }
+  .app.evolve-ready .evolve {
+    display: block;
     position: absolute; right: 16px; top: 16px; z-index: 5;
     padding: 11px 13px; text-align: center; max-width: 220px;
   }
@@ -445,9 +448,9 @@
     .field .paneswitch { right: 16px; }
     .log .paneswitch { left: 16px; }
 
-    .evolve { display: none; }
-    .dialogue .normalsay { display: none; }
-    .dialogue .evolvesay { display: flex; flex-direction: column; }
+    .app.evolve-ready .evolve { display: none; }
+    .app.evolve-ready .dialogue .normalsay { display: none; }
+    .app.evolve-ready .dialogue .evolvesay { display: flex; flex-direction: column; }
 
     .logpanel { padding: 10px; }
     .actions { display: none; }
@@ -538,7 +541,7 @@
 </style>
 </head>
 <body>
-<div class="app" id="app">
+<div class="app evolve-ready" id="app">
 
   <div class="strip">
     <span class="ball"></span>

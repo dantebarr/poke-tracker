@@ -5,7 +5,7 @@ Everything except the content below is copied verbatim from B, so the chrome
 stays byte-identical across the three and any later change to B's design only
 has to be made once (re-run this).
 """
-import pathlib, sys
+import pathlib
 
 SRC = pathlib.Path("b-safari-gear.html")
 src = SRC.read_text()
@@ -18,22 +18,67 @@ def cut(text, start, end, new):
     return text[:i] + new + text[j:]
 
 
-def row(sel, tag, colour, name, size, when, late, t, d, done=False):
-    cursor = ' aria-selected="true"' if sel else ""
-    w = f'<span class="when{" late" if late else ""}">{when}</span>'
-    return f'''          <button class="row{" done" if done else ""}"{cursor}
-                  data-t="{t}"
-                  data-d="{d}">
-            <span class="cursor">▶</span>
-            <span class="tag" style="background:{colour}">{tag}</span>
-            <span class="name">{name}</span>
-            <span class="sz">{size}</span>
-            {w}
-          </button>
+LABELS = {
+    "RESERVE": ("RSV", "var(--rsv)", "var(--rsv-done)"),
+    "RESEARCH": ("RSH", "var(--rsh)", "var(--rsh-done)"),
+    "ADMIN": ("ADM", "var(--adm)", "var(--adm-done)"),
+}
+
+
+def row(label, title, size, due, notes):
+    abbr, color, _ = LABELS[label]
+    opts = lambda opts, sel: "".join(
+        f'<option value="{o}"{" selected" if o == sel else ""}>{o}</option>' for o in opts)
+    return f'''            <div class="taskrow" data-label="{label}" data-due="{due}">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:{color}">{abbr}</span>
+                <input class="title" type="text" value="{title}" readonly>
+                <span class="sz">{size}</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">{notes}</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="{due}"></label>
+                  <label class="chip">LABEL
+                    <select>{opts(LABELS.keys(), label)}</select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select>{opts(["S","M","L"], size)}</select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
 '''
 
 
-RSV, RSH, ADM = "#2f7d4f", "#146b62", "#8a5a3b"
+def done_row(label, title, size):
+    abbr, _, done_color = LABELS[label]
+    return f'''              <div class="taskrow done" data-label="{label}">
+                <div class="rowhead">
+                  <span class="circle check" aria-hidden="true"></span>
+                  <span class="tag" style="background:{done_color}">{abbr}</span>
+                  <span class="title">{title}</span>
+                  <span class="sz">{size}</span>
+                </div>
+              </div>
+'''
+
+
+def bucket(name, heading, rows_html, late=False):
+    if not rows_html:
+        return ""
+    head = f'<div class="grouphead late"><b>{heading}</b></div>' if late else f'<div class="grouphead">{heading}</div>'
+    return f'''          <div class="bucket" data-bucket="{name}">
+            {head}
+{rows_html}          </div>
+
+'''
+
 
 VARIANTS = {
     # ────────────────────────────────────────────────────────────────────
@@ -42,18 +87,13 @@ VARIANTS = {
         bg="johto-safari-zone-forest-hgss.png",
         sprite="ani-scyther.gif", alt="Scyther", width="240px",
         nick="SICKLE", species="SCYTHER &middot; No.123",
-        face="beaming", mood_alt="Thriving",
+        face="beaming", warn="", mood_alt="Thriving",
         mood_title="Thriving — 4+ quiet days of slack in the bank",
-        warn="",
         bond_pct="71%", bond="5", bond_req="/7",
-        corner=('<div class="head" style="color:#585858;animation:none">FIELD NOTES</div>\n'
-                '          <p>Two more good days and SCYTHER\'s entry writes itself.</p>\n'
-                '          <button>OPEN POKéDEX DRAFT</button>'),
         says=("Sickle cleared more deadfall this morning than you did, Ranger. "
               "Don't let it show you up twice in one week."),
-        date="SAT 8 AUG", day="DAY 119", quota="4/5", quota_pct="80%",
-        desc_t="THIN THE BIRCH STAND ALONG THE NORTH PATH",
-        desc_d="RESERVE · LARGE · worth 3 pts · due today. Clears the day's share on its own.",
+        day="DAY 119", date="SAT 8 AUG", quota="4/5", quota_pct="80%",
+        today_iso="2026, 7, 8",
         moods=[
             ("sad", "That's Sickle away, then. Back into the forest, bond and all — it'll remember you. Meet your share and something else will come by."),
             ("worried", "Sickle's restless, Ranger. One quiet day and it's away. Don't let today be the quiet one."),
@@ -63,37 +103,23 @@ VARIANTS = {
         ],
         default_mood=4,
         rows=(
-            '          <div class="grouphead">TODAY</div>\n'
-            + row(True, "RSV", RSV, "Thin the birch stand along the north path", "L", "Today", False,
-                  "THIN THE BIRCH STAND ALONG THE NORTH PATH",
-                  "RESERVE · LARGE · worth 3 pts · due today. Clears the day's share on its own.")
-            + row(False, "RSH", RSH, "Record Scyther wingbeat counts", "S", "Today", False,
-                  "RECORD SCYTHER WINGBEAT COUNTS",
-                  "RESEARCH · SMALL · worth 1 pt · due today. Sickle will sit still for it. Mostly.")
-            + row(False, "RSH", RSH, "Bag and label the fungus samples", "M", "Today", False,
-                  "BAG AND LABEL THE FUNGUS SAMPLES",
-                  "RESEARCH · MEDIUM · worth 2 pts · due today. The ones from the west ridge, not the gate.")
-            + '\n          <div class="grouphead">THIS WEEK</div>\n'
-            + row(False, "RSV", RSV, "Re-hang the canopy nest boxes", "M", "Mon", False,
-                  "RE-HANG THE CANOPY NEST BOXES",
-                  "RESERVE · MEDIUM · worth 2 pts · due Monday.")
-            + row(False, "RSH", RSH, "Photograph the Exeggcute cluster", "S", "Tue", False,
-                  "PHOTOGRAPH THE EXEGGCUTE CLUSTER",
-                  "RESEARCH · SMALL · worth 1 pt · due Tuesday. Six of them now, up from four.")
-            + '\n          <div class="grouphead">LATER</div>\n'
-            + row(False, "RSV", RSV, "Map the deadfall on the west ridge", "L", "19 Aug", False,
-                  "MAP THE DEADFALL ON THE WEST RIDGE",
-                  "RESERVE · LARGE · worth 3 pts · due 19 Aug.")
-            + row(False, "ADM", ADM, "Order replacement saw blades", "S", "21 Aug", False,
-                  "ORDER REPLACEMENT SAW BLADES",
-                  "ADMIN · SMALL · worth 1 pt · due 21 Aug.")
-            + '\n          <div class="grouphead">LOGGED TODAY</div>\n'
-            + row(False, "RSV", "#4a6a52", "Dawn round of the forest trail", "S", "✓", False,
-                  "DAWN ROUND OF THE FOREST TRAIL",
-                  "RESERVE · SMALL · 1 pt earned with SICKLE.", done=True)
-            + row(False, "RSV", "#4a6a52", "Fell and stack the storm-dropped ash", "L", "✓", False,
-                  "FELL AND STACK THE STORM-DROPPED ASH",
-                  "RESERVE · LARGE · 3 pts earned with SICKLE. Done is done — this one can't be undone.", done=True)
+            bucket("overdue", "OVERDUE", "", late=True)
+            + bucket("today", "TODAY",
+                row("RESERVE", "Thin the birch stand along the north path", "L", "2026-08-08",
+                    "Clears the day's share on its own.")
+                + row("RESEARCH", "Record Scyther wingbeat counts", "S", "2026-08-08",
+                      "Sickle will sit still for it. Mostly."))
+            + bucket("tomorrow", "TOMORROW",
+                row("RESERVE", "Re-hang the canopy nest boxes", "M", "2026-08-09", ""))
+            + bucket("later", "LATER",
+                row("RESEARCH", "Photograph the Exeggcute cluster", "S", "2026-08-11",
+                    "Six of them now, up from four.")
+                + row("ADMIN", "Order replacement saw blades", "S", "2026-08-21", ""))
+        ),
+        logged_count=2,
+        logged_rows=(
+            done_row("RESERVE", "Dawn round of the forest trail", "S")
+            + done_row("RESERVE", "Fell and stack the storm-dropped ash", "L")
         ),
     ),
     # ────────────────────────────────────────────────────────────────────
@@ -102,18 +128,13 @@ VARIANTS = {
         bg="johto-safari-zone-marshland-hgss.png",
         sprite="ani-chansey.gif", alt="Chansey", width="255px",
         nick="CUSTARD", species="CHANSEY &middot; No.113",
-        face="worried", mood_alt="Restless",
+        face="worried", warn=" warn", mood_alt="Restless",
         mood_title="Restless — under a day of slack in the bank",
-        warn=" warn",
         bond_pct="43%", bond="3", bond_req="/7",
-        corner=('<div class="head">! RESTLESS</div>\n'
-                '          <p>CUSTARD is one quiet day from wandering off.</p>\n'
-                '          <button>SEE WHAT\'S OWED</button>'),
         says=("Custard's restless, Ranger. One quiet day and it's away — and you'll not "
               "see another Chansey this season. Three jobs are already late."),
-        date="MON 10 AUG", day="DAY 121", quota="0/4", quota_pct="0%",
-        desc_t="CLEAR THE SILT FROM THE EAST SLUICE",
-        desc_d="RESERVE · LARGE · worth 3 pts · due 4 days ago. The whole east marsh is backing up behind it.",
+        day="DAY 121", date="WED 5 AUG", quota="0/4", quota_pct="0%",
+        today_iso="2026, 7, 5",
         moods=[
             ("sad", "That's Custard away, then. Back into the marsh, bond and all — it'll remember you. Meet your share and something else will come by."),
             ("worried", "Custard's restless, Ranger. One quiet day and it's away — and you'll not see another Chansey this season. Three jobs are already late."),
@@ -123,32 +144,25 @@ VARIANTS = {
         ],
         default_mood=1,
         rows=(
-            '          <div class="grouphead late"><b>OVERDUE</b></div>\n'
-            + row(True, "RSV", RSV, "Clear the silt from the east sluice", "L", "4d late", True,
-                  "CLEAR THE SILT FROM THE EAST SLUICE",
-                  "RESERVE · LARGE · worth 3 pts · due 4 days ago. The whole east marsh is backing up behind it.")
-            + row(False, "RSV", RSV, "Re-peg the boardwalk handrail", "M", "2d late", True,
-                  "RE-PEG THE BOARDWALK HANDRAIL",
-                  "RESERVE · MEDIUM · worth 2 pts · due 2 days ago. The far span moves when you lean on it.")
-            + row(False, "RSH", RSH, "Log the Chansey nest site", "S", "1d late", True,
-                  "LOG THE CHANSEY NEST SITE",
-                  "RESEARCH · SMALL · worth 1 pt · due yesterday. Custard led you there. The least you can do is write it down.")
-            + '\n          <div class="grouphead">TODAY</div>\n'
-            + row(False, "RSH", RSH, "Test the marsh water for run-off", "M", "Today", False,
-                  "TEST THE MARSH WATER FOR RUN-OFF",
-                  "RESEARCH · MEDIUM · worth 2 pts · due today. Half the day's share in one job.")
-            + row(False, "ADM", ADM, "Answer the warden's second notice", "S", "Today", False,
-                  "ANSWER THE WARDEN'S SECOND NOTICE",
-                  "ADMIN · SMALL · worth 1 pt · due today. He has asked twice. There will not be a third.")
-            + '\n          <div class="grouphead">THIS WEEK</div>\n'
-            + row(False, "ADM", ADM, "Replace the waders in the equipment hut", "S", "Thu", False,
-                  "REPLACE THE WADERS IN THE EQUIPMENT HUT",
-                  "ADMIN · SMALL · worth 1 pt · due Thursday. Both pairs leak.")
-            + '\n          <div class="grouphead">LATER</div>\n'
-            + row(False, "RSH", RSH, "Survey the reed beds before the rains", "L", "3 Sep", False,
-                  "SURVEY THE REED BEDS BEFORE THE RAINS",
-                  "RESEARCH · LARGE · worth 3 pts · due 3 Sep.")
+            bucket("overdue", "OVERDUE",
+                row("RESERVE", "Clear the silt from the east sluice", "L", "2026-08-01",
+                    "The whole east marsh is backing up behind it.")
+                + row("RESEARCH", "Log the Chansey nest site", "S", "2026-08-04",
+                      "Custard led you there. The least you can do is write it down."),
+                late=True)
+            + bucket("today", "TODAY",
+                row("RESEARCH", "Test the marsh water for run-off", "M", "2026-08-05",
+                    "Half the day's share in one job.")
+                + row("ADMIN", "Answer the warden's second notice", "S", "2026-08-05",
+                      "He has asked twice. There will not be a third."))
+            + bucket("tomorrow", "TOMORROW",
+                row("ADMIN", "Replace the waders in the equipment hut", "S", "2026-08-06",
+                    "Both pairs leak."))
+            + bucket("later", "LATER",
+                row("RESEARCH", "Survey the reed beds before the rains", "L", "2026-08-20", ""))
         ),
+        logged_count=0,
+        logged_rows="",
     ),
 }
 
@@ -156,14 +170,16 @@ for filename, v in VARIANTS.items():
     out = src
 
     out = out.replace("<title>Mockup B — Safari Gear</title>", f"<title>{v['title']}</title>")
+    out = out.replace('<div class="app evolve-ready" id="app">', '<div class="app" id="app">')
     out = out.replace('assets/johto-safari-zone-savannah-hgss.png', f"assets/{v['bg']}")
     out = out.replace(
         '<img src="assets/ani-nidorina.gif" alt="Nidorina" style="width:260px">',
         f'<img src="assets/{v["sprite"]}" alt="{v["alt"]}" style="width:{v["width"]}">')
 
-    # status box + the corner box beside it
-    out = cut(out, '        <div class="statusbox textbox">\n', '\n      </div>\n\n      <div class="dialogue textbox">',
-f'''          <div class="line1">
+    # status box (evolve box dropped entirely: neither variant is evolve-ready)
+    out = cut(out, '<div class="statusbox textbox">', '<button class="paneswitch" id="toLog"',
+f'''
+          <div class="line1">
             <span class="nick">{v["nick"]}</span>
             <button class="mood{v["warn"]}" id="mood" title="{v["mood_title"]}">
               <img src="assets/mood-{v["face"]}.svg" alt="{v["mood_alt"]}" id="mood-face">
@@ -172,38 +188,52 @@ f'''          <div class="line1">
           <div class="species">{v["species"]}</div>
 
           <div class="rows">
-            <!-- Bond climbs toward a known threshold, so it's the thing that can
-                 honestly be a bar. Past the requirement the bar stays full and the
-                 number keeps counting (bond never stops rising). -->
             <span class="tag">BOND</span>
             <span class="track"><i style="width:{v["bond_pct"]}"></i></span>
             <span class="num">{v["bond"]}<span class="sign">{v["bond_req"]}</span></span>
           </div>
         </div>
 
-        <div class="evolve textbox">
-          {v["corner"]}
-        </div>''')
+        <!-- Anchored to the scene, not the pane, so it always sits over the
+             artwork and can never overlap Baoba's dialogue tray below. -->
+        ''')
 
-    # Baoba's line
-    out = cut(out, '<div class="said" id="baoba-says">', '</div>', v["says"])
+    # Baoba's line (evolvesay dropped entirely: neither variant is evolve-ready)
+    out = cut(out, '<img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">', '<span class="next">',
+f'''
+        <div class="lines normalsay">
+          <div class="who">WARDEN BAOBA</div>
+          <div class="said" id="baoba-says">{v["says"]}</div>
+        </div>
+        ''')
 
-    out = out.replace('<span style="color:var(--pale)">DAY 118</span>',
-                      f'<span style="color:var(--pale)">{v["day"]}</span>')
-
-    # log header
-    out = out.replace('<span style="color:var(--pale)">FRI 7 AUG</span>',
+    out = out.replace('id="daycount">DAY 119<', f'id="daycount">{v["day"]}<')
+    out = out.replace('<span style="color:var(--pale)">SAT 8 AUG</span>',
                       f'<span style="color:var(--pale)">{v["date"]}</span>')
     out = out.replace('            <span>3/5</span>\n            <span class="track"><i></i></span>',
                       f'            <span>{v["quota"]}</span>\n'
                       f'            <span class="track"><i style="width:{v["quota_pct"]}"></i></span>')
 
     # the task list
-    out = cut(out, '<div class="scroll" id="rows">\n\n', '        </div>\n\n        <div class="actions">', v["rows"])
+    out = cut(out, '<div class="scroll" id="rows">', '<button class="paneswitch" id="toField"',
+f'''
 
-    # description box defaults
-    out = cut(out, '<div class="t" id="desc-t">', '</div>', v["desc_t"])
-    out = cut(out, '<div class="d" id="desc-d">', '</div>', v["desc_d"])
+{v["rows"]}          <div class="bucket" data-bucket="done">
+            <button class="grouphead loggedhead" id="loggedHead">
+              <span>LOGGED TODAY</span>
+              <span class="count" id="loggedCount">{v["logged_count"]}</span>
+              <span class="chev" id="loggedChev">▾</span>
+            </button>
+            <div class="loggedrows" id="loggedRows">
+{v["logged_rows"]}            </div>
+          </div>
+        </div>
+      </div>
+
+      ''')
+
+    # the day this mockup is pinned to, for bucket math (overdue/today/tomorrow/later)
+    out = out.replace('const TODAY = new Date(2026, 7, 8);', f'const TODAY = new Date({v["today_iso"]});')
 
     # Baoba's per-tier lines, and which tier this page opens on
     slacks = ['< 0 days', '0–1 days', '1–2 days', '2–4 days', '4+ days']
