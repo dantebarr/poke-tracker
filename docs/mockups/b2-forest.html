@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup B2 — The Forest</title>
+<style>
+  @font-face { font-family: "PressStart"; src: url("assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "VT323"; src: url("assets/vt323.woff2") format("woff2"); font-display: swap; }
+
+  :root {
+    /* pulled off the HGSS Safari Zone menu screenshot in assets/ */
+    --edge:   #0d3a1c;
+    --dark:   #1d6a33;
+    --mid:    #2f8f47;
+    --light:  #58ba6c;
+    --pale:   #b8e8c2;
+    --sel:    #f2f5c8;
+    --shadowtext: 2px 2px 0 rgba(0,0,0,.45);
+    --box:    #f8f8f8;
+    --boxink: #202020;
+    /* One height for both bottom trays — Baoba's dialogue box on the left and the
+       description box on the right. Real dialogue boxes are fixed-height and often
+       half-empty; matching them is what keeps the two columns squared off. */
+    --tray:   118px;
+    --hp-hi:  #3fbf4f;
+    --hp-mid: #f0c020;
+    --hp-lo:  #e04030;
+    --alert:  #e04030;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: #0a2a14;
+    background-image:
+      radial-gradient(120% 80% at 50% 0%, #17472a, transparent 70%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 6px);
+    color: #fff;
+    font-family: "VT323", ui-monospace, monospace;
+    -webkit-font-smoothing: none;
+  }
+  img { display: block; image-rendering: pixelated; }
+  button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+
+  /* the classic rounded green panel: dark rim, lighter fill, white inner keyline */
+  .panel {
+    background: linear-gradient(180deg, var(--mid), var(--dark));
+    border: 4px solid var(--edge);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.28), 0 6px 0 rgba(0,0,0,.35);
+  }
+  /* the classic white textbox: black rim, white fill, thin inner rule */
+  .textbox {
+    background: var(--box);
+    color: var(--boxink);
+    border: 4px solid #101010;
+    border-radius: 9px;
+    box-shadow: inset 0 0 0 2px #c8c8c8, 0 5px 0 rgba(0,0,0,.35);
+  }
+
+  .pixel { font-family: "PressStart", monospace; letter-spacing: 0; }
+
+  /* A definite height, not a minimum — with `min-height` the grid row below sized
+     itself to the whole unscrolled task list and grew the page instead. */
+  .app {
+    height: 100vh;
+    max-width: 1440px; margin: 0 auto;
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  /* ── status strip ──────────────────────────────────────── */
+  .strip {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 16px;
+    font-family: "PressStart", monospace; font-size: 10px;
+    text-shadow: var(--shadowtext);
+  }
+  .strip .ball { width: 18px; height: 18px; border-radius: 50%;
+    background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
+    border: 2px solid #101010; }
+  .strip nav { margin-left: auto; display: flex; gap: 8px; }
+  .strip nav button {
+    font-family: "PressStart", monospace; font-size: 9px;
+    background: linear-gradient(180deg, var(--light), var(--mid));
+    border: 3px solid var(--edge); border-radius: 7px;
+    padding: 6px 9px; text-shadow: var(--shadowtext);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 3px 0 rgba(0,0,0,.35);
+  }
+  .strip nav button:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
+
+  /* The stage owns the height: it fills the viewport but never drops below this,
+     so the field log is always a fixed box that scrolls its own contents rather
+     than a list that grows the page. */
+  .stage {
+    flex: 1; min-height: 640px;
+    display: grid;
+    grid-template-columns: 1.1fr .9fr;
+    grid-template-rows: minmax(0, 1fr);   /* the row must be allowed to shrink below its content */
+    gap: 12px;
+  }
+  @media (max-width: 960px) { .stage { grid-template-columns: 1fr; } }
+
+  /* ── left: the encounter view ──────────────────────────── */
+  .field { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .scene {
+    position: relative; flex: 1; min-height: 0;
+    border: 4px solid var(--edge); border-radius: 12px;
+    overflow: hidden;
+    background: url("assets/johto-safari-zone-forest-hgss.png") center/cover no-repeat;
+    image-rendering: pixelated;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.2), 0 6px 0 rgba(0,0,0,.35);
+  }
+  .scene::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(75% 60% at 50% 45%, transparent 40%, rgba(6,26,12,.62));
+    pointer-events: none;
+  }
+  /* scanlines, because this is unapologetically a game screen */
+  .scene::before {
+    content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: repeating-linear-gradient(180deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px);
+  }
+
+  .mon { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%); z-index: 2; }
+  .mon img { width: 300px; height: auto; }
+  .mon .platform {
+    position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
+    width: 300px; height: 74px; border-radius: 50%;
+    background: radial-gradient(50% 50%, rgba(120,180,110,.5), rgba(20,50,25,.35) 62%, transparent 72%);
+    box-shadow: inset 0 -6px 0 rgba(255,255,255,.12);
+  }
+
+  /* the battle-style status box, top-left, exactly where a wild mon's would sit */
+  .statusbox {
+    position: absolute; top: 16px; left: 16px; z-index: 5;
+    min-width: 296px; padding: 10px 13px 12px;
+  }
+  .statusbox .line1 { display: flex; align-items: center; gap: 12px; }
+  .statusbox .nick { font-family: "PressStart", monospace; font-size: 12px; }
+  .statusbox .species { font-size: 17px; color: #585858; margin-top: 3px; line-height: 1; }
+
+  .statusbox .num { font-size: 19px; color: #202020; text-align: right; line-height: 1; }
+  .statusbox .num .sign { color: #585858; }
+
+  /* Happiness is a face in the top-right corner and nothing else — no number, no
+     bar, no label. The raw value never meant anything on its own: an idle day
+     costs exactly the daily target, so what matters is happiness measured in
+     TARGETS, i.e. how many quiet days are in the bank. The tiers below are cut
+     at 0, 1, 2 and 4 days of that slack, which is what the face actually says. */
+  .mood { margin-left: auto; display: flex; align-items: center; padding: 0; }
+  .mood img { width: 34px; height: 34px; }
+  /* Below one day of slack the Pokémon is genuinely at risk — the only thing in
+     this box allowed to pulse. */
+  .mood.warn img { animation: blink 1.1s steps(2) infinite; }
+
+  /* Bond is the bar, because it only ever climbs, toward a known threshold. */
+  .rows { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; margin-top: 11px; align-items: center; }
+  .rows .tag {
+    font-family: "PressStart", monospace; font-size: 7px; color: #f8f8f8;
+    background: #303030; border-radius: 3px; padding: 3px 4px; justify-self: start;
+  }
+  .track { height: 10px; background: #303030; border-radius: 5px; padding: 2px; }
+  .track i { display: block; height: 6px; border-radius: 3px; background: var(--hp-hi); transition: width .2s ease; }
+
+  /* the evolve prompt — the one thing on screen allowed to flash */
+  .evolve {
+    position: absolute; right: 16px; top: 16px; z-index: 5;
+    padding: 11px 13px; text-align: center; max-width: 220px;
+  }
+  .evolve .head { font-family: "PressStart", monospace; font-size: 9px; color: var(--alert); animation: blink 1.1s steps(2) infinite; }
+  .evolve p { margin: 7px 0 9px; font-size: 17px; line-height: 1.15; color: #202020; }
+  .evolve button {
+    font-family: "PressStart", monospace; font-size: 9px; width: 100%;
+    background: linear-gradient(180deg, var(--light), var(--mid)); color: #fff;
+    border: 3px solid var(--edge); border-radius: 7px; padding: 8px 6px;
+    text-shadow: var(--shadowtext); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  /* the dialogue box — Baoba lives down here, at a fixed tray height */
+  .dialogue {
+    position: relative; height: var(--tray); flex: none; overflow: hidden;
+    padding: 14px 18px 16px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .dialogue .lines { flex: 1; min-width: 0; align-self: stretch; overflow: auto; padding-right: 18px; }
+  .dialogue img { width: 56px; height: 56px; flex: none; }
+  .dialogue .who { font-family: "PressStart", monospace; font-size: 9px; color: #383838; }
+  .dialogue .said { font-size: 21px; line-height: 1.25; color: var(--boxink); margin-top: 6px; }
+  .dialogue .next {
+    position: absolute; right: 14px; bottom: 10px; color: #202020; font-size: 16px;
+    animation: bob .8s steps(2) infinite;
+  }
+  @keyframes bob { 50% { transform: translateY(3px); } }
+
+  /* ── right: the field log menu ─────────────────────────── */
+  .log { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .logpanel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px; }
+
+  .logtop {
+    display: flex; align-items: center; gap: 10px;
+    font-family: "PressStart", monospace; font-size: 10px; text-shadow: var(--shadowtext);
+    padding: 2px 4px 11px;
+    border-bottom: 3px solid rgba(0,0,0,.28);
+  }
+  .quota { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+  .quota .track { width: 92px; height: 11px; background: rgba(0,0,0,.4); border-radius: 6px; padding: 2px; }
+  .quota .track i { display: block; height: 7px; width: 60%; border-radius: 4px; background: var(--sel); }
+
+  .scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 2px 2px; }
+  .scroll::-webkit-scrollbar { width: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.35); border-radius: 4px; }
+
+  .grouphead {
+    font-family: "PressStart", monospace; font-size: 8px;
+    color: var(--pale); text-shadow: var(--shadowtext);
+    margin: 13px 4px 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .grouphead::after { content: ""; flex: 1; height: 2px; background: rgba(0,0,0,.25); }
+  .grouphead.late { color: #ffd0c8; }
+  .grouphead.late b { color: #fff; background: var(--alert); padding: 3px 5px; border-radius: 3px; }
+
+  .row {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    padding: 8px 8px 8px 4px; border-radius: 7px;
+    text-shadow: var(--shadowtext);
+  }
+  .row .cursor { width: 14px; font-size: 20px; line-height: 1; opacity: 0; color: var(--sel); }
+  .row[aria-selected="true"] { background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 2px rgba(242,245,200,.5); }
+  .row[aria-selected="true"] .cursor { opacity: 1; }
+  .row:hover { background: rgba(0,0,0,.16); }
+  .row .name { flex: 1; font-size: 20px; line-height: 1.1; }
+  .row .tag { font-family: "PressStart", monospace; font-size: 7px; padding: 4px 5px; border-radius: 3px; color: #fff; }
+  .row .sz { font-family: "PressStart", monospace; font-size: 8px; color: var(--pale); min-width: 16px; text-align: center; }
+  .row .when { font-size: 17px; color: var(--pale); min-width: 62px; text-align: right; }
+  .row .when.late { color: #ffb9ae; }
+  .row.done .name { color: rgba(255,255,255,.5); text-decoration: line-through; }
+
+  .actions { display: flex; gap: 8px; padding-top: 11px; border-top: 3px solid rgba(0,0,0,.28); margin-top: 8px; }
+  .actions button {
+    flex: 1; font-family: "PressStart", monospace; font-size: 9px;
+    background: linear-gradient(180deg, var(--light), var(--mid));
+    border: 3px solid var(--edge); border-radius: 7px; padding: 9px 4px;
+    text-shadow: var(--shadowtext); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 3px 0 rgba(0,0,0,.35);
+  }
+  .actions button:hover { background: linear-gradient(180deg, #7ad78d, var(--light)); }
+  .actions button.primary { background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f; text-shadow: none; }
+
+  /* Same fixed tray height as Baoba's box, so the two columns end level. */
+  .describe { height: var(--tray); flex: none; overflow: auto; padding: 12px 15px 14px; }
+  .describe .t { font-family: "PressStart", monospace; font-size: 9px; color: #202020; line-height: 1.5; }
+  .describe .d { font-size: 20px; color: #404040; margin-top: 8px; line-height: 1.2; }
+
+  /* ── the intro ─────────────────────────────────────────── */
+  dialog { border: none; padding: 0; background: transparent; max-width: 720px; width: calc(100% - 28px); }
+  dialog::backdrop { background: rgba(4,18,9,.8); }
+  .intro { padding: 0; overflow: hidden; }
+  .intro .bar {
+    background: linear-gradient(180deg, var(--mid), var(--dark));
+    border-bottom: 4px solid #101010;
+    padding: 11px 16px; display: flex; align-items: center; gap: 12px;
+  }
+  .intro .bar img { width: 48px; height: 48px; }
+  .intro .bar .pixel { font-size: 11px; text-shadow: var(--shadowtext); color: #fff; }
+  .intro .bar small { display: block; font-family: "VT323", monospace; font-size: 18px; color: var(--pale); text-shadow: none; margin-top: 2px; }
+  .intro .say { padding: 18px 20px 8px; color: var(--boxink); font-size: 23px; line-height: 1.3; }
+  .intro .say p { margin: 0 0 14px; }
+  .intro .say b { background: #ffec9a; }
+  .intro footer { display: flex; align-items: center; gap: 12px; padding: 8px 20px 20px; }
+  .intro footer button {
+    font-family: "PressStart", monospace; font-size: 10px; color: #fff;
+    background: linear-gradient(180deg, var(--light), var(--mid));
+    border: 3px solid var(--edge); border-radius: 7px; padding: 11px 20px;
+    text-shadow: var(--shadowtext); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  .intro footer small { color: #606060; font-size: 17px; }
+
+  /* Lives in the top strip rather than floating bottom-left, where it sat on top
+     of Baoba's dialogue — the box that now carries the happiness warning. */
+  .strip nav button.replay { background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f; text-shadow: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="strip">
+    <span class="ball"></span>
+    <span>SAFARI ZONE</span>
+    <span style="color:var(--pale)">RANGER DANTE</span>
+    <span style="color:var(--pale)">DAY 119</span>
+    <nav>
+      <button class="replay" onclick="intro.showModal()">▶ INTRO</button>
+      <button>POKéDEX</button><button>LOGBOOK</button><button>OPTIONS</button><button>EXIT</button>
+    </nav>
+  </div>
+
+  <div class="stage">
+
+    <!-- ── encounter view ──────────────────────────────── -->
+    <section class="field">
+      <div class="scene">
+        <div class="mon">
+          <img src="assets/ani-scyther.gif" alt="Scyther" style="width:240px">
+          <div class="platform"></div>
+        </div>
+
+        <div class="statusbox textbox">
+          <div class="line1">
+            <span class="nick">SICKLE</span>
+            <button class="mood" id="mood" title="Thriving — 4+ quiet days of slack in the bank">
+              <img src="assets/mood-beaming.svg" alt="Thriving" id="mood-face">
+            </button>
+          </div>
+          <div class="species">SCYTHER &middot; No.123</div>
+
+          <div class="rows">
+            <!-- Bond climbs toward a known threshold, so it's the thing that can
+                 honestly be a bar. Past the requirement the bar stays full and the
+                 number keeps counting (bond never stops rising). -->
+            <span class="tag">BOND</span>
+            <span class="track"><i style="width:71%"></i></span>
+            <span class="num">5<span class="sign">/7</span></span>
+          </div>
+        </div>
+
+        <div class="evolve textbox">
+          <div class="head" style="color:#585858;animation:none">FIELD NOTES</div>
+          <p>Two more good days and SCYTHER's entry writes itself.</p>
+          <button>OPEN POKéDEX DRAFT</button>
+        </div>
+      </div>
+
+      <div class="dialogue textbox">
+        <img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+        <div class="lines">
+          <div class="who">WARDEN BAOBA</div>
+          <div class="said" id="baoba-says">Sickle cleared more deadfall this morning than you did, Ranger. Don't let it show you up twice in one week.</div>
+        </div>
+        <span class="next">▼</span>
+      </div>
+    </section>
+
+    <!-- ── field log menu ──────────────────────────────── -->
+    <section class="log">
+      <div class="logpanel panel">
+        <div class="logtop">
+          <span>FIELD LOG</span>
+          <span style="color:var(--pale)">SAT 8 AUG</span>
+          <span class="quota">
+            <span>4/5</span>
+            <span class="track"><i style="width:80%"></i></span>
+          </span>
+        </div>
+
+        <div class="scroll" id="rows">
+
+          <div class="grouphead">TODAY</div>
+          <button class="row" aria-selected="true"
+                  data-t="THIN THE BIRCH STAND ALONG THE NORTH PATH"
+                  data-d="RESERVE · LARGE · worth 3 pts · due today. Clears the day's share on its own.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#2f7d4f">RSV</span>
+            <span class="name">Thin the birch stand along the north path</span>
+            <span class="sz">L</span>
+            <span class="when">Today</span>
+          </button>
+          <button class="row"
+                  data-t="RECORD SCYTHER WINGBEAT COUNTS"
+                  data-d="RESEARCH · SMALL · worth 1 pt · due today. Sickle will sit still for it. Mostly.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#146b62">RSH</span>
+            <span class="name">Record Scyther wingbeat counts</span>
+            <span class="sz">S</span>
+            <span class="when">Today</span>
+          </button>
+          <button class="row"
+                  data-t="BAG AND LABEL THE FUNGUS SAMPLES"
+                  data-d="RESEARCH · MEDIUM · worth 2 pts · due today. The ones from the west ridge, not the gate.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#146b62">RSH</span>
+            <span class="name">Bag and label the fungus samples</span>
+            <span class="sz">M</span>
+            <span class="when">Today</span>
+          </button>
+
+          <div class="grouphead">THIS WEEK</div>
+          <button class="row"
+                  data-t="RE-HANG THE CANOPY NEST BOXES"
+                  data-d="RESERVE · MEDIUM · worth 2 pts · due Monday.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#2f7d4f">RSV</span>
+            <span class="name">Re-hang the canopy nest boxes</span>
+            <span class="sz">M</span>
+            <span class="when">Mon</span>
+          </button>
+          <button class="row"
+                  data-t="PHOTOGRAPH THE EXEGGCUTE CLUSTER"
+                  data-d="RESEARCH · SMALL · worth 1 pt · due Tuesday. Six of them now, up from four.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#146b62">RSH</span>
+            <span class="name">Photograph the Exeggcute cluster</span>
+            <span class="sz">S</span>
+            <span class="when">Tue</span>
+          </button>
+
+          <div class="grouphead">LATER</div>
+          <button class="row"
+                  data-t="MAP THE DEADFALL ON THE WEST RIDGE"
+                  data-d="RESERVE · LARGE · worth 3 pts · due 19 Aug.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#2f7d4f">RSV</span>
+            <span class="name">Map the deadfall on the west ridge</span>
+            <span class="sz">L</span>
+            <span class="when">19 Aug</span>
+          </button>
+          <button class="row"
+                  data-t="ORDER REPLACEMENT SAW BLADES"
+                  data-d="ADMIN · SMALL · worth 1 pt · due 21 Aug.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#8a5a3b">ADM</span>
+            <span class="name">Order replacement saw blades</span>
+            <span class="sz">S</span>
+            <span class="when">21 Aug</span>
+          </button>
+
+          <div class="grouphead">LOGGED TODAY</div>
+          <button class="row done"
+                  data-t="DAWN ROUND OF THE FOREST TRAIL"
+                  data-d="RESERVE · SMALL · 1 pt earned with SICKLE.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#4a6a52">RSV</span>
+            <span class="name">Dawn round of the forest trail</span>
+            <span class="sz">S</span>
+            <span class="when">✓</span>
+          </button>
+          <button class="row done"
+                  data-t="FELL AND STACK THE STORM-DROPPED ASH"
+                  data-d="RESERVE · LARGE · 3 pts earned with SICKLE. Done is done — this one can't be undone.">
+            <span class="cursor">▶</span>
+            <span class="tag" style="background:#4a6a52">RSV</span>
+            <span class="name">Fell and stack the storm-dropped ash</span>
+            <span class="sz">L</span>
+            <span class="when">✓</span>
+          </button>
+        </div>
+
+        <div class="actions">
+          <button class="primary">COMPLETE</button>
+          <button>EDIT</button>
+          <button>DELETE</button>
+          <button>NEW</button>
+        </div>
+      </div>
+
+      <div class="describe textbox">
+        <div class="t" id="desc-t">THIN THE BIRCH STAND ALONG THE NORTH PATH</div>
+        <div class="d" id="desc-d">RESERVE · LARGE · worth 3 pts · due today. Clears the day's share on its own.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="intro">
+  <div class="intro textbox">
+    <div class="bar">
+      <img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <div class="pixel">WARDEN BAOBA<small>SAFARI ZONE &middot; RESERVE OFFICE</small></div>
+    </div>
+    <div class="say">
+      <p>SO YOU'RE THE NEW RANGER. GOOD. SIT DOWN A MOMENT.</p>
+      <p>This reserve doesn't run itself. Fences, water, records — a share of it has your
+         name on it every day, and I'll expect it done.</p>
+      <p>Here's what nobody tells you on the first day: <b>the Pokémon watch.</b> Do the work
+         and one will wander over, decide you're worth the trouble, and stay. It'll help.
+         It won't be caught, and it won't be told what to do.</p>
+      <p>Keep at it and you'll know it well enough to write its entry — and it'll trust you
+         enough to change in front of you. Let it down often enough and it wanders off.
+         It remembers you either way.</p>
+      <p>That's the job. Go on. ▼</p>
+    </div>
+    <footer>
+      <button onclick="intro.close()">UNDERSTOOD</button>
+      <small>Shown once, on a Ranger's first day.</small>
+    </footer>
+  </div>
+</dialog>
+
+
+<script>
+  // The cursor drives the description box, the way a Gen-2 menu does.
+  const rows = document.querySelectorAll('#rows .row');
+  const t = document.getElementById('desc-t');
+  const d = document.getElementById('desc-d');
+  rows.forEach(r => {
+    const select = () => {
+      rows.forEach(o => o.removeAttribute('aria-selected'));
+      r.setAttribute('aria-selected', 'true');
+      t.textContent = r.dataset.t;
+      d.textContent = r.dataset.d;
+    };
+    r.addEventListener('mouseenter', select);
+    r.addEventListener('focus', select);
+    r.addEventListener('click', select);
+  });
+
+  // Mockup-only: click the face to page through the happiness tiers so all four
+  // are visible without faking four screenshots. Happiness below zero means the
+  // Pokémon leaves, so `sad` is a state you only ever catch in passing.
+  // Happiness measured in daily targets — "quiet days in the bank". The number
+  // itself is never shown; the face is the whole readout, and Baoba's box carries
+  // the warning when the bank runs low. `slack` is happiness / dailyTarget.
+  const MOODS = [
+    { face: 'sad', slack: '< 0 days', label: 'Gone',
+      say: "That's Sickle away, then. Back into the forest, bond and all — it'll remember you. Meet your share and something else will come by." },
+    { face: 'worried', slack: '0–1 days', label: 'Restless',
+      say: "Sickle's restless, Ranger. One quiet day and it's away. Don't let today be the quiet one." },
+    { face: 'neutral', slack: '1–2 days', label: 'Settled',
+      say: "Sickle's settled enough. You've a day of slack in hand and not a scrap more." },
+    { face: 'happy', slack: '2–4 days', label: 'Content',
+      say: "One point short of the day's share. Sickle's waiting by the north path — it knows the round better than you do." },
+    { face: 'beaming', slack: '4+ days', label: 'Thriving',
+      say: "Sickle cleared more deadfall this morning than you did, Ranger. Don't let it show you up twice in one week." }
+  ];
+  let mi = 4;
+  const mood = document.getElementById('mood');
+  mood.addEventListener('click', () => {
+    mi = (mi + 1) % MOODS.length;
+    const m = MOODS[mi];
+    const face = document.getElementById('mood-face');
+    face.src = `assets/mood-${m.face}.svg`;
+    face.alt = m.label;
+    mood.title = `${m.label} — ${m.slack} of slack in the bank`;
+    mood.classList.toggle('warn', mi <= 1);
+    document.getElementById('baoba-says').textContent = m.say;
+  });
+</script>
+</body>
+</html>
