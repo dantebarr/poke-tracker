@@ -8,7 +8,7 @@ import { provisionPool } from "@/lib/pokemon/pokemon";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireTrainerId } from "@/lib/trainer/session";
 import { NotAllowListedError, NotSignedInError } from "@/lib/trainer/errors";
-import { provisionTrainer, updateDailyTarget, type Trainer } from "@/lib/trainer/trainer";
+import { provisionTrainer, updateDailyTarget, updateTimeZone, type Trainer } from "@/lib/trainer/trainer";
 
 /**
  * Every write goes through a server action; the browser never talks to the
@@ -76,6 +76,23 @@ export async function updateDailyTargetAction(formData: FormData): Promise<Train
 
   const trainer = await updateDailyTarget(client, trainerId, target);
   revalidatePath("/settings");
+  return trainer;
+}
+
+/**
+ * Sets the signed-in trainer's time zone. Never detected from the browser
+ * (ADR-0004) — this is the only way it changes. Takes a `FormData` for the
+ * same reason {@link updateDailyTargetAction} does.
+ */
+export async function updateTimeZoneAction(formData: FormData): Promise<Trainer> {
+  const client = await createSupabaseServerClient();
+  const trainerId = await requireTrainerId(client);
+
+  const timeZone = String(formData.get("timeZone"));
+
+  const trainer = await updateTimeZone(client, trainerId, timeZone);
+  revalidatePath("/settings");
+  revalidatePath("/");
   return trainer;
 }
 

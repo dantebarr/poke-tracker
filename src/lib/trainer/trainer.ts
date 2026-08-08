@@ -11,6 +11,7 @@ export type Trainer = {
   email: string;
   displayName: string | null;
   dailyTarget: number;
+  timeZone: string;
 };
 
 /**
@@ -31,9 +32,10 @@ type TrainerRow = {
   email: string;
   display_name: string | null;
   daily_target: number;
+  time_zone: string;
 };
 
-const COLUMNS = "id, email, display_name, daily_target";
+const COLUMNS = "id, email, display_name, daily_target, time_zone";
 
 function toTrainer(row: TrainerRow): Trainer {
   return {
@@ -41,6 +43,7 @@ function toTrainer(row: TrainerRow): Trainer {
     email: row.email,
     displayName: row.display_name,
     dailyTarget: row.daily_target,
+    timeZone: row.time_zone,
   };
 }
 
@@ -124,6 +127,29 @@ export async function updateDailyTarget(
     await client
       .from("trainer")
       .update({ daily_target: target })
+      .eq("id", trainerId)
+      .select(COLUMNS)
+      .single<TrainerRow>(),
+  );
+  return toTrainer(row);
+}
+
+/**
+ * Sets the trainer's time zone. Never detected from the browser (ADR-0004) —
+ * this is the only way it changes, and it is always the trainer's own act.
+ * An invalid IANA name is refused by the database's own validation trigger,
+ * not here (ADR-0001).
+ */
+export async function updateTimeZone(
+  client: SupabaseClient,
+  trainerId: string,
+  timeZone: string,
+): Promise<Trainer> {
+  const row = unwrap(
+    "Setting time zone",
+    await client
+      .from("trainer")
+      .update({ time_zone: timeZone })
       .eq("id", trainerId)
       .select(COLUMNS)
       .single<TrainerRow>(),

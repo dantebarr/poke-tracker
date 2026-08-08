@@ -14,10 +14,14 @@ import {
  * Pure logic, no database — these run without the local Supabase stack even
  * though the global setup starts it for the suite as a whole.
  *
- * A fixed Monday is used as "today" throughout so weekday-short output
- * (`Intl.DateTimeFormat(... { weekday: 'short' })`) is deterministic.
+ * A fixed Monday day key is used as "today" throughout so weekday-short
+ * output (`Intl.DateTimeFormat(... { weekday: 'short' })`) is deterministic.
+ * `completedAt` timestamps use a plain zone (UTC) — the zone-awareness of
+ * `groupDoneByDay`/`todayPoints` itself is what settlement-timezone.test.ts
+ * and day.test.ts cover directly.
  */
-const TODAY = new Date(2024, 0, 15); // Monday, 2024-01-15
+const TODAY = "2024-01-15"; // Monday
+const ZONE = "UTC";
 
 describe("getBucket", () => {
   it("buckets a date before today as overdue", () => {
@@ -88,39 +92,45 @@ describe("humanizeDueDate", () => {
 });
 
 describe("groupDoneByDay", () => {
-  it("groups by completion day, most recent first, humanising each day's label", () => {
-    // No trailing "Z" — parsed as local time, matching how the app reads
-    // `completed_at` for local-day grouping, and keeping this deterministic
-    // regardless of the machine's timezone.
+  it("groups by completion day in the given zone, most recent first, humanising each day's label", () => {
     const tasks = [
-      { id: "a", completedAt: "2024-01-15T09:00:00.000" },
-      { id: "b", completedAt: "2024-01-14T09:00:00.000" },
-      { id: "c", completedAt: "2024-01-15T18:00:00.000" },
-      { id: "d", completedAt: "2024-01-08T09:00:00.000" },
+      { id: "a", completedAt: "2024-01-15T09:00:00.000Z" },
+      { id: "b", completedAt: "2024-01-14T09:00:00.000Z" },
+      { id: "c", completedAt: "2024-01-15T18:00:00.000Z" },
+      { id: "d", completedAt: "2024-01-08T09:00:00.000Z" },
     ];
 
-    const groups = groupDoneByDay(tasks, TODAY);
+    const groups = groupDoneByDay(tasks, ZONE, TODAY);
 
     expect(groups.map((g) => g.label)).toEqual(["Today", "Yesterday", "Jan 8"]);
     expect(groups[0].tasks.map((t) => t.id)).toEqual(["a", "c"]);
     expect(groups[1].tasks.map((t) => t.id)).toEqual(["b"]);
     expect(groups[2].tasks.map((t) => t.id)).toEqual(["d"]);
   });
+
+  it("groups by the zone's local day, not UTC's", () => {
+    // 23:30 UTC on the 14th is already 15:30 on the 15th in Auckland.
+    const tasks = [{ id: "a", completedAt: "2024-01-14T23:30:00.000Z" }];
+
+    const groups = groupDoneByDay(tasks, "Pacific/Auckland", TODAY);
+
+    expect(groups.map((g) => g.label)).toEqual(["Today"]);
+  });
 });
 
 describe("todayPoints", () => {
-  it("sums effort points for tasks completed today, ignoring other days and open tasks", () => {
+  it("sums effort points for tasks completed today in the given zone, ignoring other days and open tasks", () => {
     const tasks = [
-      { status: "done" as const, completedAt: "2024-01-15T09:00:00.000", size: "small" as const },
-      { status: "done" as const, completedAt: "2024-01-15T18:00:00.000", size: "medium" as const },
-      { status: "done" as const, completedAt: "2024-01-14T09:00:00.000", size: "large" as const },
+      { status: "done" as const, completedAt: "2024-01-15T09:00:00.000Z", size: "small" as const },
+      { status: "done" as const, completedAt: "2024-01-15T18:00:00.000Z", size: "medium" as const },
+      { status: "done" as const, completedAt: "2024-01-14T09:00:00.000Z", size: "large" as const },
       { status: "open" as const, completedAt: null, size: "large" as const },
     ];
 
-    expect(todayPoints(tasks, TODAY)).toBe(1 + 2);
+    expect(todayPoints(tasks, ZONE, TODAY)).toBe(1 + 2);
   });
 
   it("is zero when nothing was completed today", () => {
-    expect(todayPoints([], TODAY)).toBe(0);
+    expect(todayPoints([], ZONE, TODAY)).toBe(0);
   });
 });

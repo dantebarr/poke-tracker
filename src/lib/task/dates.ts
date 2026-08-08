@@ -8,8 +8,17 @@
  * `string | null` and the "No date" fallback is gone; and per #7's
  * acceptance criteria, Overdue is the only alarm state, so there is no
  * separate "today" accent for callers to reach for.
+ *
+ * A third change, from #17: every function here takes a day-key string for
+ * "today" rather than a `Date`. A `Date` cannot carry a zone, which is what
+ * let this module and settlement disagree about when a day ends — comparing
+ * day keys removes server-local `Date` arithmetic from the comparison path
+ * entirely, rather than patching around it. The day key itself is computed
+ * once per request, from the trainer's own stored time zone (Settings), by
+ * the caller — never detected from a device (ADR-0004).
  */
 
+import { dayKeyInTimeZone, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
 import { effortPoints, type TaskSize } from "@/lib/task/task";
 
 export type Bucket = "overdue" | "today" | "this_week" | "later";
@@ -23,10 +32,8 @@ export const BUCKET_LABELS: Record<Bucket, string> = {
   later: "Later",
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short" });
-const MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
+const MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 // A plain `date` column ('YYYY-MM-DD'); parsing it with `new Date(string)`
 // reads it as UTC midnight and can land on the wrong local day. Build the
@@ -37,17 +44,8 @@ export function parseDateOnly(dateStr: string): Date {
   return new Date(year, month - 1, day);
 }
 
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-// Positive when `to` is after `from`.
-function daysBetween(from: Date, to: Date): number {
-  return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / DAY_MS);
-}
-
-export function getBucket(dueDate: string, today: Date = new Date()): Bucket {
-  const diff = daysBetween(today, parseDateOnly(dueDate));
+export function getBucket(dueDate: string, todayKey: string): Bucket {
+  const diff = daysBetweenKeys(todayKey, dueDate);
   if (diff < 0) return "overdue";
   if (diff === 0) return "today";
   if (diff <= 7) return "this_week";
@@ -56,20 +54,20 @@ export function getBucket(dueDate: string, today: Date = new Date()): Bucket {
 
 export function bucketOpenTasks<T extends { dueDate: string }>(
   tasks: T[],
-  today: Date = new Date(),
+  todayKey: string,
 ): Record<Bucket, T[]> {
   const buckets = Object.fromEntries(BUCKET_ORDER.map((bucket) => [bucket, [] as T[]])) as Record<Bucket, T[]>;
   for (const task of tasks) {
-    buckets[getBucket(task.dueDate, today)].push(task);
+    buckets[getBucket(task.dueDate, todayKey)].push(task);
   }
   return buckets;
 }
 
 // `neutral` drops the urgency framing ("overdue", "Today") in favor of a
 // plain date — for done tasks, where the due date is history, not an alarm.
-export function humanizeDueDate(dueDate: string, today: Date = new Date(), neutral = false): string {
-  const date = parseDateOnly(dueDate);
-  const diff = daysBetween(today, date);
+export function humanizeDueDate(dueDate: string, todayKey: string, neutral = false): string {
+  const diff = daysBetweenKeys(todayKey, dueDate);
+  const date = dayKeyToUtcDate(dueDate);
 
   if (neutral) {
     return Math.abs(diff) <= 6 ? WEEKDAY_FORMAT.format(date) : MONTH_DAY_FORMAT.format(date);
@@ -82,20 +80,13 @@ export function humanizeDueDate(dueDate: string, today: Date = new Date(), neutr
   return MONTH_DAY_FORMAT.format(date);
 }
 
-function humanizeCompletedDay(date: Date, today: Date): string {
-  const diff = daysBetween(today, date);
+function humanizeCompletedDay(dayKey: string, todayKey: string): string {
+  const diff = daysBetweenKeys(todayKey, dayKey);
 
   if (diff === 0) return "Today";
   if (diff === -1) return "Yesterday";
-  if (diff > -7) return WEEKDAY_FORMAT.format(date);
-  return MONTH_DAY_FORMAT.format(date);
-}
-
-function dayKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  if (diff > -7) return WEEKDAY_FORMAT.format(dayKeyToUtcDate(dayKey));
+  return MONTH_DAY_FORMAT.format(dayKeyToUtcDate(dayKey));
 }
 
 export interface DoneGroup<T> {
@@ -104,19 +95,24 @@ export interface DoneGroup<T> {
   tasks: T[];
 }
 
+/**
+ * Groups done tasks by the local day, in `timeZone`, they were completed on
+ * — the same primitive settlement uses to group tasks for settling, so the
+ * two cannot disagree about which day a completion belongs to.
+ */
 export function groupDoneByDay<T extends { completedAt: string }>(
   tasks: T[],
-  today: Date = new Date(),
+  timeZone: string,
+  todayKey: string,
 ): DoneGroup<T>[] {
   const groups = new Map<string, DoneGroup<T>>();
 
   for (const task of tasks) {
-    const date = new Date(task.completedAt);
-    const key = dayKey(date);
+    const key = dayKeyInTimeZone(new Date(task.completedAt), timeZone);
 
     let group = groups.get(key);
     if (!group) {
-      group = { key, label: humanizeCompletedDay(date, today), tasks: [] };
+      group = { key, label: humanizeCompletedDay(key, todayKey), tasks: [] };
       groups.set(key, group);
     }
     group.tasks.push(task);
@@ -128,17 +124,22 @@ export function groupDoneByDay<T extends { completedAt: string }>(
 /**
  * Effort points earned today, derived by summing today's completions —
  * never a stored counter (CONTEXT.md), so this is the only place "today's
- * total" is computed.
+ * total" is computed. "Today" is the trainer's own day key, and a
+ * completion's day is derived through the same shared primitive settlement
+ * uses, so this can never disagree with what settlement will eventually
+ * write to the ledger for the day still in progress.
  */
 export function todayPoints(
   tasks: { status: "open" | "done"; completedAt: string | null; size: TaskSize }[],
-  today: Date = new Date(),
+  timeZone: string,
+  todayKey: string,
 ): number {
-  const todayKey = dayKey(today);
   return tasks
     .filter(
       (task): task is { status: "done"; completedAt: string; size: TaskSize } =>
-        task.status === "done" && task.completedAt !== null && dayKey(new Date(task.completedAt)) === todayKey,
+        task.status === "done" &&
+        task.completedAt !== null &&
+        dayKeyInTimeZone(new Date(task.completedAt), timeZone) === todayKey,
     )
     .reduce((sum, task) => sum + effortPoints(task.size), 0);
 }

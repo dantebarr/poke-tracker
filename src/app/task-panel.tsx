@@ -35,10 +35,14 @@ export type FormAction = (formData: FormData) => Promise<void>;
 export function TaskPanel({
   tasks,
   labels,
+  timeZone,
+  todayKey,
   className = "",
 }: {
   tasks: Task[];
   labels: Label[];
+  timeZone: string;
+  todayKey: string;
   className?: string;
 }) {
   // `updateTaskAction` and `completeTaskAction` return the changed task —
@@ -55,7 +59,6 @@ export function TaskPanel({
     await completeTaskAction(formData);
   }
 
-  const today = new Date();
   const openTasks = tasks.filter((task) => task.status === "open");
   // Done is terminal (ADR-0002) and the backfill guarantees `completed_at`
   // for every done row, so this narrows `completedAt` for `groupDoneByDay`
@@ -63,8 +66,8 @@ export function TaskPanel({
   const doneTasks = tasks.filter(
     (task): task is Task & { completedAt: string } => task.status === "done" && task.completedAt !== null,
   );
-  const buckets = bucketOpenTasks(openTasks, today);
-  const doneGroups = groupDoneByDay(doneTasks, today);
+  const buckets = bucketOpenTasks(openTasks, todayKey);
+  const doneGroups = groupDoneByDay(doneTasks, timeZone, todayKey);
 
   return (
     <section className={`rounded-lg border border-border bg-surface p-6 ${className}`}>
@@ -93,7 +96,7 @@ export function TaskPanel({
                 <OpenTaskRow
                   key={task.id}
                   task={task}
-                  today={today}
+                  todayKey={todayKey}
                   labels={labels}
                   onComplete={submitCompleteTask}
                   onUpdate={submitUpdateTask}
@@ -117,7 +120,7 @@ export function TaskPanel({
                 </h4>
                 <ul className="flex flex-col gap-2">
                   {group.tasks.map((task) => (
-                    <DoneTaskRow key={task.id} task={task} today={today} />
+                    <DoneTaskRow key={task.id} task={task} todayKey={todayKey} />
                   ))}
                 </ul>
               </div>
@@ -129,13 +132,13 @@ export function TaskPanel({
   );
 }
 
-function DoneTaskRow({ task, today }: { task: Task; today: Date }) {
+function DoneTaskRow({ task, todayKey }: { task: Task; todayKey: string }) {
   return (
     <li className="rounded-lg border border-border p-3 opacity-50">
       <div className="flex items-baseline justify-between gap-2">
         <LabelChip label={task.label} />
         <span className="shrink-0 font-mono text-[0.7rem] uppercase tracking-wide text-muted">
-          {humanizeDueDate(task.dueDate, today, true)}
+          {humanizeDueDate(task.dueDate, todayKey, true)}
         </span>
       </div>
       <p className="mt-1.5 text-sm text-muted line-through">{task.title}</p>
@@ -146,25 +149,25 @@ function DoneTaskRow({ task, today }: { task: Task; today: Date }) {
 
 function OpenTaskRow({
   task,
-  today,
+  todayKey,
   labels,
   onComplete,
   onUpdate,
 }: {
   task: Task;
-  today: Date;
+  todayKey: string;
   labels: Label[];
   onComplete: FormAction;
   onUpdate: FormAction;
 }) {
-  const dueDateClass = getBucket(task.dueDate, today) === "overdue" ? "text-urgent" : "text-muted";
+  const dueDateClass = getBucket(task.dueDate, todayKey) === "overdue" ? "text-urgent" : "text-muted";
 
   return (
     <li className="rounded-lg border border-border p-3">
       <div className="flex items-baseline justify-between gap-2">
         <LabelChip label={task.label} />
         <span className={`shrink-0 font-mono text-[0.7rem] uppercase tracking-wide ${dueDateClass}`}>
-          {humanizeDueDate(task.dueDate, today)}
+          {humanizeDueDate(task.dueDate, todayKey)}
         </span>
       </div>
       <p className="mt-1.5 text-sm">{task.title}</p>
