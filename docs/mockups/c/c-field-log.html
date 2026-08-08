@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mockup C — Field Log</title>
 <style>
-  @font-face { font-family: "Fraunces"; src: url("assets/fraunces.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
-  @font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+  @font-face { font-family: "Fraunces"; src: url("../assets/fraunces.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+  @font-face { font-family: "Inter"; src: url("../assets/inter.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
 
   :root {
     --bg:      #fbf7f0;
@@ -84,7 +84,7 @@
   }
   .companion .place {          /* a whisper of the reserve, not a diorama */
     position: absolute; inset: 0;
-    background: url("assets/johto-safari-zone-meadow-hgss.png") center/cover no-repeat;
+    background: url("../assets/johto-safari-zone-meadow-hgss.png") center/cover no-repeat;
     filter: blur(30px) saturate(.85);
     opacity: .5;
   }
@@ -274,7 +274,7 @@
     <div class="mark"><span class="n">Safari Zone</span><span class="r">Ranger Dante</span></div>
 
     <button class="baoba-chip" onclick="intro.showModal()">
-      <img class="px" src="../../public/npc/baoba-hgss.png" alt="">
+      <img class="px" src="../../../public/npc/baoba-hgss.png" alt="">
       <span><b>Baoba</b> — two points short of the day's share.</span>
     </button>
 
@@ -297,7 +297,7 @@
           <circle class="fill" cx="148" cy="148" r="142" stroke-dasharray="892" stroke-dashoffset="0"></circle>
         </svg>
         <div class="glow"></div>
-        <img class="px" src="assets/ani-eevee.gif" alt="Eevee">
+        <img class="px" src="../assets/ani-eevee.gif" alt="Eevee">
         <div class="ground"></div>
         <div class="ringlabel">Bond 7 of 7 — fully known</div>
       </div>
@@ -332,9 +332,9 @@
         <div class="h"><span class="badge"></span><strong>Pebble trusts you enough to change</strong></div>
         <p>Yours to offer, not to make. No hurry — Pebble can stay an Eevee as long as you both like.</p>
         <div class="choices">
-          <button aria-pressed="true"><img class="px" src="../../public/species/134.png" alt="">Vaporeon</button>
-          <button><img class="px" src="../../public/species/135.png" alt="">Jolteon</button>
-          <button><img class="px" src="../../public/species/136.png" alt="">Flareon</button>
+          <button aria-pressed="true"><img class="px" src="../../../public/species/134.png" alt="">Vaporeon</button>
+          <button><img class="px" src="../../../public/species/135.png" alt="">Jolteon</button>
+          <button><img class="px" src="../../../public/species/136.png" alt="">Flareon</button>
         </div>
         <button class="go">Evolve Pebble</button>
       </div>
@@ -493,7 +493,7 @@
 <dialog id="intro">
   <div class="sheet">
     <div class="hero">
-      <img class="px" src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <img class="px" src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
       <div>
         <h2>Warden Baoba</h2>
         <div class="over">Safari Zone · Reserve office</div>

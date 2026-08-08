@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mockup B3 — The Marshland</title>
 <style>
-  @font-face { font-family: "PressStart"; src: url("assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
-  @font-face { font-family: "VT323"; src: url("assets/vt323.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "PressStart"; src: url("../assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "VT323"; src: url("../assets/vt323.woff2") format("woff2"); font-display: swap; }
 
   :root {
-    /* pulled off the HGSS Safari Zone menu screenshot in assets/ */
+    /* pulled off the HGSS Safari Zone menu screenshot in ../assets/ */
     --edge:   #0d3a1c;
     --dark:   #1d6a33;
     --mid:    #2f8f47;
@@ -133,7 +133,7 @@
     position: relative; flex: 1; min-height: 0;
     border: 4px solid var(--edge); border-radius: 12px;
     overflow: hidden;
-    background: url("assets/johto-safari-zone-marshland-hgss.png") center/cover no-repeat;
+    background: url("../assets/johto-safari-zone-marshland-hgss.png") center/cover no-repeat;
     image-rendering: pixelated;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,.2), 0 6px 0 rgba(0,0,0,.35);
   }
@@ -567,7 +567,7 @@
     <section class="field">
       <div class="scene">
         <div class="mon">
-          <img src="assets/ani-chansey.gif" alt="Chansey" style="width:255px">
+          <img src="../assets/ani-chansey.gif" alt="Chansey" style="width:255px">
           <div class="platform"></div>
         </div>
 
@@ -575,7 +575,7 @@
           <div class="line1">
             <span class="nick">CUSTARD</span>
             <button class="mood warn" id="mood" title="Restless — under a day of slack in the bank">
-              <img src="assets/mood-worried.svg" alt="Restless" id="mood-face">
+              <img src="../assets/mood-worried.svg" alt="Restless" id="mood-face">
             </button>
           </div>
           <div class="species">CHANSEY &middot; No.113</div>
@@ -593,7 +593,7 @@
       </div>
 
       <div class="dialogue textbox">
-        <img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+        <img src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
         <div class="lines normalsay">
           <div class="who">WARDEN BAOBA</div>
           <div class="said" id="baoba-says">Custard's restless, Ranger. One quiet day and it's away — and you'll not see another Chansey this season. Three jobs are already late.</div>
@@ -897,7 +897,7 @@
 <dialog id="intro">
   <div class="intro textbox">
     <div class="bar">
-      <img src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <img src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
       <div class="pixel">WARDEN BAOBA<small>SAFARI ZONE &middot; RESERVE OFFICE</small></div>
     </div>
     <div class="say">
@@ -922,7 +922,7 @@
 
 <script>
   // ── pixel icons ──────────────────────────────────────────
-  // Drawn on the same 16×16 grid as assets/mood-*.svg, at build time here
+  // Drawn on the same 16×16 grid as ../assets/mood-*.svg, at build time here
   // rather than as literal markup, so the bitmaps stay readable in source.
   // Original work — no licensing question, same as the mood faces.
   const ICONS = {
@@ -1309,7 +1309,7 @@
     mi = (mi + 1) % MOODS.length;
     const m = MOODS[mi];
     const face = document.getElementById('mood-face');
-    face.src = `assets/mood-${m.face}.svg`;
+    face.src = `../assets/mood-${m.face}.svg`;
     face.alt = m.label;
     mood.title = `${m.label} — ${m.slack} of slack in the bank`;
     mood.classList.toggle('warn', mi <= 1);

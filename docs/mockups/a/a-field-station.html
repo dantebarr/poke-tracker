@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mockup A — Field Station</title>
 <style>
-  @font-face { font-family: "Silkscreen"; src: url("assets/silkscreen.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-  @font-face { font-family: "Silkscreen"; src: url("assets/silkscreen-bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
-  @font-face { font-family: "Fraunces"; src: url("assets/fraunces.woff2") format("woff2"); font-weight: 500 600; font-display: swap; }
-  @font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+  @font-face { font-family: "Silkscreen"; src: url("../assets/silkscreen.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Silkscreen"; src: url("../assets/silkscreen-bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+  @font-face { font-family: "Fraunces"; src: url("../assets/fraunces.woff2") format("woff2"); font-weight: 500 600; font-display: swap; }
+  @font-face { font-family: "Inter"; src: url("../assets/inter.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
 
   :root {
     --paper:  #f4ecdb;
@@ -79,7 +79,7 @@
     position: relative;
     overflow: hidden;
     min-height: 660px;
-    background: url("assets/johto-safari-zone-meadow-hgss.png") center/cover no-repeat;
+    background: url("../assets/johto-safari-zone-meadow-hgss.png") center/cover no-repeat;
     image-rendering: pixelated;
     border-right: 3px solid var(--wood-d);
   }
@@ -321,7 +321,7 @@
       <div class="weather">☀ Clear &middot; 24° &middot; Day 118 on the reserve</div>
 
       <div class="creature">
-        <img class="px" src="assets/ani-kangaskhan.gif" alt="Kangaskhan">
+        <img class="px" src="../assets/ani-kangaskhan.gif" alt="Kangaskhan">
         <div class="cast"></div>
       </div>
 
@@ -356,7 +356,7 @@
       </div>
 
       <button class="warden-btn" onclick="intro.showModal()">
-        <img class="px" src="../../public/npc/baoba-hgss.png" alt="">
+        <img class="px" src="../../../public/npc/baoba-hgss.png" alt="">
         <span class="ping"></span>
         <span>Baoba has a word</span>
       </button>
@@ -509,7 +509,7 @@
 <dialog id="intro">
   <div class="notice">
     <header>
-      <img class="px" src="../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <img class="px" src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
       <div>
         <h2>Warden Baoba</h2>
         <p>SAFARI ZONE &middot; RESERVE OFFICE</p>
