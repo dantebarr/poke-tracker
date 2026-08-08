@@ -19,8 +19,13 @@ their own settings — nothing is shared between trainers.
 _Avoid_: User, account, player
 
 **Task**:
-The unit of work. Has a title, a due date, a label, and a size. Every task
-belongs to exactly one trainer.
+The unit of work. Has a title, a due date, a label, a size, and optional
+notes. Every task belongs to exactly one trainer.
+
+**Notes**:
+Free text a trainer attaches to a task. Optional and inert — it earns nothing,
+affects no part of the loop, and is visible only when a task is open.
+_Avoid_: Description, details, body
 
 **Label**:
 Which area of life a task belongs to. Every task has exactly one. The set of
@@ -59,8 +64,8 @@ app starts. The unit everything in the game loop is measured in.
 
 **Bucket**:
 How open tasks are grouped for reading, by due date relative to today:
-**Overdue** (due before today), **Today**, **This week** (within seven days),
-**Later** (beyond that). Buckets replace raw dates as the thing you read.
+**Overdue** (due before today), **Today**, **Tomorrow**, **Later** (beyond
+tomorrow). Buckets replace raw dates as the thing you read.
 
 **Settlement**:
 Working out what each unsettled day did to the trainer's Pokémon. Days are

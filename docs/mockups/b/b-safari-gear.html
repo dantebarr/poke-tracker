@@ -1,0 +1,1448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup B — Safari Gear</title>
+<style>
+  @font-face { font-family: "PressStart"; src: url("../assets/press-start-2p.woff2") format("woff2"); font-display: swap; }
+  @font-face { font-family: "VT323"; src: url("../assets/vt323.woff2") format("woff2"); font-display: swap; }
+
+  :root {
+    /* pulled off the HGSS Safari Zone menu screenshot in ../assets/ */
+    --edge:   #0d3a1c;
+    --dark:   #1d6a33;
+    --mid:    #2f8f47;
+    --light:  #58ba6c;
+    --pale:   #b8e8c2;
+    --sel:    #f2f5c8;
+    --shadowtext: 2px 2px 0 rgba(0,0,0,.45);
+    --box:    #f8f8f8;
+    --boxink: #202020;
+    /* One height for Baoba's dialogue box. The field log used to mirror this with
+       a `.describe` tray of its own so the two columns squared off — that tray is
+       gone now that rows are directly operable, so the log panel just grows to
+       fill the freed height and the columns still end level. */
+    --tray:   118px;
+    --hp-hi:  #3fbf4f;
+    --hp-mid: #f0c020;
+    --hp-lo:  #e04030;
+    --alert:  #e04030;
+    --rsv:    #2f7d4f;
+    --rsh:    #146b62;
+    --adm:    #8a5a3b;
+    --rsv-done: #4a6a52;
+    --rsh-done: #3f5a56;
+    --adm-done: #6b5a4a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    height: 100dvh;
+    height: 100vh;
+    background: #0a2a14;
+    background-image:
+      radial-gradient(120% 80% at 50% 0%, #17472a, transparent 70%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 6px);
+    color: #fff;
+    font-family: "VT323", ui-monospace, monospace;
+    -webkit-font-smoothing: none;
+  }
+  img { display: block; image-rendering: pixelated; }
+  button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+  input, textarea, select { font-family: inherit; color: inherit; }
+
+  /* the classic rounded green panel: dark rim, lighter fill, white inner keyline */
+  .panel {
+    background: linear-gradient(180deg, var(--mid), var(--dark));
+    border: 4px solid var(--edge);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.28), 0 6px 0 rgba(0,0,0,.35);
+  }
+  /* the classic white textbox: black rim, white fill, thin inner rule */
+  .textbox {
+    background: var(--box);
+    color: var(--boxink);
+    border: 4px solid #101010;
+    border-radius: 9px;
+    box-shadow: inset 0 0 0 2px #c8c8c8, 0 5px 0 rgba(0,0,0,.35);
+  }
+
+  .pixel { font-family: "PressStart", monospace; letter-spacing: 0; }
+
+  /* A definite height, not a minimum — with `min-height` the grid row below sized
+     itself to the whole unscrolled task list and grew the page instead. */
+  .app {
+    height: 100dvh;
+    height: 100vh;
+    max-width: 1440px; margin: 0 auto;
+    padding: 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  /* ── status strip ──────────────────────────────────────── */
+  .strip {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 16px;
+    font-family: "PressStart", monospace; font-size: 10px;
+    text-shadow: var(--shadowtext);
+  }
+  .strip .ball { flex: none; width: 18px; height: 18px; border-radius: 50%;
+    background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
+    border: 2px solid #101010; }
+  .identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .identity .who { display: flex; align-items: center; gap: 14px; }
+  .strip nav { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .strip nav button.icobtn, .strip nav a.icobtn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    background: linear-gradient(180deg, var(--light), var(--mid));
+    border: 3px solid var(--edge); border-radius: 7px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 3px 0 rgba(0,0,0,.35);
+    color: inherit; text-decoration: none;
+  }
+  .strip nav button.icobtn:hover, .strip nav a.icobtn:hover { background: linear-gradient(180deg, #74d086, var(--light)); }
+  .strip nav button.icobtn svg, .strip nav a.icobtn svg { width: 16px; height: 16px; }
+  /* Mockup-only scaffolding for replaying the intro — kept visually distinct
+     (text label, different palette) from the three real navigation icons so it
+     never reads as app chrome. */
+  .strip nav button.replay {
+    font-family: "PressStart", monospace; font-size: 8px;
+    background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+    border: 3px solid var(--edge); border-radius: 7px;
+    padding: 7px 8px; box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+
+  /* The stage owns the height: it fills the viewport but never drops below this,
+     so the field log is always a fixed box that scrolls its own contents rather
+     than a list that grows the page. */
+  .stage { flex: 1; min-height: 640px; min-width: 0; }
+  .panes {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1.1fr .9fr;
+    grid-template-rows: minmax(0, 1fr);   /* the row must be allowed to shrink below its content */
+    gap: 12px;
+  }
+
+  /* ── left: the encounter view ──────────────────────────── */
+  .field { position: relative; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .scene {
+    position: relative; flex: 1; min-height: 0;
+    border: 4px solid var(--edge); border-radius: 12px;
+    overflow: hidden;
+    background: url("../assets/johto-safari-zone-savannah-hgss.png") center/cover no-repeat;
+    image-rendering: pixelated;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.2), 0 6px 0 rgba(0,0,0,.35);
+  }
+  .scene::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(75% 60% at 50% 45%, transparent 40%, rgba(6,26,12,.62));
+    pointer-events: none;
+  }
+  /* scanlines, because this is unapologetically a game screen */
+  .scene::before {
+    content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: repeating-linear-gradient(180deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px);
+  }
+
+  .mon { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%); z-index: 2; }
+  .mon img { width: 300px; height: auto; }
+  .mon .platform {
+    position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
+    width: 300px; height: 74px; border-radius: 50%;
+    background: radial-gradient(50% 50%, rgba(120,180,110,.5), rgba(20,50,25,.35) 62%, transparent 72%);
+    box-shadow: inset 0 -6px 0 rgba(255,255,255,.12);
+  }
+
+  /* the battle-style status box, top-left, exactly where a wild mon's would sit */
+  .statusbox {
+    position: absolute; top: 16px; left: 16px; z-index: 5;
+    min-width: 296px; padding: 10px 13px 12px;
+  }
+  .statusbox .line1 { display: flex; align-items: center; gap: 12px; }
+  .statusbox .nick { font-family: "PressStart", monospace; font-size: 12px; }
+  .statusbox .species { font-size: 17px; color: #585858; margin-top: 3px; line-height: 1; }
+
+  .statusbox .num { font-size: 19px; color: #202020; text-align: right; line-height: 1; }
+  .statusbox .num .sign { color: #585858; }
+
+  /* Happiness is a face in the top-right corner and nothing else — no number, no
+     bar, no label. The raw value never meant anything on its own: an idle day
+     costs exactly the daily target, so what matters is happiness measured in
+     TARGETS, i.e. how many quiet days are in the bank. The tiers below are cut
+     at 0, 1, 2 and 4 days of that slack, which is what the face actually says. */
+  .mood { margin-left: auto; display: flex; align-items: center; padding: 0; }
+  .mood img { width: 34px; height: 34px; }
+  /* Below one day of slack the Pokémon is genuinely at risk — the only thing in
+     this box allowed to pulse. */
+  .mood.warn img { animation: blink 1.1s steps(2) infinite; }
+
+  /* Bond is the bar, because it only ever climbs, toward a known threshold. */
+  .rows { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; margin-top: 11px; align-items: center; }
+  .rows .tag {
+    font-family: "PressStart", monospace; font-size: 7px; color: #f8f8f8;
+    background: #303030; border-radius: 3px; padding: 3px 4px; justify-self: start;
+  }
+  .track { height: 10px; background: #303030; border-radius: 5px; padding: 2px; }
+  .track i { display: block; height: 6px; border-radius: 3px; background: var(--hp-hi); }
+
+  /* the evolve prompt — the one thing on screen allowed to flash. Desktop only:
+     on mobile the same content takes over the dialogue tray instead, so it
+     never collides with the status box on a narrow screen. Hidden unless
+     `.app` carries `.evolve-ready` — most days there's nothing to show. */
+  .evolve { display: none; }
+  .app.evolve-ready .evolve {
+    display: block;
+    position: absolute; right: 16px; top: 16px; z-index: 5;
+    padding: 11px 13px; text-align: center; max-width: 220px;
+  }
+  .evolve .head { font-family: "PressStart", monospace; font-size: 9px; color: var(--alert); animation: blink 1.1s steps(2) infinite; }
+  .evolve p { margin: 7px 0 9px; font-size: 17px; line-height: 1.15; color: #202020; }
+  .evolve button {
+    font-family: "PressStart", monospace; font-size: 9px; width: 100%;
+    background: linear-gradient(180deg, var(--light), var(--mid)); color: #fff;
+    border: 3px solid var(--edge); border-radius: 7px; padding: 8px 6px;
+    text-shadow: var(--shadowtext); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  /* the dialogue box — Baoba lives down here, at a fixed tray height */
+  .dialogue {
+    position: relative; height: var(--tray); flex: none; overflow: hidden;
+    padding: 14px 18px 16px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .dialogue .lines { flex: 1; min-width: 0; align-self: stretch; overflow: auto; padding-right: 18px; }
+  .dialogue img { width: 56px; height: 56px; flex: none; }
+  .dialogue .who { font-family: "PressStart", monospace; font-size: 9px; color: #383838; }
+  .dialogue .said { font-size: 21px; line-height: 1.25; color: var(--boxink); margin-top: 6px; }
+  .dialogue .evolvesay { display: none; }
+  .dialogue .evolvesay .who { color: var(--alert); }
+  .dialogue .evolvesay button {
+    margin-top: 8px; font-family: "PressStart", monospace; font-size: 9px;
+    background: linear-gradient(180deg, var(--light), var(--mid)); color: #fff;
+    border: 3px solid var(--edge); border-radius: 7px; padding: 8px 10px;
+    text-shadow: var(--shadowtext); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  .dialogue .next {
+    position: absolute; right: 14px; bottom: 10px; color: #202020; font-size: 16px;
+    animation: bob .8s steps(2) infinite;
+  }
+  @keyframes bob { 50% { transform: translateY(3px); } }
+
+  /* ── right: the field log menu ─────────────────────────── */
+  .log { position: relative; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .logpanel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px; }
+
+  .logtop {
+    display: flex; align-items: center; gap: 10px;
+    font-family: "PressStart", monospace; font-size: 10px; text-shadow: var(--shadowtext);
+    padding: 2px 4px 11px;
+    border-bottom: 3px solid rgba(0,0,0,.28);
+  }
+  .quota { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+  .quota .track { width: 92px; height: 11px; background: rgba(0,0,0,.4); border-radius: 6px; padding: 2px; }
+  .quota .track i { display: block; height: 7px; width: 60%; border-radius: 4px; background: var(--sel); }
+
+  /* ── pinned add row (desktop) ──────────────────────────── */
+  .addrow { flex: none; padding: 10px 4px 0; }
+  .addbtn {
+    width: 100%; text-align: left; padding: 10px 10px;
+    font-family: "PressStart", monospace; font-size: 10px; color: var(--sel);
+    border: 2px dashed rgba(242,245,200,.5); border-radius: 8px;
+  }
+  .addbtn:hover { background: rgba(0,0,0,.16); }
+  .addeditor { padding: 10px 0 14px; border-bottom: 3px solid rgba(0,0,0,.28); }
+  .addeditor[hidden] { display: none; }
+  .addeditor .rowhead { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  .addeditor .circle.ghost { opacity: .35; }
+  /* the add editor's title placeholder and an empty task's notes placeholder both
+     read as gray browser default against this panel — tint them to match the
+     "+ ADD A TASK" button's pale colour instead. */
+  .addeditor input.title::placeholder,
+  .addeditor textarea.notes::placeholder,
+  .expander textarea.notes::placeholder {
+    color: rgba(242,245,200,.5);
+  }
+
+  /* `overflow-y: scroll` (not `auto`) keeps the scrollbar's width reserved at
+     all times, so expanding or completing a task — which changes the list's
+     total height and can cross the scroll threshold — never nudges the
+     column's content width side to side. */
+  .scroll { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 4px 2px 2px; }
+  .scroll::-webkit-scrollbar { width: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.35); border-radius: 4px; }
+
+  .grouphead {
+    width: 100%; font-family: "PressStart", monospace; font-size: 8px;
+    color: var(--pale); text-shadow: var(--shadowtext);
+    margin: 13px 4px 6px; display: flex; align-items: center; gap: 8px;
+    text-align: left;
+  }
+  .grouphead::after { content: ""; flex: 1; height: 2px; background: rgba(0,0,0,.25); }
+  .grouphead.late { color: #ffd0c8; }
+  .grouphead.late b { color: #fff; background: var(--alert); padding: 3px 5px; border-radius: 3px; }
+  .grouphead .count {
+    font-size: 8px; color: var(--pale); background: rgba(0,0,0,.28);
+    border-radius: 3px; padding: 2px 5px;
+  }
+  .grouphead .chev { font-size: 10px; }
+  button.grouphead { cursor: default; }
+
+  /* ── task rows ──────────────────────────────────────────── */
+  .taskrow { border-radius: 7px; }
+  .taskrow:hover { background: rgba(0,0,0,.16); }
+  .taskrow.expanded { background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 2px rgba(242,245,200,.5); }
+  .rowhead {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    padding: 8px 8px 8px 6px;
+    text-shadow: var(--shadowtext);
+  }
+  .taskrow.done .rowhead:hover { background: none; }
+
+  /* Circle to complete — a one-way door. No hover affordance that reads as a
+     toggle: it only ever darkens slightly, never fills, so it can't be mistaken
+     for a checkbox that comes back. */
+  .circle {
+    flex: none; width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--pale); background: transparent;
+  }
+  .circle:hover { background: rgba(184,232,194,.25); }
+  .circle.check {
+    border-color: rgba(255,255,255,.5); background: rgba(255,255,255,.15);
+    position: relative;
+  }
+  .circle.check::after {
+    content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; line-height: 1; color: rgba(255,255,255,.7);
+  }
+
+  .tag { font-family: "PressStart", monospace; font-size: 7px; padding: 4px 5px; border-radius: 3px; color: #fff; flex: none; }
+
+  .rowhead .title {
+    flex: 1; min-width: 0; font-size: 20px; line-height: 1.1;
+    background: none; border: none; padding: 0; width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  input.title { font-family: "VT323", monospace; }
+  input.title[readonly] { cursor: pointer; }
+  input.title:focus { outline: none; }
+  .taskrow.expanded input.title { text-decoration: underline dotted rgba(255,255,255,.4); }
+  span.title { flex: 1; min-width: 0; font-size: 20px; line-height: 1.1; }
+  .taskrow.done span.title { color: rgba(255,255,255,.5); text-decoration: line-through; }
+
+  .sz { font-family: "PressStart", monospace; font-size: 8px; color: var(--pale); min-width: 16px; text-align: center; flex: none; }
+
+  /* the expander — fades in via opacity only, per UI-CONSTRAINTS: never height.
+     Collapsed by default; only an `.expanded` row shows it. `.editbody` is the
+     same indentation, shared with the add editor so the two forms read as one
+     shape rather than two differently-aligned ones. */
+  .expander { display: none; }
+  .taskrow.expanded .expander { display: block; animation: fadein .12s ease; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .expander, .editbody { padding: 2px 8px 14px 39px; }
+  .expander textarea.notes, .editbody textarea.notes {
+    width: 100%; min-height: 52px; resize: vertical;
+    background: rgba(0,0,0,.22); color: #fff; border: 1px solid rgba(255,255,255,.25);
+    border-radius: 6px; padding: 7px 9px; font-size: 16px; line-height: 1.3;
+  }
+  .chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    font-family: "PressStart", monospace; font-size: 7px; color: var(--pale);
+    background: rgba(0,0,0,.28); border-radius: 6px; padding: 6px 8px;
+  }
+  .chip input, .chip select {
+    font-size: 16px; background: transparent; color: #fff; border: none;
+  }
+  .chip input[type="date"] { color-scheme: dark; }
+  .chip select { cursor: pointer; }
+  .chip select option { color: #202020; }
+  .delbtn {
+    font-family: "PressStart", monospace; font-size: 8px; color: #ffb9ae;
+    padding: 7px 9px; border-radius: 6px;
+  }
+  .delbtn:hover { background: rgba(224,64,48,.25); }
+
+  .editactions { display: flex; align-items: center; gap: 8px; margin-top: 10px; margin-left: auto; }
+  .ghostbtn {
+    font-family: "PressStart", monospace; font-size: 9px; color: var(--pale);
+    padding: 8px 10px; border-radius: 7px; border: 2px solid rgba(184,232,194,.4);
+  }
+  .primary {
+    font-family: "PressStart", monospace; font-size: 9px;
+    background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+    border: 3px solid var(--edge); border-radius: 7px; padding: 9px 14px;
+    box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  .primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Logged-today: a collapsible group. Always open on desktop (the media query
+     below forces it); collapsed behind a summary on mobile. */
+  .loggedrows { display: block; }
+
+  /* ── the intro ─────────────────────────────────────────── */
+  dialog { border: none; padding: 0; background: transparent; max-width: 720px; width: calc(100% - 28px); }
+  dialog::backdrop { background: rgba(4,18,9,.8); }
+  .intro { padding: 0; overflow: hidden; }
+  .intro .bar {
+    background: linear-gradient(180deg, var(--mid), var(--dark));
+    border-bottom: 4px solid #101010;
+    padding: 11px 16px; display: flex; align-items: center; gap: 12px;
+  }
+  .intro .bar img { width: 48px; height: 48px; }
+  .intro .bar .pixel { font-size: 11px; text-shadow: var(--shadowtext); color: #fff; }
+  .intro .bar small { display: block; font-family: "VT323", monospace; font-size: 18px; color: var(--pale); text-shadow: none; margin-top: 2px; }
+  .intro .say { padding: 18px 20px 8px; color: var(--boxink); font-size: 23px; line-height: 1.3; }
+  .intro .say p { margin: 0 0 14px; }
+  .intro .say b { background: #ffec9a; }
+  .intro footer { display: flex; align-items: center; gap: 12px; padding: 8px 20px 20px; }
+  .intro footer button {
+    font-family: "PressStart", monospace; font-size: 10px; color: #fff;
+    background: linear-gradient(180deg, var(--light), var(--mid));
+    border: 3px solid var(--edge); border-radius: 7px; padding: 11px 20px;
+    text-shadow: var(--shadowtext); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  .intro footer small { color: #606060; font-size: 17px; }
+
+  /* ── mobile-only chrome, hidden on desktop ─────────────── */
+  .paneswitch, .fab, .detail, .sheet, .sheet-backdrop { display: none; }
+
+  /* ══════════════════════════════════════════════════════════
+     MOBILE (~390px and up to 900px): two full-screen panes,
+     reached by explicit buttons — never a swipe, never a stack.
+     ══════════════════════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    .app { padding: 10px; gap: 8px; }
+
+    /* the identity text stacks so the icons still fit */
+    .strip { padding: 9px 11px; gap: 10px; align-items: flex-start; }
+    .identity { flex-direction: column; align-items: flex-start; gap: 3px; }
+    .identity .zone { font-size: 9px; }
+    .identity .who { gap: 8px; font-size: 7px; }
+    .strip .ball { margin-top: 2px; }
+
+    /* the two panes sit side by side at double width; translateX shows one */
+    .stage { min-height: 0; overflow: hidden; }
+    .panes {
+      display: flex; width: 200%; height: 100%; gap: 0;
+      transition: transform .22s ease;
+    }
+    .panes > section { width: 50%; flex: none; min-width: 0; }
+    .app.show-log .panes { transform: translateX(-50%); }
+
+    /* no add-task affordance belongs on the Pokémon pane — a third floating
+       button would sit on top of the scene art */
+    .paneswitch {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; bottom: 16px; z-index: 6;
+      width: 48px; height: 48px; border-radius: 50%;
+      font-size: 20px;
+      background: linear-gradient(180deg, var(--light), var(--mid));
+      border: 3px solid var(--edge); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+    }
+    /* Field's button lives inside .scene (not the dialogue tray below it), so
+       bottom-right is safe here and mirrors the desktop column order. */
+    .field .paneswitch { right: 16px; }
+    .log .paneswitch { left: 16px; }
+
+    .app.evolve-ready .evolve { display: none; }
+    .app.evolve-ready .dialogue .normalsay { display: none; }
+    .app.evolve-ready .dialogue .evolvesay { display: flex; flex-direction: column; }
+
+    .logpanel { padding: 10px; }
+    .actions { display: none; }
+
+    /* the floating add button — always within thumb reach */
+    .fab {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; right: 16px; bottom: 16px; z-index: 6;
+      width: 52px; height: 52px; border-radius: 50%; font-size: 26px;
+      background: linear-gradient(180deg, #f4f7cf, #d8dd96); color: #23330f;
+      border: 3px solid var(--edge); box-shadow: 0 3px 0 rgba(0,0,0,.35);
+    }
+
+    /* rows: no inline expander — tapping opens the full-screen detail screen */
+    .expander { display: none; }
+    .circle { width: 26px; height: 26px; }
+    .rowhead { padding: 12px 8px; }
+    .addrow, .addeditor { display: none; }
+
+    .loggedhead { cursor: pointer; }
+    .loggedrows { display: none; }
+    .loggedrows.expanded { display: block; }
+
+    /* ── task detail: a full-screen pane below the persistent strip ── */
+    .app.detail-open .stage { display: none; }
+    .detail { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .detailbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 6px; flex: none;
+    }
+    .detailbar .back {
+      display: flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px; font-size: 20px;
+      background: linear-gradient(180deg, var(--light), var(--mid));
+      border: 3px solid var(--edge); border-radius: 8px; box-shadow: 0 3px 0 rgba(0,0,0,.35);
+    }
+    .detailbar .pixel { font-size: 10px; text-shadow: var(--shadowtext); }
+    .detailbody {
+      flex: 1; min-height: 0; overflow: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .detailbody input.title {
+      width: 100%; font-size: 22px; background: rgba(0,0,0,.28); border-radius: 8px; padding: 10px 12px;
+    }
+    .detailbody textarea.notes {
+      width: 100%; min-height: 90px; resize: vertical;
+      background: rgba(0,0,0,.22); color: #fff; border: 1px solid rgba(255,255,255,.25);
+      border-radius: 8px; padding: 10px 12px; font-size: 16px; line-height: 1.35;
+    }
+    .detailbody .chips { margin-top: 0; }
+    .detailbody .chip { font-size: 8px; padding: 9px 10px; }
+    .detailbody .delbtn { margin: 6px auto 0; }
+    .detailfoot { flex: none; padding: 14px; }
+    .detailfoot .complete { width: 100%; padding: 16px; font-size: 12px; }
+
+    /* ── mobile add sheet: rises from the bottom, title focused ── */
+    .sheet-backdrop {
+      display: block; position: fixed; inset: 0; z-index: 20;
+      background: rgba(4,18,9,.75); opacity: 0; pointer-events: none;
+      transition: opacity .18s ease;
+    }
+    .sheet {
+      display: flex; flex-direction: column; gap: 10px;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+      max-height: 82dvh; overflow: auto;
+      padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+      border-radius: 16px 16px 0 0;
+      transform: translateY(100%); opacity: 0;
+      transition: transform .22s ease, opacity .22s ease;
+    }
+    body.sheet-open .sheet-backdrop { opacity: 1; pointer-events: auto; }
+    body.sheet-open .sheet { transform: translateY(0); opacity: 1; }
+    .sheet .handle { align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #c8c8c8; }
+    .sheet input.title {
+      font-size: 20px; background: rgba(0,0,0,.06); border-radius: 8px; padding: 10px 12px;
+      border: 1px solid rgba(0,0,0,.15);
+    }
+    .sheet textarea.notes {
+      width: 100%; min-height: 64px; resize: vertical; font-size: 16px; line-height: 1.3;
+      background: rgba(0,0,0,.06); border: 1px solid rgba(0,0,0,.15); border-radius: 8px; padding: 10px 12px;
+    }
+    .sheet .chips { margin-top: 0; }
+    .sheet .chip { background: rgba(0,0,0,.08); color: #404040; font-size: 8px; }
+    .sheet .chip input, .sheet .chip select { color: #202020; }
+    .sheet .chip input[type="date"] { color-scheme: light; }
+    .sheet .primary { align-self: stretch; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="app evolve-ready" id="app">
+
+  <div class="strip">
+    <span class="ball"></span>
+    <div class="identity">
+      <span class="zone">SAFARI ZONE</span>
+      <span class="who">
+        <span style="color:var(--pale)">RANGER DANTE</span>
+        <span style="color:var(--pale)" id="daycount">DAY 119</span>
+      </span>
+    </div>
+    <nav>
+      <button class="replay" onclick="intro.showModal()">▶ REPLAY INTRO</button>
+      <a class="icobtn" href="b-pokedex.html" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="dex"></svg></a>
+      <a class="icobtn" href="b-history.html" title="Logbook" aria-label="Logbook"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="book"></svg></a>
+      <a class="icobtn" href="b-settings.html" title="Settings" aria-label="Settings"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" fill="currentColor" data-icon="gear"></svg></a>
+    </nav>
+  </div>
+
+  <div class="stage">
+   <div class="panes">
+
+    <!-- ── encounter view ──────────────────────────────── -->
+    <section class="field">
+      <div class="scene">
+        <div class="mon">
+          <img src="../assets/ani-nidorina.gif" alt="Nidorina" style="width:260px">
+          <div class="platform"></div>
+        </div>
+
+        <div class="statusbox textbox">
+          <div class="line1">
+            <span class="nick">THISTLE</span>
+            <button class="mood" id="mood" title="Content — a few quiet days in the bank">
+              <img src="../assets/mood-happy.svg" alt="Content" id="mood-face">
+            </button>
+          </div>
+          <div class="species">NIDORINA &middot; No.030</div>
+
+          <div class="rows">
+            <!-- Bond climbs toward a known threshold, so it's the thing that can
+                 honestly be a bar. Past the requirement the bar stays full and the
+                 number keeps counting (bond never stops rising). -->
+            <span class="tag">BOND</span>
+            <span class="track"><i style="width:100%"></i></span>
+            <span class="num">6<span class="sign">/6</span></span>
+          </div>
+        </div>
+
+        <div class="evolve textbox">
+          <div class="head">! READY TO CHANGE</div>
+          <p>THISTLE trusts you enough to evolve.</p>
+          <button>EVOLVE</button>
+        </div>
+
+        <!-- Anchored to the scene, not the pane, so it always sits over the
+             artwork and can never overlap Baoba's dialogue tray below. -->
+        <button class="paneswitch" id="toLog" aria-label="View the field log" title="Field log">→</button>
+      </div>
+
+      <div class="dialogue textbox">
+        <img src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+        <div class="lines normalsay">
+          <div class="who">WARDEN BAOBA</div>
+          <div class="said" id="baoba-says">Two points short of the day's share, Ranger. Thistle's been
+            following you around the meadow all morning — don't waste its afternoon.</div>
+        </div>
+        <div class="lines evolvesay">
+          <div class="who">! READY TO CHANGE</div>
+          <div class="said">THISTLE trusts you enough to evolve.</div>
+          <button>EVOLVE</button>
+        </div>
+        <span class="next">▼</span>
+      </div>
+    </section>
+
+    <!-- ── field log menu ──────────────────────────────── -->
+    <section class="log">
+      <div class="logpanel panel">
+        <div class="logtop">
+          <span>FIELD LOG</span>
+          <span style="color:var(--pale)">SAT 8 AUG</span>
+          <span class="quota">
+            <span>3/5</span>
+            <span class="track"><i></i></span>
+          </span>
+        </div>
+
+        <div class="addrow" id="addRow">
+          <button class="addbtn" id="addBtn">+ ADD A TASK</button>
+          <div class="addeditor" id="addEditor" hidden>
+            <div class="rowhead">
+              <span class="circle ghost"></span>
+              <input class="title" id="addTitle" type="text" placeholder="Task title">
+            </div>
+            <div class="editbody">
+              <textarea class="notes" id="addNotes" placeholder="Notes (optional)"></textarea>
+              <div class="chips">
+                <label class="chip">DUE <input type="date" id="addDue"></label>
+                <label class="chip">LABEL
+                  <select id="addLabel">
+                    <option value="">—</option>
+                    <option value="RESERVE">RESERVE</option>
+                    <option value="RESEARCH">RESEARCH</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </label>
+                <label class="chip">SIZE
+                  <select id="addSize">
+                    <option value="">—</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                  </select>
+                </label>
+                <div class="editactions">
+                  <button class="ghostbtn" id="addCancel">CANCEL</button>
+                  <button class="primary" id="addSave" disabled>SAVE</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scroll" id="rows">
+
+          <div class="bucket" data-bucket="overdue">
+            <div class="grouphead late"><b>OVERDUE</b></div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-06">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Refill the north water troughs" readonly>
+                <span class="sz">M</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">The east herd has been walking to the river instead.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-06"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bucket" data-bucket="today">
+            <div class="grouphead">TODAY</div>
+            <div class="taskrow" data-label="RESEARCH" data-due="2026-08-08">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsh)">RSH</span>
+                <input class="title" type="text" value="Log the Nidorina sightings in Area 2" readonly>
+                <span class="sz">S</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">Thistle's own kind — the entry writes itself if you keep counting.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-08"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH" selected>RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S" selected>S</option><option value="M">M</option><option value="L">L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-08">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Repair the east fence line" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">On its own this clears the day's share.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-08"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="ADMIN" data-due="2026-08-08">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--adm)">ADM</span>
+                <input class="title" type="text" value="Answer Baoba's supply request" readonly>
+                <span class="sz">S</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">He asked twice.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-08"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN" selected>ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S" selected>S</option><option value="M">M</option><option value="L">L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bucket" data-bucket="tomorrow">
+            <div class="grouphead">TOMORROW</div>
+            <div class="taskrow" data-label="RESEARCH" data-due="2026-08-09">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsh)">RSH</span>
+                <input class="title" type="text" value="Weigh and record the Chansey clutch" readonly>
+                <span class="sz">M</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-09"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH" selected>RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bucket" data-bucket="later">
+            <div class="grouphead">LATER</div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-13">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Clear scrub from the savannah path" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-13"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="ADMIN" data-due="2026-08-22">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--adm)">ADM</span>
+                <input class="title" type="text" value="Quarterly reserve report" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-22"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN" selected>ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-08-28">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Re-stake the marshland boardwalk" readonly>
+                <span class="sz">L</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">The far end has been sinking since spring.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-28"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M">M</option><option value="L" selected>L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESEARCH" data-due="2026-08-30">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsh)">RSH</span>
+                <input class="title" type="text" value="Count the Tauros herd" readonly>
+                <span class="sz">M</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes">Baoba wants a number before the dry season.</textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-08-30"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE">RESERVE</option><option value="RESEARCH" selected>RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="taskrow" data-label="RESERVE" data-due="2026-09-02">
+              <div class="rowhead">
+                <button class="circle" aria-label="Complete task" title="Complete"></button>
+                <span class="tag" style="background:var(--rsv)">RSV</span>
+                <input class="title" type="text" value="Service the Area 3 gate" readonly>
+                <span class="sz">S</span>
+              </div>
+              <div class="expander">
+                <textarea class="notes" placeholder="Notes"></textarea>
+                <div class="chips">
+                  <label class="chip">DUE <input type="date" value="2026-09-02"></label>
+                  <label class="chip">LABEL
+                    <select><option value="RESERVE" selected>RESERVE</option><option value="RESEARCH">RESEARCH</option><option value="ADMIN">ADMIN</option></select>
+                  </label>
+                  <label class="chip">SIZE
+                    <select><option value="S" selected>S</option><option value="M">M</option><option value="L">L</option></select>
+                  </label>
+                  <div class="editactions">
+                    <button class="ghostbtn closebtn">CLOSE</button>
+                    <button class="delbtn">DELETE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bucket" data-bucket="done">
+            <button class="grouphead loggedhead" id="loggedHead">
+              <span>LOGGED TODAY</span>
+              <span class="count" id="loggedCount">2</span>
+              <span class="chev" id="loggedChev">▾</span>
+            </button>
+            <div class="loggedrows" id="loggedRows">
+              <div class="taskrow done" data-label="RESERVE">
+                <div class="rowhead">
+                  <span class="circle check" aria-hidden="true"></span>
+                  <span class="tag" style="background:var(--rsv-done)">RSV</span>
+                  <span class="title">Morning perimeter walk</span>
+                  <span class="sz">S</span>
+                </div>
+              </div>
+              <div class="taskrow done" data-label="ADMIN">
+                <div class="rowhead">
+                  <span class="circle check" aria-hidden="true"></span>
+                  <span class="tag" style="background:var(--adm-done)">ADM</span>
+                  <span class="title">Restock the Safari Balls</span>
+                  <span class="sz">M</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="paneswitch" id="toField" aria-label="View the Pokémon" title="Pokémon">←</button>
+      <button class="fab" id="fabAdd" aria-label="Add a task">+</button>
+    </section>
+
+   </div>
+  </div>
+
+  <!-- ── mobile task detail screen: a sibling of .stage inside .app, so the
+       strip above it never moves and it swaps into the same flex column ── -->
+  <div class="detail" id="detail" style="display:none">
+    <div class="detailbar">
+      <button class="back" id="detailBack" aria-label="Back to the field log">←</button>
+      <span class="pixel">TASK DETAIL</span>
+    </div>
+    <div class="detailbody">
+      <input class="title" id="detailTitle" type="text">
+      <textarea class="notes" id="detailNotes" placeholder="Notes (optional)"></textarea>
+      <div class="chips">
+        <label class="chip">DUE <input type="date" id="detailDue"></label>
+        <label class="chip">LABEL
+          <select id="detailLabel">
+            <option value="RESERVE">RESERVE</option>
+            <option value="RESEARCH">RESEARCH</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </label>
+        <label class="chip">SIZE
+          <select id="detailSize">
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+          </select>
+        </label>
+      </div>
+      <button class="delbtn" id="detailDelete">DELETE TASK</button>
+    </div>
+    <div class="detailfoot">
+      <button class="primary complete" id="detailComplete">COMPLETE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── mobile add sheet ───────────────────────────────────── -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet textbox" id="sheet">
+  <span class="handle"></span>
+  <input class="title" id="sheetTitle" type="text" placeholder="Task title">
+  <textarea class="notes" id="sheetNotes" placeholder="Notes (optional)"></textarea>
+  <div class="chips">
+    <label class="chip">DUE <input type="date" id="sheetDue"></label>
+    <label class="chip">LABEL
+      <select id="sheetLabel">
+        <option value="">—</option>
+        <option value="RESERVE">RESERVE</option>
+        <option value="RESEARCH">RESEARCH</option>
+        <option value="ADMIN">ADMIN</option>
+      </select>
+    </label>
+    <label class="chip">SIZE
+      <select id="sheetSize">
+        <option value="">—</option>
+        <option value="S">S</option>
+        <option value="M">M</option>
+        <option value="L">L</option>
+      </select>
+    </label>
+  </div>
+  <button class="primary" id="sheetSave" disabled>SAVE</button>
+</div>
+
+<dialog id="intro">
+  <div class="intro textbox">
+    <div class="bar">
+      <img src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <div class="pixel">WARDEN BAOBA<small>SAFARI ZONE &middot; RESERVE OFFICE</small></div>
+    </div>
+    <div class="say">
+      <p>SO YOU'RE THE NEW RANGER. GOOD. SIT DOWN A MOMENT.</p>
+      <p>This reserve doesn't run itself. Fences, water, records — a share of it has your
+         name on it every day, and I'll expect it done.</p>
+      <p>Here's what nobody tells you on the first day: <b>the Pokémon watch.</b> Do the work
+         and one will wander over, decide you're worth the trouble, and stay. It'll help.
+         It won't be caught, and it won't be told what to do.</p>
+      <p>Keep at it and you'll know it well enough to write its entry — and it'll trust you
+         enough to change in front of you. Let it down often enough and it wanders off.
+         It remembers you either way.</p>
+      <p>That's the job. Go on. ▼</p>
+    </div>
+    <footer>
+      <button onclick="intro.close()">UNDERSTOOD</button>
+      <small>Shown once, on a Ranger's first day.</small>
+    </footer>
+  </div>
+</dialog>
+
+
+<script>
+  // ── pixel icons ──────────────────────────────────────────
+  // Drawn on the same 16×16 grid as ../assets/mood-*.svg, at build time here
+  // rather than as literal markup, so the bitmaps stay readable in source.
+  // Original work — no licensing question, same as the mood faces.
+  const ICONS = {
+    // a handheld scanner: body, a round lens, a screen line, three lights
+    dex: [
+      '................',
+      '..111111111111..',
+      '..1..........1..',
+      '..1..........1..',
+      '..1...111....1..',
+      '..1..11111...1..',
+      '..1..11111...1..',
+      '..1..11111...1..',
+      '..1...111....1..',
+      '..1..........1..',
+      '..1.11111111.1..',
+      '..1..1..1..1.1..',
+      '..1..........1..',
+      '..111111111111..',
+      '................',
+      '................',
+    ],
+    // a closed journal: spine down the left, ruled lines for entries
+    book: [
+      '................',
+      '................',
+      '...1111111111...',
+      '...1.1......1...',
+      '...1.1......1...',
+      '...1.1.111111...',
+      '...1.1......1...',
+      '...1.1.111111...',
+      '...1.1......1...',
+      '...1.1.111111...',
+      '...1.1......1...',
+      '...1.1111111...',
+      '...1.1......1...',
+      '...1111111111...',
+      '................',
+      '................',
+    ],
+    // a gear: a ring of teeth around a hollow hub
+    gear: [
+      '................',
+      '.......1........',
+      '.......1........',
+      '...1.111111.1...',
+      '....11....11....',
+      '...11......11...',
+      '...1...11...1...',
+      '...1..1..1..1...',
+      '.111..1..1..111.',
+      '...1...11...1...',
+      '...11......11...',
+      '....11....11....',
+      '...1.111111.1...',
+      '........1.......',
+      '........1.......',
+      '................',
+    ],
+  };
+  document.querySelectorAll('svg[data-icon]').forEach(svg => {
+    const bitmap = ICONS[svg.dataset.icon];
+    const frag = document.createDocumentFragment();
+    bitmap.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        if (row[x] === '1') {
+          const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          r.setAttribute('x', x); r.setAttribute('y', y);
+          r.setAttribute('width', 1); r.setAttribute('height', 1);
+          frag.appendChild(r);
+        }
+      }
+    });
+    svg.appendChild(frag);
+  });
+
+  // ── shared task-row plumbing ─────────────────────────────
+  const LABELS = {
+    RESERVE:  { abbr: 'RSV', color: 'var(--rsv)', done: 'var(--rsv-done)' },
+    RESEARCH: { abbr: 'RSH', color: 'var(--rsh)', done: 'var(--rsh-done)' },
+    ADMIN:    { abbr: 'ADM', color: 'var(--adm)', done: 'var(--adm-done)' },
+  };
+  const TODAY = new Date(2026, 7, 8); // SAT 8 AUG, matches the strip and log header
+  const rowsEl = document.getElementById('rows');
+  const app = document.getElementById('app');
+  const loggedCount = document.getElementById('loggedCount');
+
+  function isMobile() { return window.matchMedia('(max-width: 900px)').matches; }
+
+  function bucketFor(dueStr) {
+    const due = new Date(dueStr + 'T00:00:00');
+    const days = Math.round((due - TODAY) / 86400000);
+    if (days < 0) return 'overdue';
+    if (days === 0) return 'today';
+    if (days === 1) return 'tomorrow';
+    return 'later';
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  function labelOptions(selected) {
+    return Object.keys(LABELS).map(k =>
+      `<option value="${k}"${k === selected ? ' selected' : ''}>${k}</option>`).join('');
+  }
+  function sizeOptions(selected) {
+    return ['S', 'M', 'L'].map(s =>
+      `<option value="${s}"${s === selected ? ' selected' : ''}>${s}</option>`).join('');
+  }
+
+  function collapseAllRows() {
+    document.querySelectorAll('.taskrow.expanded').forEach(r => r.classList.remove('expanded'));
+    document.querySelectorAll('.taskrow input.title').forEach(i => { if (!i.closest('.done')) i.readOnly = true; });
+    closeAddEditor();
+  }
+
+  // A bucket with nothing left in it (everything completed, deleted, or moved
+  // out) shouldn't leave its header sitting over an empty gap. "Logged today"
+  // is a running log, not a to-do bucket, so it's exempt.
+  function refreshBucket(bucket) {
+    if (!bucket || bucket.dataset.bucket === 'done') return;
+    const empty = bucket.querySelectorAll(':scope > .taskrow').length === 0;
+    bucket.style.display = empty ? 'none' : '';
+  }
+
+  function expandRow(row) {
+    if (row.classList.contains('done') || row.classList.contains('expanded')) return;
+    collapseAllRows();
+    row.classList.add('expanded');
+    const titleInput = row.querySelector('.rowhead input.title');
+    titleInput.readOnly = false;
+  }
+
+  function completeTask(row) {
+    const originBucket = row.closest('.bucket');
+    const meta = LABELS[row.dataset.label];
+    row.classList.remove('expanded');
+    row.classList.add('done');
+    const head = row.querySelector('.rowhead');
+    row.querySelector('.expander')?.remove();
+    const circleEl = head.querySelector('.circle');
+    const check = document.createElement('span');
+    check.className = 'circle check';
+    check.setAttribute('aria-hidden', 'true');
+    circleEl.replaceWith(check);
+    const titleInput = head.querySelector('input.title');
+    const span = document.createElement('span');
+    span.className = 'title';
+    span.textContent = titleInput.value;
+    titleInput.replaceWith(span);
+    head.querySelector('.tag').style.background = meta.done;
+
+    const loggedRows = document.getElementById('loggedRows');
+    loggedRows.insertBefore(row, loggedRows.firstChild);
+    loggedCount.textContent = loggedRows.querySelectorAll('.taskrow').length;
+    refreshBucket(originBucket);
+  }
+
+  function insertSorted(bucketName, row) {
+    const bucket = document.querySelector(`.bucket[data-bucket="${bucketName}"]`);
+    const siblings = [...bucket.querySelectorAll(':scope > .taskrow')];
+    const due = row.dataset.due;
+    const next = siblings.find(s => s.dataset.due > due);
+    bucket.insertBefore(row, next || null);
+    refreshBucket(bucket);
+  }
+
+  function buildTaskRow({ title, notes, due, label, size }) {
+    const meta = LABELS[label];
+    const row = document.createElement('div');
+    row.className = 'taskrow';
+    row.dataset.label = label;
+    row.dataset.due = due;
+    row.innerHTML = `
+      <div class="rowhead">
+        <button class="circle" aria-label="Complete task" title="Complete"></button>
+        <span class="tag" style="background:${meta.color}">${meta.abbr}</span>
+        <input class="title" type="text" value="${escapeHtml(title)}" readonly>
+        <span class="sz">${size}</span>
+      </div>
+      <div class="expander">
+        <textarea class="notes" placeholder="Notes">${escapeHtml(notes)}</textarea>
+        <div class="chips">
+          <label class="chip">DUE <input type="date" value="${due}"></label>
+          <label class="chip">LABEL <select>${labelOptions(label)}</select></label>
+          <label class="chip">SIZE <select>${sizeOptions(size)}</select></label>
+          <div class="editactions">
+            <button class="ghostbtn closebtn">CLOSE</button>
+            <button class="delbtn">DELETE</button>
+          </div>
+        </div>
+      </div>`;
+    return row;
+  }
+
+  // ── row interaction (event delegation, so newly-added rows just work) ──
+  rowsEl.addEventListener('click', e => {
+    const delBtn = e.target.closest('.delbtn');
+    if (delBtn) {
+      const row = delBtn.closest('.taskrow');
+      const bucket = row.closest('.bucket');
+      row.remove();
+      refreshBucket(bucket);
+      return;
+    }
+
+    const closeBtn = e.target.closest('.closebtn');
+    if (closeBtn) { collapseAllRows(); return; }
+
+    const circle = e.target.closest('.circle:not(.check)');
+    const row = e.target.closest('.taskrow');
+    if (!row) return;
+
+    if (circle) { completeTask(row); return; }
+    if (row.classList.contains('done')) return;
+
+    if (isMobile()) { openDetail(row); return; }
+    expandRow(row);
+  });
+
+  document.getElementById('loggedHead').addEventListener('click', () => {
+    if (!isMobile()) return;
+    const rows = document.getElementById('loggedRows');
+    const expanded = rows.classList.toggle('expanded');
+    document.getElementById('loggedChev').textContent = expanded ? '▴' : '▾';
+  });
+
+  // ── desktop: pinned add row ──────────────────────────────
+  const addBtn = document.getElementById('addBtn');
+  const addEditor = document.getElementById('addEditor');
+  const addTitle = document.getElementById('addTitle');
+  const addDue = document.getElementById('addDue');
+  const addLabel = document.getElementById('addLabel');
+  const addSize = document.getElementById('addSize');
+  const addSave = document.getElementById('addSave');
+
+  function closeAddEditor() {
+    addEditor.hidden = true;
+    addBtn.hidden = false;
+    addTitle.value = ''; addDue.value = ''; addLabel.value = ''; addSize.value = '';
+    document.getElementById('addNotes').value = '';
+    addSave.disabled = true;
+  }
+  function checkAddValid() { addSave.disabled = !(addTitle.value.trim() && addDue.value && addLabel.value && addSize.value); }
+  [addTitle, addDue, addLabel, addSize].forEach(el => el.addEventListener('input', checkAddValid));
+
+  addBtn.addEventListener('click', () => {
+    collapseAllRows();
+    addBtn.hidden = true;
+    addEditor.hidden = false;
+    addTitle.focus();
+  });
+  document.getElementById('addCancel').addEventListener('click', closeAddEditor);
+  addSave.addEventListener('click', () => {
+    const title = addTitle.value.trim(), due = addDue.value, label = addLabel.value, size = addSize.value;
+    if (!title || !due || !label || !size) return;
+    const row = buildTaskRow({ title, notes: document.getElementById('addNotes').value, due, label, size });
+    insertSorted(bucketFor(due), row);
+    closeAddEditor();
+  });
+
+  // ── mobile: pane switching ───────────────────────────────
+  document.getElementById('toLog').addEventListener('click', () => app.classList.add('show-log'));
+  document.getElementById('toField').addEventListener('click', () => app.classList.remove('show-log'));
+
+  // ── mobile: task detail screen ───────────────────────────
+  const detail = document.getElementById('detail');
+  let detailRow = null;
+
+  const detailTitle = document.getElementById('detailTitle');
+  const detailNotes = document.getElementById('detailNotes');
+  const detailDue = document.getElementById('detailDue');
+  const detailLabel = document.getElementById('detailLabel');
+  const detailSize = document.getElementById('detailSize');
+
+  function openDetail(row) {
+    detailRow = row;
+    detailTitle.value = row.querySelector('.rowhead input.title').value;
+    detailNotes.value = row.querySelector('.expander textarea.notes').value;
+    detailDue.value = row.dataset.due;
+    detailLabel.value = row.dataset.label;
+    detailSize.value = row.querySelector('.sz').textContent;
+    detail.style.display = 'flex';
+    app.classList.add('detail-open');
+    history.pushState({ detail: true }, '');
+  }
+  function closeDetail() {
+    detail.style.display = 'none';
+    app.classList.remove('detail-open');
+    detailRow = null;
+  }
+  // Edits save live, the same "no Save button" model as the desktop expander —
+  // so back/complete/delete never have to reconcile a separate draft state.
+  function saveDetailToRow() {
+    if (!detailRow) return;
+    const meta = LABELS[detailLabel.value];
+    detailRow.dataset.label = detailLabel.value;
+    detailRow.dataset.due = detailDue.value;
+    const head = detailRow.querySelector('.rowhead');
+    head.querySelector('input.title').value = detailTitle.value;
+    const tag = head.querySelector('.tag');
+    tag.textContent = meta.abbr;
+    tag.style.background = meta.color;
+    head.querySelector('.sz').textContent = detailSize.value;
+    const expander = detailRow.querySelector('.expander');
+    expander.querySelector('textarea.notes').value = detailNotes.value;
+    expander.querySelector('input[type="date"]').value = detailDue.value;
+    const [labelSelect, sizeSelect] = expander.querySelectorAll('select');
+    labelSelect.value = detailLabel.value;
+    sizeSelect.value = detailSize.value;
+  }
+  [detailTitle, detailNotes, detailDue, detailLabel, detailSize].forEach(el =>
+    el.addEventListener('input', saveDetailToRow));
+
+  window.addEventListener('popstate', closeDetail);
+  document.getElementById('detailBack').addEventListener('click', () => history.back());
+  document.getElementById('detailDelete').addEventListener('click', () => {
+    const bucket = detailRow?.closest('.bucket');
+    detailRow?.remove();
+    refreshBucket(bucket);
+    detailRow = null;
+    history.back();
+  });
+  document.getElementById('detailComplete').addEventListener('click', () => {
+    if (detailRow) completeTask(detailRow);
+    history.back();
+  });
+
+  // ── mobile: add sheet ─────────────────────────────────────
+  const sheetTitle = document.getElementById('sheetTitle');
+  const sheetDue = document.getElementById('sheetDue');
+  const sheetLabel = document.getElementById('sheetLabel');
+  const sheetSize = document.getElementById('sheetSize');
+  const sheetSave = document.getElementById('sheetSave');
+
+  function openSheet() {
+    document.body.classList.add('sheet-open');
+    setTimeout(() => sheetTitle.focus(), 50);
+  }
+  function closeSheet() {
+    document.body.classList.remove('sheet-open');
+    sheetTitle.value = ''; sheetDue.value = ''; sheetLabel.value = ''; sheetSize.value = '';
+    document.getElementById('sheetNotes').value = '';
+    sheetSave.disabled = true;
+  }
+  function checkSheetValid() { sheetSave.disabled = !(sheetTitle.value.trim() && sheetDue.value && sheetLabel.value && sheetSize.value); }
+  [sheetTitle, sheetDue, sheetLabel, sheetSize].forEach(el => el.addEventListener('input', checkSheetValid));
+
+  document.getElementById('fabAdd').addEventListener('click', openSheet);
+  document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
+  sheetSave.addEventListener('click', () => {
+    const title = sheetTitle.value.trim(), due = sheetDue.value, label = sheetLabel.value, size = sheetSize.value;
+    if (!title || !due || !label || !size) return;
+    const row = buildTaskRow({ title, notes: document.getElementById('sheetNotes').value, due, label, size });
+    insertSorted(bucketFor(due), row);
+    closeSheet();
+  });
+
+  // The cursor drives the description box on desktop, the way a Gen-2 menu
+  // does. Mockup-only: click the face to page through the happiness tiers so
+  // all four are visible without faking four screenshots. Happiness below
+  // zero means the Pokémon leaves, so `sad` is a state you only ever catch in
+  // passing. Happiness measured in daily targets — "quiet days in the bank".
+  // The number itself is never shown; the face is the whole readout, and
+  // Baoba's box carries the warning when the bank runs low. `slack` is
+  // happiness / dailyTarget.
+  const MOODS = [
+    { face: 'sad',     slack: '< 0 days',  label: 'Gone',
+      say: "That's Thistle away, then. Back into the reserve, bond and all — it'll remember you. Meet your share and something else will come by." },
+    { face: 'worried', slack: '0–1 days',  label: 'Restless',
+      say: "Thistle's restless, Ranger. One quiet day and it's away. Don't let today be the quiet one." },
+    { face: 'neutral', slack: '1–2 days',  label: 'Settled',
+      say: "Thistle's settled enough. You've a day of slack in hand and not a scrap more." },
+    { face: 'happy',   slack: '2–4 days',  label: 'Content',
+      say: "Two points short of the day's share, Ranger. Thistle's been following you around the meadow all morning — don't waste its afternoon." },
+    { face: 'beaming', slack: '4+ days',   label: 'Thriving',
+      say: "Thistle's thriving. You've banked enough good days to weather a bad week — which is not an invitation to have one." },
+  ];
+  let mi = 3;
+  const mood = document.getElementById('mood');
+  mood.addEventListener('click', () => {
+    mi = (mi + 1) % MOODS.length;
+    const m = MOODS[mi];
+    const face = document.getElementById('mood-face');
+    face.src = `../assets/mood-${m.face}.svg`;
+    face.alt = m.label;
+    mood.title = `${m.label} — ${m.slack} of slack in the bank`;
+    mood.classList.toggle('warn', mi <= 1);
+    document.getElementById('baoba-says').textContent = m.say;
+  });
+</script>
+</body>
+</html>

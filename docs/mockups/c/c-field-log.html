@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup C — Field Log</title>
+<style>
+  @font-face { font-family: "Fraunces"; src: url("../assets/fraunces.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+  @font-face { font-family: "Inter"; src: url("../assets/inter.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+
+  :root {
+    --bg:      #fbf7f0;
+    --surface: #ffffff;
+    --ink:     #241d16;
+    --ink-2:   #7b6e5f;
+    --ink-3:   #a99c8b;
+    --hair:    #ece2d3;
+    --moss:    #2f6b4a;
+    --moss-sk: #e6f0e8;
+    --amber:   #b0742f;
+    --rose:    #b03a34;
+    --lift:    0 1px 2px rgba(44,32,18,.05), 0 8px 28px -12px rgba(44,32,18,.16);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  img { display: block; }
+  .px { image-rendering: pixelated; }
+  button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+  .serif { font-family: "Fraunces", Georgia, serif; font-weight: 600; }
+  .over { font-size: 10.5px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+
+  .app { min-height: 100%; display: flex; flex-direction: column; }
+
+  /* ── header ────────────────────────────────────────────── */
+  header.top {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 28px; height: 62px;
+    border-bottom: 1px solid var(--hair);
+    background: rgba(251,247,240,.9);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .mark { display: flex; align-items: baseline; gap: 9px; }
+  .mark .n { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; letter-spacing: -.01em; }
+  .mark .r { font-size: 13px; color: var(--ink-2); }
+
+  .baoba-chip {
+    display: flex; align-items: center; gap: 10px;
+    margin-left: 18px; padding: 5px 14px 5px 5px;
+    border: 1px solid var(--hair); border-radius: 999px; background: var(--surface);
+    font-size: 13px; color: var(--ink-2); max-width: 480px;
+  }
+  .baoba-chip:hover { border-color: #ddd0bb; }
+  .baoba-chip img { width: 30px; height: 30px; border-radius: 50%; background: var(--moss-sk); padding: 1px; }
+  .baoba-chip b { color: var(--ink); font-weight: 600; }
+
+  header.top nav { margin-left: auto; display: flex; gap: 2px; }
+  header.top nav a {
+    font-size: 13.5px; color: var(--ink-2); text-decoration: none;
+    padding: 7px 12px; border-radius: 8px;
+  }
+  header.top nav a:hover { background: #f1e9dc; color: var(--ink); }
+
+  .split { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+  @media (max-width: 940px) { .split { grid-template-columns: 1fr; } }
+
+  /* ── left: the companion ───────────────────────────────── */
+  .companion {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 22px 36px 30px; gap: 4px;
+    border-right: 1px solid var(--hair);
+    min-height: 0; overflow: auto;
+  }
+  .companion .place {          /* a whisper of the reserve, not a diorama */
+    position: absolute; inset: 0;
+    background: url("../assets/johto-safari-zone-meadow-hgss.png") center/cover no-repeat;
+    filter: blur(30px) saturate(.85);
+    opacity: .5;
+  }
+  .companion .wash {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(44% 38% at 50% 36%, rgba(255,255,255,.9), transparent 72%),
+      linear-gradient(180deg, rgba(251,247,240,.6), rgba(251,247,240,.9));
+  }
+  .companion > * { position: relative; }
+
+  .halo { position: relative; width: 296px; height: 296px; margin-bottom: 16px; display: grid; place-items: center; flex: none; }
+  .halo svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .halo .track { fill: none; stroke: rgba(47,107,74,.14); stroke-width: 3; }
+  .halo .fill  { fill: none; stroke: var(--moss); stroke-width: 3; stroke-linecap: round; }
+  .halo .glow {
+    position: absolute; width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(50% 50%, rgba(47,107,74,.16), transparent 68%);
+  }
+  .halo img { width: 244px; height: auto; position: relative; }
+  .halo .ground {
+    position: absolute; bottom: 54px; width: 180px; height: 17px; border-radius: 50%;
+    background: radial-gradient(50% 50%, rgba(44,32,18,.16), transparent 70%);
+  }
+  .halo .ringlabel {
+    position: absolute; bottom: -13px; left: 50%; transform: translateX(-50%);
+    white-space: nowrap;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 999px;
+    padding: 4px 12px; font-size: 11.5px; color: var(--moss); font-weight: 600;
+    box-shadow: var(--lift);
+  }
+
+  .nameblock { text-align: center; margin-top: 6px; }
+  .nameblock h2 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 36px; letter-spacing: -.015em; line-height: 1.05; }
+  .nameblock h2 button { color: var(--ink-3); font-size: 15px; margin-left: 8px; vertical-align: middle; }
+  .nameblock h2 button:hover { color: var(--moss); }
+  .nameblock .sub { margin-top: 7px; color: var(--ink-2); font-size: 13.5px; }
+  .nameblock .sub .dot { color: var(--ink-3); margin: 0 7px; }
+
+  .readouts {
+    display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
+    width: min(520px, 100%); margin-top: 16px; flex: none;
+    border: 1px solid var(--hair); border-radius: 14px; background: var(--surface);
+    box-shadow: var(--lift); overflow: hidden;
+  }
+  .readouts > div { padding: 15px 16px 16px; }
+  .readouts > div + div { border-left: 1px solid var(--hair); }
+  .readouts dt { margin: 0 0 7px; }
+  .readouts dd { margin: 0; display: flex; align-items: baseline; gap: 5px; }
+  .readouts dd .v { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 27px; line-height: 1; }
+  .readouts dd .of { font-size: 13px; color: var(--ink-3); }
+  .readouts .note { margin-top: 8px; font-size: 11.5px; color: var(--ink-2); }
+  .readouts .note.good { color: var(--moss); }
+  .readouts .meter { margin-top: 9px; height: 4px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+  .readouts .meter i { display: block; height: 100%; background: var(--moss); border-radius: 2px; }
+  .readouts .meter i.amber { background: var(--amber); }
+
+  .evolve {
+    width: min(520px, 100%); margin-top: 14px; flex: none;
+    border: 1px solid #dfe9e1; border-radius: 14px;
+    background: linear-gradient(180deg, #f4faf5, var(--surface));
+    padding: 16px 18px 17px;
+  }
+  .evolve .h { display: flex; align-items: center; gap: 9px; }
+  .evolve .h .badge { width: 7px; height: 7px; border-radius: 50%; background: var(--moss); box-shadow: 0 0 0 4px rgba(47,107,74,.13); }
+  .evolve .h strong { font-size: 14px; }
+  .evolve p { margin: 8px 0 13px; font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+  .choices { display: flex; gap: 8px; flex-wrap: wrap; }
+  .choices button {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--hair); background: var(--surface); border-radius: 10px;
+    padding: 7px 13px 7px 8px; font-size: 13.5px; font-weight: 500;
+    box-shadow: 0 1px 2px rgba(44,32,18,.05);
+  }
+  .choices button img { width: 30px; height: 30px; }
+  .choices button:hover { border-color: var(--moss); color: var(--moss); }
+  .choices button[aria-pressed="true"] { border-color: var(--moss); background: var(--moss-sk); color: var(--moss); }
+  .evolve .go { margin-top: 12px; background: var(--moss); color: #fff; border-radius: 10px; padding: 9px 18px; font-size: 13.5px; font-weight: 600; }
+  .evolve .go:hover { background: #27593e; }
+
+  /* ── right: the work ───────────────────────────────────── */
+  .work { display: flex; flex-direction: column; min-height: 0; }
+  .work-head {
+    display: flex; align-items: flex-end; gap: 16px;
+    padding: 26px 32px 18px;
+    border-bottom: 1px solid var(--hair);
+    position: sticky; top: 62px; background: var(--bg); z-index: 5;
+  }
+  .work-head h2 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 24px; letter-spacing: -.01em; }
+  .work-head .day { font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+  .today { margin-left: auto; text-align: right; }
+  .today .n { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 26px; line-height: 1; }
+  .today .n span { color: var(--ink-3); font-size: 15px; }
+  .today .meter { width: 132px; height: 5px; border-radius: 3px; background: var(--hair); margin-top: 8px; overflow: hidden; }
+  .today .meter i { display: block; height: 100%; width: 60%; background: var(--amber); border-radius: 3px; }
+  .today .cap { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+
+  .compose {
+    margin: 18px 32px 4px;
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--hair); border-radius: 12px; background: var(--surface);
+    padding: 11px 14px; box-shadow: var(--lift); color: var(--ink-3);
+  }
+  .compose .ring { width: 20px; height: 20px; border: 1.5px dashed var(--ink-3); border-radius: 50%; flex: none; }
+  .compose .ph { flex: 1; font-size: 14.5px; }
+  .compose .opt { font-size: 12px; border: 1px solid var(--hair); border-radius: 999px; padding: 4px 10px; color: var(--ink-2); }
+
+  .list { flex: 1; min-height: 0; overflow: auto; padding: 8px 32px 40px; }
+
+  .group { margin-top: 22px; }
+  .group > h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+  .group > h3 .count { font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 12px; color: var(--ink-3); }
+  .group > h3::after { content: ""; flex: 1; height: 1px; background: var(--hair); }
+  .group.late > h3 .over { color: var(--rose); }
+
+  ul.items { list-style: none; margin: 6px 0 0; padding: 0; }
+  .item {
+    display: flex; align-items: flex-start; gap: 13px;
+    padding: 12px 12px 13px; margin: 0 -12px;
+    border-radius: 12px;
+    border-bottom: 1px solid var(--hair);
+  }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: var(--surface); box-shadow: var(--lift); border-bottom-color: transparent; }
+  .check {
+    flex: none; width: 21px; height: 21px; margin-top: 2px;
+    border: 1.5px solid #cfc2b0; border-radius: 50%;
+    transition: all .12s ease;
+  }
+  .item:hover .check { border-color: var(--moss); box-shadow: inset 0 0 0 4px rgba(47,107,74,.16); }
+  .item .body { flex: 1; min-width: 0; }
+  .item .t { font-size: 15px; line-height: 1.4; }
+  .item .m { display: flex; align-items: center; gap: 12px; margin-top: 5px; font-size: 12px; color: var(--ink-2); }
+  .lab { display: inline-flex; align-items: center; gap: 6px; }
+  .lab i { width: 7px; height: 7px; border-radius: 2px; }
+  .sz { display: inline-flex; align-items: center; gap: 3px; }
+  .sz i { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-3); }
+  .sz i.off { opacity: .3; }
+  .when { margin-left: auto; font-size: 12px; color: var(--ink-2); flex: none; }
+  .when.late { color: var(--rose); font-weight: 600; }
+
+  details.done { margin-top: 28px; border-top: 1px solid var(--hair); padding-top: 16px; }
+  details.done summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details.done summary::-webkit-details-marker { display: none; }
+  details.done summary::after { content: ""; flex: 1; height: 1px; background: var(--hair); }
+  details.done .item .t { color: var(--ink-3); text-decoration: line-through; }
+  details.done .check { background: var(--moss); border-color: var(--moss); position: relative; }
+  details.done .check::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 12px; }
+  details.done .item:hover .check { box-shadow: none; }
+
+  /* ── intro ─────────────────────────────────────────────── */
+  dialog { border: none; padding: 0; background: transparent; max-width: 560px; width: calc(100% - 32px); }
+  dialog::backdrop { background: rgba(36,29,22,.42); backdrop-filter: blur(3px); }
+  .sheet {
+    background: var(--surface); border-radius: 18px;
+    box-shadow: 0 30px 70px -20px rgba(36,29,22,.5);
+    overflow: hidden;
+  }
+  .sheet .hero {
+    display: flex; align-items: center; gap: 15px;
+    padding: 24px 26px 20px;
+    background: linear-gradient(180deg, #f2f8f3, var(--surface));
+    border-bottom: 1px solid var(--hair);
+  }
+  .sheet .hero img { width: 62px; height: 62px; }
+  .sheet .hero h2 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 21px; }
+  .sheet .hero .over { margin-top: 5px; }
+  .sheet .say { padding: 22px 26px 6px; font-size: 15px; line-height: 1.62; color: #3a3025; }
+  .sheet .say p { margin: 0 0 14px; }
+  .sheet .say b { font-weight: 600; color: var(--ink); }
+  .sheet footer { display: flex; align-items: center; gap: 14px; padding: 10px 26px 24px; }
+  .sheet footer button { background: var(--moss); color: #fff; border-radius: 10px; padding: 11px 22px; font-size: 14px; font-weight: 600; }
+  .sheet footer button:hover { background: #27593e; }
+  .sheet footer small { color: var(--ink-3); font-size: 12.5px; }
+
+  .replay {
+    position: fixed; right: 18px; bottom: 18px; z-index: 20;
+    background: var(--ink); color: #fbf7f0; border-radius: 999px;
+    padding: 9px 16px; font-size: 12.5px; box-shadow: var(--lift);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="mark"><span class="n">Safari Zone</span><span class="r">Ranger Dante</span></div>
+
+    <button class="baoba-chip" onclick="intro.showModal()">
+      <img class="px" src="../../../public/npc/baoba-hgss.png" alt="">
+      <span><b>Baoba</b> — two points short of the day's share.</span>
+    </button>
+
+    <nav>
+      <a href="#">Pokédex</a><a href="#">Logbook</a><a href="#">Settings</a><a href="#">Sign out</a>
+    </nav>
+  </header>
+
+  <div class="split">
+
+    <!-- ── companion ───────────────────────────────────── -->
+    <section class="companion">
+      <div class="place"></div>
+      <div class="wash"></div>
+
+      <div class="halo">
+        <svg viewBox="0 0 296 296" aria-hidden="true">
+          <circle class="track" cx="148" cy="148" r="142"></circle>
+          <!-- bond 7 of 7 → the ring closes -->
+          <circle class="fill" cx="148" cy="148" r="142" stroke-dasharray="892" stroke-dashoffset="0"></circle>
+        </svg>
+        <div class="glow"></div>
+        <img class="px" src="../assets/ani-eevee.gif" alt="Eevee">
+        <div class="ground"></div>
+        <div class="ringlabel">Bond 7 of 7 — fully known</div>
+      </div>
+
+      <div class="nameblock">
+        <h2>Pebble<button title="Rename">✎</button></h2>
+        <div class="sub">Eevee <span class="dot">·</span> No. 133 <span class="dot">·</span> 41 days with you</div>
+      </div>
+
+      <dl class="readouts">
+        <div>
+          <dt class="over">Happiness</dt>
+          <dd><span class="v">9</span></dd>
+          <div class="meter"><i style="width:75%"></i></div>
+          <div class="note good">Comfortable. Nowhere near leaving.</div>
+        </div>
+        <div>
+          <dt class="over">Bond</dt>
+          <dd><span class="v">7</span><span class="of">/ 7</span></dd>
+          <div class="meter"><i style="width:100%"></i></div>
+          <div class="note good">Pokédex entry unlocked.</div>
+        </div>
+        <div>
+          <dt class="over">Today</dt>
+          <dd><span class="v">3</span><span class="of">/ 5 pts</span></dd>
+          <div class="meter"><i class="amber" style="width:60%"></i></div>
+          <div class="note">2 more to keep the day good.</div>
+        </div>
+      </dl>
+
+      <div class="evolve">
+        <div class="h"><span class="badge"></span><strong>Pebble trusts you enough to change</strong></div>
+        <p>Yours to offer, not to make. No hurry — Pebble can stay an Eevee as long as you both like.</p>
+        <div class="choices">
+          <button aria-pressed="true"><img class="px" src="../../../public/species/134.png" alt="">Vaporeon</button>
+          <button><img class="px" src="../../../public/species/135.png" alt="">Jolteon</button>
+          <button><img class="px" src="../../../public/species/136.png" alt="">Flareon</button>
+        </div>
+        <button class="go">Evolve Pebble</button>
+      </div>
+    </section>
+
+    <!-- ── work ────────────────────────────────────────── -->
+    <section class="work">
+      <div class="work-head">
+        <div>
+          <h2>Today's share</h2>
+          <div class="day">Friday, 7 August · day 118 on the reserve</div>
+        </div>
+        <div class="today">
+          <div class="n">3<span> / 5 pts</span></div>
+          <div class="meter"><i></i></div>
+          <div class="cap">7 open · 2 logged</div>
+        </div>
+      </div>
+
+      <div class="compose">
+        <span class="ring"></span>
+        <span class="ph">Add work…</span>
+        <span class="opt">Reserve</span>
+        <span class="opt">Medium</span>
+        <span class="opt">Today</span>
+      </div>
+
+      <div class="list">
+
+        <div class="group late">
+          <h3><span class="over">Overdue</span><span class="count">1</span></h3>
+          <ul class="items">
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Refill the north water troughs</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#2f6b4a"></i>Reserve</span>
+                  <span class="sz"><i></i><i></i><i class="off"></i> Medium</span>
+                  <span class="when late">2 days late</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="group">
+          <h3><span class="over">Today</span><span class="count">3</span></h3>
+          <ul class="items">
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Log the Nidorina sightings in Area 2</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#146b62"></i>Research</span>
+                  <span class="sz"><i></i><i class="off"></i><i class="off"></i> Small</span>
+                  <span class="when">Today</span>
+                </div>
+              </div>
+            </li>
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Repair the east fence line</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#2f6b4a"></i>Reserve</span>
+                  <span class="sz"><i></i><i></i><i></i> Large</span>
+                  <span class="when">Today</span>
+                </div>
+              </div>
+            </li>
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Answer Baoba's supply request</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#8a5a3b"></i>Admin</span>
+                  <span class="sz"><i></i><i class="off"></i><i class="off"></i> Small</span>
+                  <span class="when">Today</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="group">
+          <h3><span class="over">This week</span><span class="count">2</span></h3>
+          <ul class="items">
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Weigh and record the Chansey clutch</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#146b62"></i>Research</span>
+                  <span class="sz"><i></i><i></i><i class="off"></i> Medium</span>
+                  <span class="when">Sun 9 Aug</span>
+                </div>
+              </div>
+            </li>
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Clear scrub from the savannah path</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#2f6b4a"></i>Reserve</span>
+                  <span class="sz"><i></i><i></i><i></i> Large</span>
+                  <span class="when">Wed 12 Aug</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="group">
+          <h3><span class="over">Later</span><span class="count">1</span></h3>
+          <ul class="items">
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Quarterly reserve report</div>
+                <div class="m">
+                  <span class="lab"><i style="background:#8a5a3b"></i>Admin</span>
+                  <span class="sz"><i></i><i></i><i></i> Large</span>
+                  <span class="when">22 Aug</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <details class="done">
+          <summary><span class="over">Logged today</span><span class="count" style="font-size:12px;color:var(--ink-3)">2 · 3 pts</span></summary>
+          <ul class="items" style="margin-top:10px">
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Morning perimeter walk</div>
+                <div class="m"><span class="lab"><i style="background:#2f6b4a"></i>Reserve</span><span class="sz"><i></i><i class="off"></i><i class="off"></i> Small</span><span class="when">with Pebble</span></div>
+              </div>
+            </li>
+            <li class="item">
+              <span class="check"></span>
+              <div class="body">
+                <div class="t">Restock the Safari Balls</div>
+                <div class="m"><span class="lab"><i style="background:#8a5a3b"></i>Admin</span><span class="sz"><i></i><i></i><i class="off"></i> Medium</span><span class="when">with Pebble</span></div>
+              </div>
+            </li>
+          </ul>
+        </details>
+
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="intro">
+  <div class="sheet">
+    <div class="hero">
+      <img class="px" src="../../../public/npc/baoba-hgss.png" alt="Warden Baoba">
+      <div>
+        <h2>Warden Baoba</h2>
+        <div class="over">Safari Zone · Reserve office</div>
+      </div>
+    </div>
+    <div class="say">
+      <p>So you're the new Ranger. Good. Sit down a moment.</p>
+      <p>This reserve doesn't run itself. Fences, water, records — there's a share of it with
+         your name on it every day, and I'll expect it done.</p>
+      <p>Here's what nobody tells you on the first day: <b>the Pokémon watch.</b> Do the work
+         and one will wander over, decide you're worth the trouble, and stay. It'll help.
+         It won't be caught, and it won't be told what to do.</p>
+      <p>Keep at it and you'll know it well enough to write its entry properly — and it'll
+         trust you enough to change in front of you. Let it down often enough and it wanders
+         off again. It remembers you either way.</p>
+      <p>That's the whole job. Go on.</p>
+    </div>
+    <footer>
+      <button onclick="intro.close()">Understood</button>
+      <small>Shown once, on a Ranger's first day.</small>
+    </footer>
+  </div>
+</dialog>
+
+<button class="replay" onclick="intro.showModal()">▶ First-run intro</button>
+
+<script>
+  document.querySelectorAll('.choices button').forEach((b, _, all) => {
+    b.addEventListener('click', () => {
+      all.forEach(o => o.removeAttribute('aria-pressed'));
+      b.setAttribute('aria-pressed', 'true');
+      document.querySelector('.evolve .go').textContent = 'Evolve Pebble into ' + b.textContent.trim();
+    });
+  });
+</script>
+</body>
+</html>
