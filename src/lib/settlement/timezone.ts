@@ -1,32 +1,13 @@
 /**
- * Turning real time into the calendar days settlement reasons about, in the
- * trainer's own timezone read from their device — never the server's. Pure:
- * no database, no clock of its own.
+ * Turning a trainer's settlement watermark and their tasks into the days
+ * settlement owes and what each of those days earned. Pure: no database, no
+ * clock of its own. The day-key primitives themselves — deriving a
+ * `'YYYY-MM-DD'` key for an instant in a given zone, and shifting a key by a
+ * number of days — live in `@/lib/day/day`, since **Day** is a concept
+ * shared with task display, not something settlement owns.
  */
 
-/** A calendar day as `'YYYY-MM-DD'`, in `timeZone` rather than the server's own. */
-export function dayKeyInTimeZone(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-/** `dayKey` shifted by `count` days (negative moves earlier). */
-export function addDays(dayKey: string, count: number): string {
-  const [year, month, day] = dayKey.split("-").map(Number);
-  const next = new Date(Date.UTC(year, month - 1, day + count));
-  return dayKeyOfUtcDate(next);
-}
-
-function dayKeyOfUtcDate(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+import { addDays, dayKeyInTimeZone } from "@/lib/day/day";
 
 /**
  * Every day settlement owes, oldest first: the day after `lastSettledDay`, up

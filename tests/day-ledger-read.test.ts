@@ -28,7 +28,7 @@ vi.mock("next/cache", () => ({
 
 const { ensureTrainer } = await import("@/app/actions/trainer");
 const { settleOnEntry } = await import("@/app/actions/settlement");
-const { dayKeyInTimeZone } = await import("@/lib/settlement/timezone");
+const { dayKeyInTimeZone } = await import("@/lib/day/day");
 const { listDayLedger } = await import("@/lib/settlement/ledger");
 
 const ALLOW_LISTED = "misty@cerulean.example";
@@ -56,7 +56,14 @@ async function signedInTrainer(email: string) {
   const account = await createAccount(email);
   created.push(account.id);
   await signIn(jar, account);
-  return ensureTrainer();
+  const trainer = await ensureTrainer();
+  await setTimeZone(trainer.id, TIME_ZONE);
+  return trainer;
+}
+
+async function setTimeZone(trainerId: string, timeZone: string) {
+  const { error } = await adminClient().from("trainer").update({ time_zone: timeZone }).eq("id", trainerId);
+  if (error) throw new Error(`Forcing time_zone failed: ${JSON.stringify(error)}`);
 }
 
 function dayKey(daysAgo: number): string {
@@ -103,7 +110,7 @@ describe("reading the day ledger", () => {
       completedAt: noonOf(dayKey(2)),
     });
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const ledger = await listDayLedger(clientForJar(jar), trainer.id);
     expect(ledger.map((entry) => entry.day)).toEqual([dayKey(1), dayKey(2)]);
@@ -122,7 +129,7 @@ describe("reading the day ledger", () => {
       completedAt: noonOf(dayKey(1)),
     });
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const [entry] = await listDayLedger(clientForJar(jar), trainer.id);
     expect(entry).toMatchObject({ day: dayKey(1), pointsEarned: 3, target: 3, delta: 0, event: "bond" });
@@ -141,7 +148,7 @@ describe("reading the day ledger", () => {
     await setLastSettledDay(trainer.id, dayKey(2));
     // No completions: happiness starts at 0, so the first missed day sends it negative.
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const ledger = await listDayLedger(clientForJar(jar), trainer.id);
     const leftEntry = ledger.find((entry) => entry.event === "left");
@@ -172,7 +179,7 @@ describe("reading the day ledger", () => {
       completedAt: noonOf(dayKey(2)),
     });
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const ledger = await listDayLedger(clientForJar(jar), trainer.id);
     const arrivalEntry = ledger.find((entry) => entry.day === dayKey(1));
@@ -183,7 +190,7 @@ describe("reading the day ledger", () => {
   it("hides one trainer's ledger from another", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     await setLastSettledDay(trainer.id, dayKey(2));
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
     expect(await listDayLedger(clientForJar(jar), trainer.id)).not.toEqual([]);
 
     const rivalJar = createCookieJar();

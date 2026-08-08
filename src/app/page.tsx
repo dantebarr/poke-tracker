@@ -6,6 +6,7 @@ import { createTaskAction } from "@/app/actions/task";
 import { CreateTaskPanel } from "@/app/create-task-panel";
 import { PokemonPanel } from "@/app/pokemon-panel";
 import { TaskPanel } from "@/app/task-panel";
+import { dayKeyInTimeZone } from "@/lib/day/day";
 import { currentLabels } from "@/lib/label/session";
 import { currentActivePokemon, currentEvolutionOptions } from "@/lib/pokemon/session";
 import { todayPoints } from "@/lib/task/dates";
@@ -34,7 +35,8 @@ export default async function HomePage() {
     currentLabels(trainer.id),
   ]);
 
-  const points = todayPoints(tasks);
+  const todayKey = dayKeyInTimeZone(new Date(), trainer.timeZone);
+  const points = todayPoints(tasks, trainer.timeZone, todayKey);
 
   // Only queried once the bond requirement is actually met — the same gate
   // the evolve button itself is under, so a trainer who isn't there yet
@@ -90,7 +92,7 @@ export default async function HomePage() {
 
         <div className="flex flex-col gap-6">
           <CreateTaskPanel labels={labels} onCreate={submitCreateTask} />
-          <TaskPanel tasks={tasks} labels={labels} />
+          <TaskPanel tasks={tasks} labels={labels} timeZone={trainer.timeZone} todayKey={todayKey} />
         </div>
       </div>
     </main>

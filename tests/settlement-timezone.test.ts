@@ -1,18 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { dayKeyInTimeZone, daysToSettle, groupTasksByDay } from "@/lib/settlement/timezone";
+import { daysToSettle, groupTasksByDay } from "@/lib/settlement/timezone";
 
-/** Pure logic, no database — see task-dates.test.ts for the same note. */
-
-describe("dayKeyInTimeZone", () => {
-  it("uses the given timezone rather than the server's own", () => {
-    // 02:30 UTC on the 2nd is still 18:30 on the 1st in Los Angeles.
-    const date = new Date("2024-03-02T02:30:00.000Z");
-
-    expect(dayKeyInTimeZone(date, "UTC")).toBe("2024-03-02");
-    expect(dayKeyInTimeZone(date, "America/Los_Angeles")).toBe("2024-03-01");
-  });
-});
+/**
+ * Pure logic, no database — see task-dates.test.ts for the same note. The
+ * day-key primitives these build on (`dayKeyInTimeZone`, `addDays`) are
+ * tested directly in day.test.ts.
+ */
 
 describe("daysToSettle", () => {
   it("is empty when already caught up to today", () => {

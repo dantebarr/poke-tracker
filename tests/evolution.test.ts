@@ -34,7 +34,7 @@ const { ensureTrainer } = await import("@/app/actions/trainer");
 const { evolvePokemon } = await import("@/app/actions/pokemon");
 const { settleOnEntry } = await import("@/app/actions/settlement");
 const { currentActivePokemon, currentEvolutionOptions } = await import("@/lib/pokemon/session");
-const { dayKeyInTimeZone } = await import("@/lib/settlement/timezone");
+const { dayKeyInTimeZone } = await import("@/lib/day/day");
 const { NotSignedInError } = await import("@/lib/trainer/errors");
 
 const ALLOW_LISTED = "ash@pallet.example";
@@ -67,7 +67,14 @@ async function signedInTrainer(email: string) {
   const account = await createAccount(email);
   created.push(account.id);
   await signIn(jar, account);
-  return ensureTrainer();
+  const trainer = await ensureTrainer();
+  await setTimeZone(trainer.id, TIME_ZONE);
+  return trainer;
+}
+
+async function setTimeZone(trainerId: string, timeZone: string) {
+  const { error } = await adminClient().from("trainer").update({ time_zone: timeZone }).eq("id", trainerId);
+  if (error) throw new Error(`Forcing time_zone failed: ${JSON.stringify(error)}`);
 }
 
 function dayKey(daysAgo: number): string {
@@ -91,7 +98,7 @@ async function settleGoodDays(trainerId: string, labelId: string, count: number)
   for (let daysAgo = count; daysAgo >= 1; daysAgo--) {
     await insertTask({ trainerId, labelId, size: "large", status: "done", completedAt: noonOf(dayKey(daysAgo)) });
   }
-  await settleOnEntry(TIME_ZONE);
+  await settleOnEntry();
 }
 
 /** Arranges an instance directly into a given species and bond level — the starting point evolution tests need, not itself under test. */

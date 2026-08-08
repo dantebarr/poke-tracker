@@ -59,8 +59,9 @@ over — do not reintroduce it.
 ### Time
 
 **Day**:
-A calendar day in the trainer's own time zone, read from their device when the
-app starts. The unit everything in the game loop is measured in.
+A calendar day in the trainer's own time zone — a setting the trainer sets in
+Settings, never detected from their device (see ADR-0004). The unit everything
+in the game loop is measured in.
 
 **Bucket**:
 How open tasks are grouped for reading, by due date relative to today:

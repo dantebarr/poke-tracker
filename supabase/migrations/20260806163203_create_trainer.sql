@@ -2,9 +2,10 @@
 -- needs. Later slices add the pool, labels, tasks, and the day ledger.
 --
 -- Columns are added by the migration of the slice that first uses them, so
--- happiness, the last settled day, the trainer's timezone, and the active
--- instance all arrive with settlement and the pool rather than sitting here
--- unread and unenforced.
+-- happiness, the last settled day, and the active instance all arrive with
+-- settlement and the pool rather than sitting here unread and unenforced.
+-- The trainer's time zone follows later still, in its own migration (#17) —
+-- settlement shipped first and got this wrong before it existed.
 
 create table public.trainer (
   id uuid primary key references auth.users (id) on delete cascade,

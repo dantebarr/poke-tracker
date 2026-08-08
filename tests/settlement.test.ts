@@ -39,7 +39,7 @@ vi.mock("next/cache", () => ({
 
 const { ensureTrainer } = await import("@/app/actions/trainer");
 const { settleOnEntry } = await import("@/app/actions/settlement");
-const { dayKeyInTimeZone } = await import("@/lib/settlement/timezone");
+const { dayKeyInTimeZone } = await import("@/lib/day/day");
 const { NotSignedInError } = await import("@/lib/trainer/errors");
 
 const ALLOW_LISTED = "ash@pallet.example";
@@ -63,11 +63,26 @@ afterEach(async () => {
   jarRef.current = null;
 });
 
+/**
+ * Every existing test in this file settles forced-past days rather than the
+ * creation day itself, so it needs a stable, known zone to compute expected
+ * day keys against — UTC, matching `TIME_ZONE`. Real trainers keep whatever
+ * zone they set in Settings (America/Vancouver by default); the seeding
+ * trigger's own zone handling is covered without this override in
+ * trainer-time-zone.test.ts.
+ */
 async function signedInTrainer(email: string) {
   const account = await createAccount(email);
   created.push(account.id);
   await signIn(jar, account);
-  return ensureTrainer();
+  const trainer = await ensureTrainer();
+  await setTimeZone(trainer.id, TIME_ZONE);
+  return trainer;
+}
+
+async function setTimeZone(trainerId: string, timeZone: string) {
+  const { error } = await adminClient().from("trainer").update({ time_zone: timeZone }).eq("id", trainerId);
+  if (error) throw new Error(`Forcing time_zone failed: ${JSON.stringify(error)}`);
 }
 
 function dayKey(daysAgo: number): string {
@@ -135,16 +150,19 @@ async function bondLevelOf(instanceId: string): Promise<number> {
 
 describe("triggering settlement", () => {
   it("refuses without a session", async () => {
-    await expect(settleOnEntry(TIME_ZONE)).rejects.toBeInstanceOf(NotSignedInError);
+    await expect(settleOnEntry()).rejects.toBeInstanceOf(NotSignedInError);
   });
 
-  it("does nothing, and writes nothing, for a trainer already caught up", async () => {
+  it("does nothing, and writes nothing, for a freshly-created trainer — their creation day isn't owed yet", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
+    // Seeded to the day before creation (#17); today is the creation day
+    // itself, which never settles while still in progress, so there is
+    // nothing to do yet and the watermark stays put.
     expect(await ledgerFor(trainer.id)).toEqual([]);
-    expect((await trainerRow(trainer.id)).last_settled_day).toBe(dayKey(0));
+    expect((await trainerRow(trainer.id)).last_settled_day).toBe(dayKey(1));
   });
 });
 
@@ -165,7 +183,7 @@ describe("settling missed days", () => {
       completedAt: noonOf(dayKey(2)),
     });
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const ledger = await ledgerFor(trainer.id);
     expect(ledger.map((row) => row.day)).toEqual([dayKey(2), dayKey(1)]);
@@ -177,11 +195,11 @@ describe("settling missed days", () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     await setLastSettledDay(trainer.id, dayKey(2));
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
     const afterFirst = await ledgerFor(trainer.id);
     const stateAfterFirst = await trainerRow(trainer.id);
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
     const afterSecond = await ledgerFor(trainer.id);
     const stateAfterSecond = await trainerRow(trainer.id);
 
@@ -193,7 +211,7 @@ describe("settling missed days", () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     await setLastSettledDay(trainer.id, dayKey(2));
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
     const settledDay = dayKey(1);
     expect((await ledgerFor(trainer.id)).map((row) => row.day)).toContain(settledDay);
 
@@ -202,7 +220,7 @@ describe("settling missed days", () => {
     // prove the database's own uniqueness constraint, not just the app's
     // own care, is what makes a settled day permanent.
     await setLastSettledDay(trainer.id, dayKey(2));
-    await expect(settleOnEntry(TIME_ZONE)).rejects.toThrow();
+    await expect(settleOnEntry()).rejects.toThrow();
 
     const ledger = await ledgerFor(trainer.id);
     expect(ledger.filter((row) => row.day === settledDay)).toHaveLength(1);
@@ -228,7 +246,7 @@ describe("what a day does to the active Pokémon", () => {
       completedAt: noonOf(dayKey(1)),
     });
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const after = await trainerRow(trainer.id);
     expect(after.active_instance_id).toBe(activeId);
@@ -254,7 +272,7 @@ describe("what a day does to the active Pokémon", () => {
     // No completions: a full absence. Default target 3 and happiness
     // starting at 0 sends it negative on the very first missed day.
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const after = await trainerRow(trainer.id);
     expect(after.active_instance_id).toBeNull();
@@ -293,7 +311,7 @@ describe("what a day does to the active Pokémon", () => {
       completedAt: noonOf(dayKey(2)),
     });
 
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
 
     const after = await trainerRow(trainer.id);
     expect(after.active_instance_id).not.toBeNull();
@@ -318,7 +336,7 @@ describe("row-level security", () => {
   it("hides one trainer's ledger from another", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     await setLastSettledDay(trainer.id, dayKey(2));
-    await settleOnEntry(TIME_ZONE);
+    await settleOnEntry();
     expect(await ledgerFor(trainer.id)).not.toEqual([]);
 
     const rivalJar = createCookieJar();

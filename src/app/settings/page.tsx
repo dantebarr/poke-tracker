@@ -8,7 +8,7 @@ import {
   recolorLabelAction,
   renameLabelAction,
 } from "@/app/actions/label";
-import { updateDailyTargetAction } from "@/app/actions/trainer";
+import { updateDailyTargetAction, updateTimeZoneAction } from "@/app/actions/trainer";
 import { currentLabels } from "@/lib/label/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
@@ -32,6 +32,10 @@ export default async function SettingsPage() {
   async function submitDailyTarget(formData: FormData) {
     "use server";
     await updateDailyTargetAction(formData);
+  }
+  async function submitTimeZone(formData: FormData) {
+    "use server";
+    await updateTimeZoneAction(formData);
   }
   async function submitMoveLabel(formData: FormData) {
     "use server";
@@ -82,6 +86,35 @@ export default async function SettingsPage() {
             className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90"
           >
             Update target
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-6">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted">Time zone</h2>
+        <p className="mt-1 text-sm text-muted">
+          What the app uses to work out your day — for settlement, today&apos;s points, and task
+          buckets. Never detected from your device; set it here.
+        </p>
+        <form action={submitTimeZone} className="mt-4 flex items-center gap-3">
+          <select
+            name="timeZone"
+            defaultValue={trainer.timeZone}
+            required
+            aria-label="Time zone"
+            className="w-full max-w-sm rounded-md border border-border px-3 py-2 text-sm transition-colors focus:border-accent"
+          >
+            {Intl.supportedValuesOf("timeZone").map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90"
+          >
+            Update time zone
           </button>
         </form>
       </section>
