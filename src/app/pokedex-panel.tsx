@@ -25,7 +25,7 @@ function PokedexTile({ entry }: { entry: PokedexEntry }) {
   const speciesName = entry.unlocked ? capitalise(entry.name) : null;
 
   return (
-    <li className="flex flex-col items-center gap-1 rounded-lg border border-black/10 p-3 text-center">
+    <li className="flex flex-col items-center gap-1 rounded-lg border border-border bg-surface p-3 text-center">
       <Image
         src={entry.spritePath}
         alt={speciesName ?? `Undiscovered species #${number}`}
@@ -33,7 +33,7 @@ function PokedexTile({ entry }: { entry: PokedexEntry }) {
         height={64}
         className={entry.unlocked ? undefined : "brightness-0 opacity-30"}
       />
-      <span className="font-mono text-[0.65rem] text-black/60">#{number}</span>
+      <span className="font-mono text-[0.65rem] text-muted">#{number}</span>
       <span className="text-xs font-medium">{speciesName ?? "???"}</span>
     </li>
   );

@@ -51,6 +51,9 @@ export const EFFORT_POINTS: Record<TaskSize, number> = {
   large: 3,
 };
 
+/** Every size, in display order — the source both task forms build their pickers from. */
+export const TASK_SIZES = Object.keys(EFFORT_POINTS) as TaskSize[];
+
 export function effortPoints(size: TaskSize): number {
   return EFFORT_POINTS[size];
 }

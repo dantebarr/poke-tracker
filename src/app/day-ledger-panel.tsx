@@ -36,16 +36,16 @@ function describeEvent(entry: DayLedgerEntry): string | null {
 export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
   if (entries.length === 0) {
     return (
-      <section className="rounded-lg border border-black/10 p-6 text-center">
+      <section className="rounded-lg border border-border bg-surface p-6 text-center">
         <p className="text-lg font-medium">No settled days yet</p>
-        <p className="mt-1 text-sm text-black/60">Come back after your first day passes.</p>
+        <p className="mt-1 text-sm text-muted">Come back after your first day passes.</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-lg border border-black/10 p-6">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-black/60">History</h2>
+    <section className="rounded-lg border border-border bg-surface p-6">
+      <h2 className="text-sm font-medium uppercase tracking-wide text-muted">History</h2>
       <ul className="mt-4 flex flex-col gap-2">
         {entries.map((entry) => (
           <DayLedgerRow key={entry.day} entry={entry} />
@@ -60,12 +60,12 @@ function DayLedgerRow({ entry }: { entry: DayLedgerEntry }) {
   const description = describeEvent(entry);
 
   return (
-    <li className="rounded-lg border border-black/10 p-3">
+    <li className="rounded-lg border border-border p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[0.7rem] uppercase tracking-wide text-black/60">
+        <span className="font-mono text-[0.7rem] uppercase tracking-wide text-muted">
           {formatDay(entry.day)}
         </span>
-        <span className={`shrink-0 text-sm font-medium ${metTarget ? "text-emerald-700" : "text-red-700"}`}>
+        <span className={`shrink-0 text-sm font-medium ${metTarget ? "text-success" : "text-urgent"}`}>
           {entry.pointsEarned} / {entry.target}
         </span>
       </div>

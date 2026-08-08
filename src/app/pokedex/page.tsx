@@ -24,7 +24,7 @@ export default async function PokedexPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-8">
       <header className="flex items-baseline justify-between gap-4">
         <h1 className="text-2xl font-semibold">Pokédex</h1>
-        <Link className="text-sm underline underline-offset-4" href="/">
+        <Link className="text-sm text-accent underline underline-offset-4" href="/">
           Back to home
         </Link>
       </header>
