@@ -21,14 +21,14 @@
 import { dayKeyInTimeZone, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
 import { effortPoints, type TaskSize } from "@/lib/task/task";
 
-export type Bucket = "overdue" | "today" | "this_week" | "later";
+export type Bucket = "overdue" | "today" | "tomorrow" | "later";
 
-export const BUCKET_ORDER: Bucket[] = ["overdue", "today", "this_week", "later"];
+export const BUCKET_ORDER: Bucket[] = ["overdue", "today", "tomorrow", "later"];
 
 export const BUCKET_LABELS: Record<Bucket, string> = {
   overdue: "Overdue",
   today: "Today",
-  this_week: "This week",
+  tomorrow: "Tomorrow",
   later: "Later",
 };
 
@@ -48,7 +48,7 @@ export function getBucket(dueDate: string, todayKey: string): Bucket {
   const diff = daysBetweenKeys(todayKey, dueDate);
   if (diff < 0) return "overdue";
   if (diff === 0) return "today";
-  if (diff <= 7) return "this_week";
+  if (diff === 1) return "tomorrow";
   return "later";
 }
 
