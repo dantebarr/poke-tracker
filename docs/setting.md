@@ -103,23 +103,25 @@ about the entry.
 
 ## Open vocabulary questions
 
-The setting introduces terms that overlap with the existing ubiquitous language,
-and this doc does **not** unilaterally resolve them. Worth putting through
-`/domain-modeling` before any of it reaches `CONTEXT.md` or the code:
+The setting introduces terms that overlap with the existing ubiquitous language.
+Three of the four below are now resolved, by ADR and by `CONTEXT.md` itself; the
+fourth is still open.
 
-- **Ranger vs. Trainer.** `CONTEXT.md` defines **Trainer** as the person using
-  the app, with _Avoid: user, account, player_. The fiction calls that person a
-  Ranger, and "trainer" is arguably wrong for a setting with no battling in it.
-  Renaming touches the database, so it is a real decision, not a copy tweak.
-- **Warden.** Currently nothing in the domain. If Baoba only ever appears in the
-  intro modal he may not need to be a domain term at all.
-- **The reserve / Safari Zone.** Is this just backdrop, or does it eventually
-  become a place with **Areas** that Pokémon are drawn from? The pool is fixed
-  for life (`CONTEXT.md`), so any area concept would be presentation over an
-  existing draw, not a new mechanic.
-- **"Wandering by."** The pool draw already has the right shape for this. The
-  fiction adds nothing mechanical — it renames a random selection into a thing
-  with a reason.
+- **Ranger vs. Trainer — resolved.** Ranger is the interface's register for
+  Trainer, not a second concept and not a rename: the database, the code, and
+  `CONTEXT.md` keep saying Trainer. See ADR-0005 and `CONTEXT.md`'s Trainer and
+  Ranger entries.
+- **Warden — resolved.** Baoba is a domain term after all: he's the only surface
+  that states why a bad day costs something, and appears in the dialogue tray on
+  every visit to the field screen, not only the intro modal. See `CONTEXT.md`'s
+  Warden Baoba entry.
+- **The reserve / Safari Zone — resolved.** It became **Zone**: presentation
+  over the existing draw, exactly as anticipated here — one of six areas a
+  Species (not an Instance) stands in on the encounter view, the pool draw
+  itself untouched. See `CONTEXT.md`'s Zone entry.
+- **"Wandering by."** Still open. The pool draw already has the right shape for
+  this. The fiction adds nothing mechanical — it renames a random selection into
+  a thing with a reason.
 
 ## Where this shows up
 
