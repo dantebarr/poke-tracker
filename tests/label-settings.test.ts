@@ -25,6 +25,7 @@ vi.mock("next/cache", () => ({
 
 const { ensureTrainer, updateDailyTargetAction } = await import("@/app/actions/trainer");
 const {
+  abbreviateLabelAction,
   createLabelAction,
   deleteLabelAction,
   moveLabelAction,
@@ -94,6 +95,10 @@ describe("signing up", () => {
     }
     // Distinct colours.
     expect(new Set(labels.map((label) => label.color)).size).toBe(4);
+    // No Ranger sees a blank tag, even on a fresh sign-up.
+    for (const label of labels) {
+      expect(label.abbreviation.length).toBeGreaterThan(0);
+    }
   });
 
   it("does not reseed labels on a second sign-in", async () => {
@@ -115,10 +120,13 @@ describe("creating a label", () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const client = clientForJar(jar);
 
-    const label = await createLabelAction(formData({ name: "Errands", color: "#111111" }));
+    const label = await createLabelAction(
+      formData({ name: "Errands", color: "#111111", abbreviation: "ERR" }),
+    );
 
     expect(label.name).toBe("Errands");
     expect(label.color).toBe("#111111");
+    expect(label.abbreviation).toBe("ERR");
     expect(label.position).toBe(4);
     expect(await listLabels(client, trainer.id)).toHaveLength(5);
   });
@@ -127,12 +135,27 @@ describe("creating a label", () => {
     await signedInTrainer(ALLOW_LISTED);
 
     try {
-      await createLabelAction(formData({ name: "personal", color: "#222222" }));
+      await createLabelAction(formData({ name: "personal", color: "#222222", abbreviation: "PER" }));
       expect.unreachable("duplicate name should have been refused");
     } catch (thrown) {
       expect(thrown).toBeInstanceOf(DatabaseError);
       // 23505 is unique_violation.
       expect((thrown as InstanceType<typeof DatabaseError>).code).toBe("23505");
+    }
+  });
+
+  it("refuses an abbreviation longer than the database allows", async () => {
+    await signedInTrainer(ALLOW_LISTED);
+
+    try {
+      await createLabelAction(
+        formData({ name: "Errands", color: "#111111", abbreviation: "TOOLONG" }),
+      );
+      expect.unreachable("an over-length abbreviation should have been refused");
+    } catch (thrown) {
+      expect(thrown).toBeInstanceOf(DatabaseError);
+      // 23514 is check_violation.
+      expect((thrown as InstanceType<typeof DatabaseError>).code).toBe("23514");
     }
   });
 });
@@ -159,6 +182,51 @@ describe("recolouring a label", () => {
     const recoloured = await recolorLabelAction(formData({ id: personal.id, color: "#abcdef" }));
 
     expect(recoloured.color).toBe("#abcdef");
+  });
+});
+
+describe("abbreviating a label", () => {
+  it("stores the tag a Ranger authored, distinguishing labels naive truncation would collide", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const client = clientForJar(jar);
+    await createLabelAction(formData({ name: "Reserve", color: "#111111", abbreviation: "RES" }));
+    const [, , , , reserve] = await listLabels(client, trainer.id);
+
+    const abbreviated = await abbreviateLabelAction(
+      formData({ id: reserve.id, abbreviation: "RSV" }),
+    );
+
+    expect(abbreviated.abbreviation).toBe("RSV");
+  });
+
+  it("refuses a blank abbreviation", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const client = clientForJar(jar);
+    const [personal] = await listLabels(client, trainer.id);
+
+    try {
+      await abbreviateLabelAction(formData({ id: personal.id, abbreviation: "" }));
+      expect.unreachable("a blank abbreviation should have been refused");
+    } catch (thrown) {
+      // Required-field validation happens before the database is touched.
+      expect(thrown).toBeInstanceOf(Error);
+      expect(thrown).not.toBeInstanceOf(DatabaseError);
+    }
+  });
+
+  it("refuses a whitespace-only abbreviation, which would render as a blank tag", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const client = clientForJar(jar);
+    const [personal] = await listLabels(client, trainer.id);
+
+    try {
+      await abbreviateLabelAction(formData({ id: personal.id, abbreviation: " " }));
+      expect.unreachable("a whitespace-only abbreviation should have been refused");
+    } catch (thrown) {
+      expect(thrown).toBeInstanceOf(DatabaseError);
+      // 23514 is check_violation.
+      expect((thrown as InstanceType<typeof DatabaseError>).code).toBe("23514");
+    }
   });
 });
 
@@ -229,6 +297,49 @@ describe("row-level security, not the application, isolates one trainer's labels
       ).rejects.toThrow(),
     );
 
+    expect((await labelsFor(ash.id)).find((label) => label.id === ashLabel.id)?.name).toBe(
+      "Personal",
+    );
+  });
+});
+
+describe("column-level grants on label", () => {
+  it("let a trainer's own JWT update abbreviation directly, the column it was granted", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await listLabels(clientForJar(jar), trainer.id);
+
+    const { data, error } = await clientForJar(jar)
+      .from("label")
+      .update({ abbreviation: "PRS" })
+      .eq("id", personal.id)
+      .select("abbreviation");
+
+    expect(error).toBeNull();
+    expect(data).toEqual([{ abbreviation: "PRS" }]);
+  });
+
+  it("refuses a trainer's own JWT reassigning a label to another trainer, the same pattern the rest of the schema follows", async () => {
+    const ash = await signedInTrainer(ALLOW_LISTED);
+    const [ashLabel] = await labelsFor(ash.id);
+
+    const rivalJar = createCookieJar();
+    const rivalAccount = await createAccount(ALSO_ALLOW_LISTED);
+    created.push(rivalAccount.id);
+    await signIn(rivalJar, rivalAccount);
+    const rival = await as(rivalJar, ensureTrainer);
+
+    // `trainer_id` carries no column-level grant at all (only name, color,
+    // position and abbreviation do), so this is refused before row-level
+    // security is even consulted — see tests/species-seed.test.ts for the
+    // same "column-level grant or none" pattern on a different table.
+    const { error } = await clientForJar(jar)
+      .from("label")
+      .update({ trainer_id: rival.id })
+      .eq("id", ashLabel.id);
+
+    expect(error).not.toBeNull();
+    expect(error?.code).toBe("42501");
+    // Refused before anything was touched, not merely undone.
     expect((await labelsFor(ash.id)).find((label) => label.id === ashLabel.id)?.name).toBe(
       "Personal",
     );

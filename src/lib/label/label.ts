@@ -12,6 +12,7 @@ export type Label = {
   name: string;
   color: string;
   position: number;
+  abbreviation: string;
 };
 
 type LabelRow = {
@@ -20,9 +21,10 @@ type LabelRow = {
   name: string;
   color: string;
   position: number;
+  abbreviation: string;
 };
 
-const COLUMNS = "id, trainer_id, name, color, position";
+const COLUMNS = "id, trainer_id, name, color, position, abbreviation";
 
 function toLabel(row: LabelRow): Label {
   return {
@@ -31,6 +33,7 @@ function toLabel(row: LabelRow): Label {
     name: row.name,
     color: row.color,
     position: row.position,
+    abbreviation: row.abbreviation,
   };
 }
 
@@ -56,7 +59,7 @@ export async function listLabels(client: SupabaseClient, trainerId: string): Pro
 export async function createLabel(
   client: SupabaseClient,
   trainerId: string,
-  input: { name: string; color: string },
+  input: { name: string; color: string; abbreviation: string },
 ): Promise<Label> {
   const existing = await listLabels(client, trainerId);
   const position = existing.reduce((max, label) => Math.max(max, label.position), -1) + 1;
@@ -65,7 +68,13 @@ export async function createLabel(
     "Creating label",
     await client
       .from("label")
-      .insert({ trainer_id: trainerId, name: input.name, color: input.color, position })
+      .insert({
+        trainer_id: trainerId,
+        name: input.name,
+        color: input.color,
+        abbreviation: input.abbreviation,
+        position,
+      })
       .select(COLUMNS)
       .single<LabelRow>(),
   );
@@ -94,6 +103,28 @@ export async function recolorLabel(
   const row = unwrap(
     "Recolouring label",
     await client.from("label").update({ color }).eq("id", id).select(COLUMNS).single<LabelRow>(),
+  );
+  return toLabel(row);
+}
+
+/**
+ * Sets a label's abbreviation, the short tag Task rows show in its place.
+ * Authored by the trainer, not derived from the name — the database only
+ * constrains its length (ADR-0001).
+ */
+export async function abbreviateLabel(
+  client: SupabaseClient,
+  id: string,
+  abbreviation: string,
+): Promise<Label> {
+  const row = unwrap(
+    "Abbreviating label",
+    await client
+      .from("label")
+      .update({ abbreviation })
+      .eq("id", id)
+      .select(COLUMNS)
+      .single<LabelRow>(),
   );
   return toLabel(row);
 }

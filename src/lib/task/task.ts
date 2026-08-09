@@ -14,7 +14,7 @@ export type Task = {
   size: TaskSize;
   notes: string | null;
   completedAt: string | null;
-  label: { id: string; name: string; color: string };
+  label: { id: string; name: string; color: string; abbreviation: string };
 };
 
 type TaskRow = {
@@ -25,11 +25,11 @@ type TaskRow = {
   size: TaskSize;
   notes: string | null;
   completed_at: string | null;
-  label: { id: string; name: string; color: string };
+  label: { id: string; name: string; color: string; abbreviation: string };
 };
 
 const COLUMNS =
-  "id, task, due_date, status, size, notes, completed_at, label:label_id(id, name, color)";
+  "id, task, due_date, status, size, notes, completed_at, label:label_id(id, name, color, abbreviation)";
 
 function toTask(row: TaskRow): Task {
   return {
