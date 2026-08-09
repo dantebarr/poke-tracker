@@ -32,12 +32,12 @@ describe("getBucket", () => {
     expect(getBucket("2024-01-15", TODAY)).toBe("today");
   });
 
-  it("buckets a date up to 7 days out as this week", () => {
-    expect(getBucket("2024-01-22", TODAY)).toBe("this_week");
+  it("buckets tomorrow's date as tomorrow", () => {
+    expect(getBucket("2024-01-16", TODAY)).toBe("tomorrow");
   });
 
-  it("buckets a date more than 7 days out as later", () => {
-    expect(getBucket("2024-01-23", TODAY)).toBe("later");
+  it("buckets a date two days out as later", () => {
+    expect(getBucket("2024-01-17", TODAY)).toBe("later");
   });
 });
 
@@ -46,7 +46,7 @@ describe("bucketOpenTasks", () => {
     const tasks = [
       { id: "a", dueDate: "2024-01-10" },
       { id: "b", dueDate: "2024-01-15" },
-      { id: "c", dueDate: "2024-01-18" },
+      { id: "c", dueDate: "2024-01-16" },
       { id: "d", dueDate: "2024-02-01" },
       { id: "e", dueDate: "2024-01-09" },
     ];
@@ -55,12 +55,12 @@ describe("bucketOpenTasks", () => {
 
     expect(buckets.overdue.map((t) => t.id)).toEqual(["a", "e"]);
     expect(buckets.today.map((t) => t.id)).toEqual(["b"]);
-    expect(buckets.this_week.map((t) => t.id)).toEqual(["c"]);
+    expect(buckets.tomorrow.map((t) => t.id)).toEqual(["c"]);
     expect(buckets.later.map((t) => t.id)).toEqual(["d"]);
   });
 
   it("covers every bucket in BUCKET_ORDER and BUCKET_LABELS", () => {
-    expect(BUCKET_ORDER).toEqual(["overdue", "today", "this_week", "later"]);
+    expect(BUCKET_ORDER).toEqual(["overdue", "today", "tomorrow", "later"]);
     expect(Object.keys(BUCKET_LABELS).sort()).toEqual([...BUCKET_ORDER].sort());
   });
 });
