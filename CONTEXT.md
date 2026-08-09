@@ -17,6 +17,13 @@ wholesale except where noted below.
 A person who uses Poke Tracker. Owns their own tasks, their own Pokémon, and
 their own settings — nothing is shared between trainers.
 _Avoid_: User, account, player
+_See also_: Ranger, the interface's register for this same concept.
+
+**Ranger**:
+The Safari Zone interface's word for a **Trainer** — the same concept, addressed differently on
+screen, not a second one. Warden Baoba, the status strip, and every screen's copy say Ranger;
+the domain model, the code, and this glossary keep saying Trainer. See ADR-0005.
+_Avoid_: as a domain term outside interface copy — describe the concept as Trainer instead.
 
 **Task**:
 The unit of work. Has a title, a due date, a label, a size, and optional
@@ -128,6 +135,12 @@ One of the original 151, and the shared facts about it — name, sprite,
 evolutions, and the levels those evolutions happen at. Identical for every
 trainer and never changes.
 
+**Zone**:
+The habitat a Species stands in on the Safari Zone interface's encounter view, one of six areas.
+Belongs to the **Species**, not the **Instance**: the Pool is fixed for life, so an Instance-held
+Zone would be decided once at signup and never carry meaning again. Every Instance of a given
+Species is met in the same Zone.
+
 **Instance**:
 One specific Pokémon belonging to one trainer, carrying its own bond level, its
 current species, and its nickname. Two trainers' Charmanders are unrelated, and
@@ -170,3 +183,23 @@ entry, and has to reach bond 16 to earn it. Limited to the original 151.
 
 **Nickname**:
 A name the trainer gives a Pokémon when it arrives.
+
+**Naming**:
+The moment a trainer gives their **Active Pokémon** its **Nickname**. Offered whenever the Active
+Pokémon has none — on arrival, and again on every later visit if skipped — and never offered to a
+returning instance, which keeps the Nickname it already has.
+
+### Interface
+
+Vocabulary the Safari Zone interface (mockup B) introduces. See ADR-0004 and ADR-0005.
+
+**Warden Baoba**:
+The Safari Zone's warden, and the only surface in the interface that states **why** a bad day
+costs something. Speaks in a dialogue tray on every visit to the field screen, narrating facts the
+loop has already computed — never a second source of truth for them.
+
+**Field log**:
+The interface's name for a trainer's **task** list.
+
+**Logbook**:
+The interface's name for the **day ledger**.
