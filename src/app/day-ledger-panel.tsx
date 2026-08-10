@@ -1,5 +1,6 @@
 import { parseDateOnly } from "@/lib/task/dates";
 import type { DayLedgerEntry } from "@/lib/settlement/ledger";
+import { groupDayLedgerByMonth } from "@/lib/settlement/ledger-months";
 import { capitalise } from "@/lib/text";
 
 const WEEKDAY_MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", {
@@ -27,49 +28,55 @@ function describeEvent(entry: DayLedgerEntry): string | null {
 }
 
 /**
- * The day ledger, read-only (#11): each settled day showing what it earned,
- * what it was judged against, and what it did — never averaged, never in a
- * position to be rewritten. Today never appears, since settlement never
- * settles it (CONTEXT.md) — there is nothing here that could show it anyway,
+ * The Logbook (#11, restyled to mockup B and grouped by month by #30): every
+ * settled Day, grouped by month with a count so a long history stays
+ * navigable, most recent first — and never Today, since settlement never
+ * settles it (CONTEXT.md). There is nothing here that could show it anyway,
  * since this only ever reads `day_ledger` rows and none exists for today.
+ * Ported from mockup B (`docs/mockups/b/b-history.html`); `.grouphead` is
+ * reused from the field log's Bucket groups (#28) rather than redefined,
+ * since a month group is the same shape.
  */
 export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
-  if (entries.length === 0) {
-    return (
-      <section className="rounded-lg border border-border bg-surface p-6 text-center">
-        <p className="text-lg font-medium">No settled days yet</p>
-        <p className="mt-1 text-sm text-muted">Come back after your first day passes.</p>
-      </section>
-    );
-  }
+  const months = groupDayLedgerByMonth(entries);
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted">History</h2>
-      <ul className="mt-4 flex flex-col gap-2">
-        {entries.map((entry) => (
-          <DayLedgerRow key={entry.day} entry={entry} />
-        ))}
-      </ul>
-    </section>
+    <div className="histpanel panel">
+      <h1 className="histtop">Logbook</h1>
+      <div className="histscroll">
+        {months.length === 0 ? (
+          <p className="clearday">No settled days yet. Come back after your first day passes.</p>
+        ) : (
+          months.map((month) => (
+            <div key={month.key}>
+              <div className="grouphead">
+                <span>{month.label}</span>
+                <span className="count">{month.entries.length}</span>
+              </div>
+              {month.entries.map((entry) => (
+                <DayLedgerRow key={entry.day} entry={entry} />
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
 function DayLedgerRow({ entry }: { entry: DayLedgerEntry }) {
-  const metTarget = entry.delta >= 0;
   const description = describeEvent(entry);
+  const rowVariant = entry.event === "left" ? " left" : entry.pokemon === null ? " none" : "";
+  const ptsVariant = entry.pokemon === null ? " muted" : entry.delta < 0 ? " bad" : "";
 
   return (
-    <li className="rounded-lg border border-border p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[0.7rem] uppercase tracking-wide text-muted">
-          {formatDay(entry.day)}
-        </span>
-        <span className={`shrink-0 text-sm font-medium ${metTarget ? "text-success" : "text-urgent"}`}>
-          {entry.pointsEarned} / {entry.target}
-        </span>
-      </div>
-      {description && <p className="mt-1.5 text-sm">{description}</p>}
-    </li>
+    <div className={`ledgerrow${rowVariant}`}>
+      <span className="ledgerdate">{formatDay(entry.day)}</span>
+      <span className={`ledgerpts${ptsVariant}`}>
+        {entry.pokemon === null ? "—" : entry.pointsEarned}
+        <span className="sign">/{entry.target}</span>
+      </span>
+      {description && <span className="ledgerdesc">{description}</span>}
+    </div>
   );
 }
