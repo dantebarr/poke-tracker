@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { completeTaskAction, createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions/task";
+import { isMobileViewport } from "@/app/responsive";
+import { isPendingTaskId } from "@/app/pending-task-id";
+import { type EditableFields, useDebouncedTaskFields } from "@/app/task-edit-fields";
 import { dayKeyInTimeZone, dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
 import { BUCKET_LABELS, BUCKET_ORDER, bucketOpenTasks, todayPoints } from "@/lib/task/dates";
@@ -18,69 +20,20 @@ const HEADER_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
 
 const SIZE_ABBR: Record<TaskSize, string> = { small: "S", medium: "M", large: "L" };
 
-// A synthetic id for a task that only exists optimistically, still waiting
-// on `createTaskAction` to hand back the real one — never a real database
-// id, so any control that would send a write for this id (complete, edit,
-// delete) must refuse to fire while it's still pending.
-const PENDING_ID_PREFIX = "pending-";
-function isPendingTaskId(id: string): boolean {
-  return id.startsWith(PENDING_ID_PREFIX);
-}
-
-// Matches the server's own `notesField` (actions/task.ts): blank or
-// whitespace-only notes are `null`, not an empty string, so the optimistic
-// patch never disagrees with what the server is about to store.
-function normalizeNotes(notes: string): string | null {
-  const trimmed = notes.trim();
-  return trimmed === "" ? null : trimmed;
-}
-
-type EditableFields = {
-  title: string;
-  notes: string;
-  dueDate: string;
-  labelId: string;
-  size: TaskSize;
-};
-
-type TaskListAction =
-  | { type: "add"; task: Task }
-  | { type: "update"; id: string; patch: Partial<Task> }
-  | { type: "complete"; id: string; completedAt: string }
-  | { type: "delete"; id: string };
-
-function reduceTasks(state: Task[], action: TaskListAction): Task[] {
-  switch (action.type) {
-    case "add":
-      return [...state, action.task];
-    case "update":
-      return state.map((task) => (task.id === action.id ? { ...task, ...action.patch } : task));
-    case "complete":
-      return state.map((task) =>
-        task.id === action.id ? { ...task, status: "done" as const, completedAt: action.completedAt } : task,
-      );
-    case "delete":
-      return state.filter((task) => task.id !== action.id);
-  }
-}
-
 /**
- * The field log (#28): the right pane's Open tasks, grouped by Bucket, plus
- * today's completions. This is the app's first client component with real
- * state — every write still goes through the same server actions the old
- * panel used, but they're called directly rather than bound to a
- * `<form action>`, so completion, edits and deletes can be optimistic.
+ * The field log (#28, given a mobile surface by #29): the right pane's Open
+ * tasks, grouped by Bucket, plus today's completions. Every write — the
+ * optimistic task list, completion, edits, deletes, creation — is owned by
+ * `FieldScreen`, this panel's parent, since a task can also be edited from
+ * the mobile detail screen (#29's `TaskDetailScreen`), a sibling of this
+ * panel rather than a descendant. This component is purely "the list plus
+ * the desktop add row and mobile add sheet".
  *
- * Completion is the one non-negotiable (#28's brief): the row moves the
- * instant the circle is clicked, `useOptimistic` reverts it automatically
- * the moment the transition settles (success or failure alike, since a
- * throw never reaches `revalidatePath`), and a failure gets a visible flash
- * on top of that revert rather than a silent snap-back.
- *
- * Edits save in place, debounced, with no Save button to forget — see
- * `OpenTaskRow`. Desktop only (#28's brief); the mobile field log is its
- * own ticket and still gets this same unstyled content through the pane
- * shell in the meantime.
+ * Desktop expands a tapped row in place (`OpenTaskRow`'s own `.expander`).
+ * Mobile instead hands the tap to `onOpenMobileDetail`, which swaps the
+ * entire field screen for the full-screen detail — mockup B never draws an
+ * inline expander on a narrow screen, and `UI-CONSTRAINTS.md` wants every
+ * field comfortably reachable rather than folded into a cramped row.
  */
 export function FieldLogPanel({
   tasks,
@@ -88,155 +41,68 @@ export function FieldLogPanel({
   timeZone,
   todayKey,
   dailyTarget,
+  erroredId,
+  failedDraft,
+  onComplete,
+  onSave,
+  onDelete,
+  onCreate,
+  onOpenMobileDetail,
+  onOpenAddSheet,
 }: {
   tasks: Task[];
   labels: Label[];
   timeZone: string;
   todayKey: string;
   dailyTarget: number;
+  erroredId: string | null;
+  failedDraft: Task | null;
+  onComplete: (task: Task) => void;
+  onSave: (task: Task, fields: EditableFields) => void;
+  onDelete: (task: Task) => void;
+  onCreate: (fields: EditableFields) => void;
+  onOpenMobileDetail: (taskId: string) => void;
+  onOpenAddSheet: () => void;
 }) {
-  const [optimisticTasks, dispatch] = useOptimistic(tasks, reduceTasks);
-  const [, startTransition] = useTransition();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [addingOpen, setAddingOpen] = useState(false);
-  const [erroredId, setErroredId] = useState<string | null>(null);
-  const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // A failed *completion*, *edit* or *delete* still has a real row to flash
-  // — `useOptimistic` reverts it back into view the moment the transition
-  // settles, and `erroredId` above just marks it. A failed *creation* has no
-  // such row: the optimistic task never existed server-side, so reverting
-  // removes it entirely. This holds one just long enough to flash before it
-  // vanishes for good, so a failed Add still reads as a failure rather than
-  // the task silently never having appeared.
-  const [failedDraft, setFailedDraft] = useState<Task | null>(null);
-  const failedDraftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Always open on desktop regardless of this — the CSS that would hide
+  // `.loggedrows` behind it only exists inside the mobile media query.
+  const [loggedExpanded, setLoggedExpanded] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (errorTimer.current) clearTimeout(errorTimer.current);
-      if (failedDraftTimer.current) clearTimeout(failedDraftTimer.current);
-    };
-  }, []);
-
-  function flashError(id: string) {
-    setErroredId(id);
-    if (errorTimer.current) clearTimeout(errorTimer.current);
-    errorTimer.current = setTimeout(() => setErroredId(null), 1100);
-  }
-
-  function flashFailedDraft(task: Task) {
-    setFailedDraft(task);
-    if (failedDraftTimer.current) clearTimeout(failedDraftTimer.current);
-    failedDraftTimer.current = setTimeout(() => setFailedDraft(null), 1100);
-  }
-
-  function handleComplete(task: Task) {
-    if (expandedId === task.id) setExpandedId(null);
-    startTransition(async () => {
-      dispatch({ type: "complete", id: task.id, completedAt: new Date().toISOString() });
-      try {
-        const formData = new FormData();
-        formData.set("id", task.id);
-        await completeTaskAction(formData);
-      } catch {
-        flashError(task.id);
-      }
-    });
-  }
-
-  function handleSave(task: Task, fields: EditableFields) {
-    const label = labels.find((candidate) => candidate.id === fields.labelId) ?? task.label;
-    startTransition(async () => {
-      dispatch({
-        type: "update",
-        id: task.id,
-        patch: {
-          title: fields.title,
-          dueDate: fields.dueDate,
-          size: fields.size,
-          notes: normalizeNotes(fields.notes),
-          label,
-        },
-      });
-      try {
-        const formData = new FormData();
-        formData.set("id", task.id);
-        formData.set("title", fields.title);
-        formData.set("dueDate", fields.dueDate);
-        formData.set("labelId", fields.labelId);
-        formData.set("size", fields.size);
-        formData.set("notes", fields.notes);
-        await updateTaskAction(formData);
-      } catch {
-        flashError(task.id);
-      }
-    });
-  }
-
-  function handleDelete(task: Task) {
-    if (expandedId === task.id) setExpandedId(null);
-    startTransition(async () => {
-      dispatch({ type: "delete", id: task.id });
-      try {
-        const formData = new FormData();
-        formData.set("id", task.id);
-        await deleteTaskAction(formData);
-      } catch {
-        flashError(task.id);
-      }
-    });
-  }
-
-  function handleCreate(fields: EditableFields) {
-    const label = labels.find((candidate) => candidate.id === fields.labelId);
-    if (!label) return;
+  function openRow(task: Task) {
+    if (isMobileViewport()) {
+      onOpenMobileDetail(task.id);
+      return;
+    }
     setAddingOpen(false);
-    startTransition(async () => {
-      const tempId = `${PENDING_ID_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const draft: Task = {
-        id: tempId,
-        title: fields.title,
-        dueDate: fields.dueDate,
-        status: "open",
-        size: fields.size,
-        notes: normalizeNotes(fields.notes),
-        completedAt: null,
-        label,
-      };
-      dispatch({ type: "add", task: draft });
-      try {
-        const formData = new FormData();
-        formData.set("title", fields.title);
-        formData.set("dueDate", fields.dueDate);
-        formData.set("labelId", fields.labelId);
-        formData.set("size", fields.size);
-        formData.set("notes", fields.notes);
-        await createTaskAction(formData);
-      } catch {
-        flashFailedDraft(draft);
-      }
-    });
+    setExpandedId(task.id);
   }
 
-  const openTasks = optimisticTasks.filter((task) => task.status === "open");
+  function submitCreate(fields: EditableFields) {
+    setAddingOpen(false);
+    onCreate(fields);
+  }
+
+  const openTasks = tasks.filter((task) => task.status === "open");
   // Only today's completions — a day already settled has its own record in
   // the Logbook (the day ledger), an aggregate, not a raw task list, and
   // settlement runs up through yesterday on every visit (`settle-on-entry`),
   // so nothing completed before today is still waiting to be accounted for
   // here by the time this renders.
-  const doneToday = optimisticTasks.filter(
+  const doneToday = tasks.filter(
     (task): task is Task & { completedAt: string } =>
       task.status === "done" &&
       task.completedAt !== null &&
       dayKeyInTimeZone(new Date(task.completedAt), timeZone) === todayKey,
   );
   // A still-flashing failed draft is folded back into the bucketed list —
-  // purely for that one visible flash, never into `optimisticTasks` itself,
-  // so it can't count toward today's effort.
+  // purely for that one visible flash, never into the real task list, so it
+  // can't count toward today's effort.
   const bucketSource =
     failedDraft && !openTasks.some((task) => task.id === failedDraft.id) ? [...openTasks, failedDraft] : openTasks;
   const buckets = bucketOpenTasks(bucketSource, todayKey);
-  const points = todayPoints(optimisticTasks, timeZone, todayKey);
+  const points = todayPoints(tasks, timeZone, todayKey);
   const pct = Math.min(100, Math.round((points / dailyTarget) * 100));
 
   return (
@@ -256,7 +122,7 @@ export function FieldLogPanel({
 
       <div className="addrow">
         {addingOpen ? (
-          <AddTaskEditor labels={labels} onCancel={() => setAddingOpen(false)} onSave={handleCreate} />
+          <AddTaskEditor labels={labels} onCancel={() => setAddingOpen(false)} onSave={submitCreate} />
         ) : (
           <button
             type="button"
@@ -292,14 +158,17 @@ export function FieldLogPanel({
                     expanded={expandedId === task.id}
                     errored={erroredId === task.id}
                     pending={isPendingTaskId(task.id)}
-                    onExpand={() => {
-                      setAddingOpen(false);
-                      setExpandedId(task.id);
-                    }}
+                    onExpand={() => openRow(task)}
                     onCollapse={() => setExpandedId(null)}
-                    onComplete={() => handleComplete(task)}
-                    onSave={(fields) => handleSave(task, fields)}
-                    onDelete={() => handleDelete(task)}
+                    onComplete={() => {
+                      if (expandedId === task.id) setExpandedId(null);
+                      onComplete(task);
+                    }}
+                    onSave={(fields) => onSave(task, fields)}
+                    onDelete={() => {
+                      if (expandedId === task.id) setExpandedId(null);
+                      onDelete(task);
+                    }}
                   />
                 ),
               )}
@@ -309,24 +178,46 @@ export function FieldLogPanel({
 
         {doneToday.length > 0 && (
           <div className="bucket">
-            <div className="grouphead">
+            <button
+              type="button"
+              className="grouphead loggedhead"
+              onClick={() => setLoggedExpanded((expanded) => !expanded)}
+              aria-expanded={loggedExpanded}
+            >
               <span>Logged today</span>
               <span className="count">{doneToday.length}</span>
+              <span className="chev" aria-hidden="true">
+                {loggedExpanded ? "▴" : "▾"}
+              </span>
+            </button>
+            <div className={`loggedrows${loggedExpanded ? " expanded" : ""}`}>
+              {doneToday.map((task) => (
+                <DoneTaskRow key={task.id} task={task} errored={erroredId === task.id} />
+              ))}
             </div>
-            {doneToday.map((task) => (
-              <DoneTaskRow key={task.id} task={task} errored={erroredId === task.id} />
-            ))}
           </div>
         )}
       </div>
+
+      <button
+        type="button"
+        className="fab"
+        aria-label="Add a task"
+        onClick={() => {
+          setExpandedId(null);
+          onOpenAddSheet();
+        }}
+      >
+        +
+      </button>
     </section>
   );
 }
 
 // A task whose `createTaskAction` call failed — read-only, since there's no
 // real row behind it to complete, edit or delete. Rendered only for the
-// ~1.1s `flashFailedDraft` keeps it around; see the `failedDraft` doc
-// comment in `FieldLogPanel`.
+// ~1.1s `flashFailedDraft` keeps it around; see `FieldScreen`'s doc comment
+// on `failedDraft`.
 function FailedDraftRow({ task }: { task: Task }) {
   return (
     <div className="taskrow errored">
@@ -354,21 +245,13 @@ function DoneTaskRow({ task, errored }: { task: Task; errored: boolean }) {
 }
 
 /**
- * An open task's row. Collapsed, it's a read-only summary; expanded, the
- * same row header gains a live-editable title and an expander with notes,
- * due date, label and size — every change debounced (600ms of quiet) before
- * it reaches `onSave`, so a title typed character by character is one write,
- * not one per keystroke (UI-CONSTRAINTS.md's complaint about the mockup's
- * own per-keystroke model).
- *
- * Local edit state only resets when the row *opens* (the effect below,
- * guarded on the collapsed→expanded transition) — never while it's already
- * expanded, so this component's own optimistic save further up the tree
- * can't stomp on keystrokes made after that save was scheduled. A second
- * effect flushes any still-pending debounce the moment the row leaves the
- * expanded state, whether that's a deliberate Close, a completion, or the
- * row being unmounted because a due-date edit just moved it to a different
- * Bucket's list.
+ * An open task's row. Collapsed, it's a read-only summary; on desktop,
+ * expanded gains a live-editable title and an expander with notes, due
+ * date, label and size (`useDebouncedTaskFields` — shared with the mobile
+ * detail screen so both surfaces save the same way). On mobile, `expanded`
+ * is never true: a tap hands off to `FieldLogPanel`'s `onOpenMobileDetail`
+ * before `onExpand` ever sets it, so the `.expander` this row would show
+ * stays unreached rather than merely hidden.
  */
 function OpenTaskRow({
   task,
@@ -393,71 +276,31 @@ function OpenTaskRow({
   onSave: (fields: EditableFields) => void;
   onDelete: () => void;
 }) {
-  const [editTitle, setEditTitle] = useState(task.title);
-  const [editNotes, setEditNotes] = useState(task.notes ?? "");
-  const [editDue, setEditDue] = useState(task.dueDate);
-  const [editLabelId, setEditLabelId] = useState(task.label.id);
-  const [editSize, setEditSize] = useState<TaskSize>(task.size);
+  const { fields, schedule, reset, flush } = useDebouncedTaskFields(task, onSave);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const wasExpanded = useRef(expanded);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Mirrors the five edit-field states for the debounce timer and the
-  // flush-on-close effect below, both of which need the latest values
-  // outside of render — refs are updated from effects here, never from
-  // render itself (`schedule` merges into it from an event handler, which
-  // is likewise outside render).
-  const fieldsRef = useRef<EditableFields>({
-    title: task.title,
-    notes: task.notes ?? "",
-    dueDate: task.dueDate,
-    labelId: task.label.id,
-    size: task.size,
-  });
-  const onSaveRef = useRef(onSave);
 
-  useEffect(() => {
-    onSaveRef.current = onSave;
-  });
-
+  // Local edit state only resets when the row *opens* (guarded on the
+  // collapsed→expanded transition) — never while it's already expanded, so
+  // this component's own optimistic save further up the tree can't stomp on
+  // keystrokes made after that save was scheduled.
   useEffect(() => {
     if (expanded && !wasExpanded.current) {
-      setEditTitle(task.title);
-      setEditNotes(task.notes ?? "");
-      setEditDue(task.dueDate);
-      setEditLabelId(task.label.id);
-      setEditSize(task.size);
+      reset(task);
       setConfirmingDelete(false);
-      fieldsRef.current = {
-        title: task.title,
-        notes: task.notes ?? "",
-        dueDate: task.dueDate,
-        labelId: task.label.id,
-        size: task.size,
-      };
     }
     wasExpanded.current = expanded;
-  }, [expanded, task]);
+  }, [expanded, task, reset]);
 
+  // Flushes any still-pending debounce the moment the row leaves the
+  // expanded state, whether that's a deliberate Close, a completion, or the
+  // row being unmounted because a due-date edit just moved it to a
+  // different Bucket's list.
   useEffect(() => {
     if (!expanded) return;
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-        onSaveRef.current(fieldsRef.current);
-      }
-    };
-  }, [expanded]);
-
-  function schedule(next: Partial<EditableFields>) {
-    fieldsRef.current = { ...fieldsRef.current, ...next };
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveTimer.current = null;
-      onSaveRef.current(fieldsRef.current);
-    }, 600);
-  }
+    return () => flush();
+  }, [expanded, flush]);
 
   return (
     <div className={`taskrow${expanded ? " expanded" : ""}${errored ? " errored" : ""}`}>
@@ -477,14 +320,12 @@ function OpenTaskRow({
         <input
           className="title"
           type="text"
-          value={expanded ? editTitle : task.title}
+          value={expanded ? fields.title : task.title}
           readOnly={!expanded}
           onChange={
             expanded
               ? (event) => {
-                  const value = event.target.value;
-                  setEditTitle(value);
-                  schedule({ title: value });
+                  schedule({ title: event.target.value });
                 }
               : undefined
           }
@@ -508,51 +349,31 @@ function OpenTaskRow({
           <textarea
             className="notes"
             placeholder="Notes"
-            value={editNotes}
-            onChange={(event) => {
-              const value = event.target.value;
-              setEditNotes(value);
-              schedule({ notes: value });
-            }}
+            value={fields.notes}
+            onChange={(event) => schedule({ notes: event.target.value })}
             aria-label="Notes"
           />
           <div className="chips">
             <TaskFieldChips
-              dueDate={editDue}
-              labelId={editLabelId}
-              size={editSize}
+              dueDate={fields.dueDate}
+              labelId={fields.labelId}
+              size={fields.size}
               labels={labels}
-              onDueChange={(value) => {
-                setEditDue(value);
-                schedule({ dueDate: value });
-              }}
-              onLabelChange={(value) => {
-                setEditLabelId(value);
-                schedule({ labelId: value });
-              }}
-              onSizeChange={(value) => {
-                setEditSize(value);
-                schedule({ size: value });
-              }}
+              onDueChange={(value) => schedule({ dueDate: value })}
+              onLabelChange={(value) => schedule({ labelId: value })}
+              onSizeChange={(value) => schedule({ size: value })}
             />
             <div className="editactions">
               <button type="button" className="ghostbtn" onClick={onCollapse}>
                 Close
               </button>
-              {confirmingDelete ? (
-                <>
-                  <button type="button" className="delbtn" onClick={onDelete}>
-                    Confirm delete
-                  </button>
-                  <button type="button" className="ghostbtn" onClick={() => setConfirmingDelete(false)}>
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button type="button" className="delbtn" onClick={() => setConfirmingDelete(true)}>
-                  Delete
-                </button>
-              )}
+              <DeleteControl
+                confirming={confirmingDelete}
+                label="Delete"
+                onRequestConfirm={() => setConfirmingDelete(true)}
+                onConfirm={onDelete}
+                onCancel={() => setConfirmingDelete(false)}
+              />
             </div>
           </div>
         </div>
@@ -562,10 +383,37 @@ function OpenTaskRow({
 }
 
 /**
- * The pinned add control (#28): collapsed to a single dashed button until
- * clicked, so it never competes with the list beneath it — every field is
- * reachable without navigating away, and Save stays disabled until title,
- * due date, label and size are all set (the schema's four required fields).
+ * The uncommitted-draft state a brand new task's form needs, shared between
+ * the desktop add editor and the mobile add sheet — the same five fields and
+ * the same validation rule (title, due date, label and size are the
+ * schema's four required fields), kept as a hook rather than one component
+ * styled two ways because the two forms are never on screen together and
+ * each needs its own draft.
+ */
+function useNewTaskDraft() {
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [labelId, setLabelId] = useState("");
+  const [size, setSize] = useState<TaskSize | "">("");
+  const [notes, setNotes] = useState("");
+
+  const valid = title.trim().length > 0 && dueDate !== "" && labelId !== "" && size !== "";
+
+  function fields(): EditableFields {
+    return { title: title.trim(), dueDate, labelId, size: size as TaskSize, notes };
+  }
+
+  return { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields };
+}
+
+/**
+ * The desktop pinned add control (#28): collapsed to a single dashed button
+ * until clicked, so it never competes with the list beneath it — every
+ * field is reachable without navigating away, and Save stays disabled until
+ * title, due date, label and size are all set. Hidden on mobile in favour of
+ * `AddTaskSheet` (#29): `UI-CONSTRAINTS.md` wants the add control within
+ * one-handed thumb reach, which a control pinned above a scrolling list is
+ * not.
  */
 function AddTaskEditor({
   labels,
@@ -576,17 +424,12 @@ function AddTaskEditor({
   onCancel: () => void;
   onSave: (fields: EditableFields) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [labelId, setLabelId] = useState("");
-  const [size, setSize] = useState<TaskSize | "">("");
-  const [notes, setNotes] = useState("");
-
-  const valid = title.trim().length > 0 && dueDate !== "" && labelId !== "" && size !== "";
+  const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
+    useNewTaskDraft();
 
   function submit() {
     if (!valid) return;
-    onSave({ title: title.trim(), dueDate, labelId, size: size as TaskSize, notes });
+    onSave(fields());
   }
 
   return (
@@ -637,13 +480,148 @@ function AddTaskEditor({
 }
 
 /**
- * The due/label/size chip trio, shared between the add editor and an open
- * row's expander (#28's code review flagged the pre-extraction duplicate).
- * `allowBlank` is the one difference between the two callers: the add
- * editor starts with nothing chosen and needs a "—" placeholder option to
- * hold that state, while an existing task's fields are never blank.
+ * The mobile add control's sheet (#29): rises from the bottom with the
+ * title focused so a Ranger can start typing immediately — ported from
+ * mockup B's `.sheet` (`docs/mockups/b/b2-forest.html`). Same validation
+ * rule as the desktop editor, kept as a separate component (rather than one
+ * editor styled two ways) because the two forms are never on screen
+ * together and each has its own uncommitted draft.
+ *
+ * Rendered by `FieldScreen`, not this panel: it uses `position: fixed` to
+ * cover the true viewport, and this panel sits inside `.panes`, which gains
+ * a CSS `transform` while the mobile pane-switcher shows the log pane — a
+ * `transform` on an ancestor turns `position: fixed` into "fixed to that
+ * ancestor" instead of the viewport. `FieldScreen` renders it as a sibling
+ * of the two-pane stage, outside any transformed element, same reasoning as
+ * why `TaskDetailScreen` replaces the stage rather than living inside it.
  */
-function TaskFieldChips({
+export function AddTaskSheet({
+  labels,
+  onCancel,
+  onSave,
+}: {
+  labels: Label[];
+  onCancel: () => void;
+  onSave: (fields: EditableFields) => void;
+}) {
+  const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
+    useNewTaskDraft();
+  const [visible, setVisible] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  // Mounted closed, then flipped open a frame later — a plain CSS
+  // transition doesn't fire on a property's very first paint, so this is
+  // what actually makes the sheet "rise from the bottom" (#29's brief)
+  // rather than simply appear already in place.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setVisible(true));
+    const focusTimer = setTimeout(() => titleRef.current?.focus(), 50);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(focusTimer);
+    };
+  }, []);
+
+  function submit() {
+    if (!valid) return;
+    onSave(fields());
+  }
+
+  return (
+    <>
+      <div className={`sheet-backdrop${visible ? " open" : ""}`} onClick={onCancel} />
+      <div className={`sheet textbox${visible ? " open" : ""}`}>
+        <span className="handle" aria-hidden="true" />
+        <input
+          ref={titleRef}
+          className="title"
+          type="text"
+          placeholder="Task title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          aria-label="Title"
+        />
+        <textarea
+          className="notes"
+          placeholder="Notes (optional)"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          aria-label="Notes"
+        />
+        <div className="chips">
+          <TaskFieldChips
+            dueDate={dueDate}
+            labelId={labelId}
+            size={size}
+            labels={labels}
+            allowBlank
+            onDueChange={setDueDate}
+            onLabelChange={setLabelId}
+            onSizeChange={setSize}
+          />
+        </div>
+        <button type="button" className="primary" disabled={!valid} onClick={submit}>
+          Save
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * The delete control shared between an open row's desktop expander and the
+ * mobile task detail screen (#29's `TaskDetailScreen`): a single button that
+ * turns into a confirm/cancel pair rather than deleting on the first tap.
+ * `confirmingWrapperClassName` wraps only the confirm/cancel pair — the
+ * detail screen needs `.editactions` there for the same spacing the row's
+ * expander already gets from its own, always-present `.editactions` div;
+ * the row passes nothing, since the pair renders straight into that div.
+ */
+export function DeleteControl({
+  confirming,
+  label,
+  confirmingWrapperClassName,
+  onRequestConfirm,
+  onConfirm,
+  onCancel,
+}: {
+  confirming: boolean;
+  label: string;
+  confirmingWrapperClassName?: string;
+  onRequestConfirm: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!confirming) {
+    return (
+      <button type="button" className="delbtn" onClick={onRequestConfirm}>
+        {label}
+      </button>
+    );
+  }
+
+  const pair = (
+    <>
+      <button type="button" className="delbtn" onClick={onConfirm}>
+        Confirm delete
+      </button>
+      <button type="button" className="ghostbtn" onClick={onCancel}>
+        Cancel
+      </button>
+    </>
+  );
+  return confirmingWrapperClassName ? <div className={confirmingWrapperClassName}>{pair}</div> : pair;
+}
+
+/**
+ * The due/label/size chip trio, shared between the desktop add editor, the
+ * mobile add sheet, an open row's desktop expander, and the mobile task
+ * detail screen (#29's `TaskDetailScreen`). `allowBlank` is the one
+ * difference the two add forms need over the other two callers: they start
+ * with nothing chosen and need a "—" placeholder option to hold that state,
+ * while an existing task's fields are never blank.
+ */
+export function TaskFieldChips({
   dueDate,
   labelId,
   size,

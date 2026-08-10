@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 
-import { TwoPaneStage } from "@/app/(app)/chrome/two-pane-stage";
 import { BaobaTray } from "@/app/baoba-tray";
 import { EncounterView } from "@/app/encounter-view";
-import { FieldLogPanel } from "@/app/field-log-panel";
+import { FieldScreen } from "@/app/field-screen";
 import { buildBaobaLine } from "@/lib/baoba/dialogue";
 import { dayKeyInTimeZone } from "@/lib/day/day";
 import { currentLabels } from "@/lib/label/session";
@@ -16,10 +15,12 @@ import { currentTrainer } from "@/lib/trainer/session";
 /**
  * Home / the field screen (#14, restyled by #21, given its encounter view by
  * #22, given Warden Baoba's dialogue tray by #23, its right pane rebuilt as
- * the field log by #28): the Active Pokémon's encounter scene and Baoba's
- * tray in the left pane, the field log — task creation and the task list,
- * restyled to mockup B and desktop only — in the right. Nickname editing and
- * the evolve prompt come back with #24 and #25, in the encounter view's own
+ * the field log by #28, given a mobile surface by #29): the Active
+ * Pokémon's encounter scene and Baoba's tray in the left pane, the field
+ * log — task creation and the task list, restyled to mockup B — in the
+ * right, and on a narrow screen, `FieldScreen` swaps the whole stage for
+ * the full-screen task detail while one is open. Nickname editing and the
+ * evolve prompt come back with #24 and #25, in the encounter view's own
  * prompt-box slot — that pane is otherwise display-only for now. Today's
  * effort against the Daily target lives in the Field log header (#28),
  * which is where mockup B draws it, not here.
@@ -65,24 +66,18 @@ export default async function HomePage() {
   });
 
   return (
-    <TwoPaneStage
-      leftLabel="the Pokémon"
-      rightLabel="the field log"
-      left={
+    <FieldScreen
+      pokemonPane={
         <>
           <EncounterView pokemon={activePokemon} dailyTarget={trainer.dailyTarget} />
           <BaobaTray line={baobaLine} />
         </>
       }
-      right={
-        <FieldLogPanel
-          tasks={tasks}
-          labels={labels}
-          timeZone={trainer.timeZone}
-          todayKey={todayKey}
-          dailyTarget={trainer.dailyTarget}
-        />
-      }
+      tasks={tasks}
+      labels={labels}
+      timeZone={trainer.timeZone}
+      todayKey={todayKey}
+      dailyTarget={trainer.dailyTarget}
     />
   );
 }
