@@ -1,3 +1,4 @@
+import type { EvolutionOption } from "@/lib/pokemon/evolution";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 import { capitalise } from "@/lib/text";
 
@@ -25,10 +26,16 @@ export type EncounterBond = {
 /**
  * Which prompt-box slot (#24, #25) the encounter view is offering, decided
  * here rather than by whichever component renders it — see CONTEXT.md's
- * "Naming" entry: a Nickname of `null` is the trigger, an Instance that
- * already has one is never asked. `"naming"` is the only case built so far.
+ * "Naming" and "Evolving" entries. `"naming"` fires on a Nickname of `null`;
+ * `"evolve"` fires once the caller hands over a non-empty `evolutionOptions`
+ * — itself already gated on the bond requirement being met, so this function
+ * never re-derives that gate. The two share one slot and can't both show:
+ * naming wins when both are true at once, which only happens to an instance
+ * that sat at its requirement, left un-named and un-evolved, and has now
+ * returned still meeting it — the evolve prompt just waits for the next
+ * visit, since bond banked at the requirement never goes away.
  */
-export type EncounterPrompt = "naming" | null;
+export type EncounterPrompt = "naming" | "evolve" | null;
 
 export type EncounterView =
   | { hasPokemon: false }
@@ -70,13 +77,27 @@ function bondFor(level: number, requirement: number): EncounterBond {
  * function. The component renders this and derives nothing of its own: no
  * numeric happiness ever reaches it, and the mood/bond math lives here so it
  * stays covered by tests that never touch a database.
+ *
+ * `evolutionOptions` decides `"evolve"` outright — pass an empty list when
+ * there's nothing to evolve into, whether that's because the bond
+ * requirement isn't met yet or the instance's line has no further target.
+ * Callers gate the database lookup behind the requirement themselves (see
+ * `@/lib/pokemon/session`'s `currentEvolutionOptions`); this function only
+ * ever reads whether the list it was handed is empty.
  */
-export function buildEncounterView(pokemon: ActivePokemon | null, dailyTarget: number): EncounterView {
+export function buildEncounterView(
+  pokemon: ActivePokemon | null,
+  dailyTarget: number,
+  evolutionOptions: EvolutionOption[] = [],
+): EncounterView {
   if (!pokemon) {
     return { hasPokemon: false };
   }
 
   const speciesName = capitalise(pokemon.species.name);
+
+  const prompt: EncounterPrompt =
+    pokemon.nickname === null ? "naming" : evolutionOptions.length > 0 ? "evolve" : null;
 
   return {
     hasPokemon: true,
@@ -87,6 +108,6 @@ export function buildEncounterView(pokemon: ActivePokemon | null, dailyTarget: n
     spritePath: pokemon.species.animatedSpritePath,
     mood: moodFor(pokemon.happiness, dailyTarget),
     bond: bondFor(pokemon.bondLevel, pokemon.bondRequirement),
-    prompt: pokemon.nickname === null ? "naming" : null,
+    prompt,
   };
 }

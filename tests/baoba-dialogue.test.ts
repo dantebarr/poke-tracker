@@ -84,6 +84,16 @@ describe("special states, ahead of the mood fallback", () => {
     expect(line).toContain("next step");
   });
 
+  it("withholds the evolve line for an un-named Instance, deferring to naming (#25)", () => {
+    const line = buildBaobaLine(
+      facts({
+        pokemon: pokemon({ nickname: null, distanceToBondRequirement: 0 }),
+        readyToEvolve: true,
+      }),
+    );
+    expect(line).not.toContain("next step");
+  });
+
   it("prefers the arrival line over a same-day evolve readiness", () => {
     const line = buildBaobaLine(
       facts({

@@ -63,7 +63,13 @@ export function buildBaobaLine(facts: BaobaLineFacts): string {
     return `${name} couldn't wait any longer and slipped off — missed the target by ${-facts.latestDay.delta} today. Hit it again and another will come find you.${overdue}`;
   }
 
-  if (view.hasPokemon && facts.readyToEvolve) {
+  // `view.prompt` here can only ever be `"naming"` or `null` — this call
+  // passes no evolution options, so it never resolves `"evolve"` itself —
+  // but that's enough to know whether the naming prompt (#24) would win the
+  // same precedence encounter-view.ts's `buildEncounterView` enforces for
+  // real: an un-named Instance that's also ready to evolve gets the naming
+  // box, not the evolve one, and Baoba shouldn't say otherwise.
+  if (view.hasPokemon && facts.readyToEvolve && view.prompt !== "naming") {
     return `${view.nickname}'s come as far as it can as what it is, Ranger. Say the word and it'll take the next step.${overdue}`;
   }
 
