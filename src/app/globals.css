@@ -253,6 +253,87 @@ body {
   display: none;
 }
 
+/* ── first-day briefing (#27): a full-screen overlay until dismissed,
+   ported from the mockup's `dialog#intro` — see that file's comment on why
+   this is a plain fixed panel rather than a native `<dialog>`. ─────────── */
+.intro-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(4, 18, 9, 0.8);
+}
+.intro {
+  max-width: 720px;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+.intro .bar {
+  background: linear-gradient(180deg, var(--safari-mid), var(--safari-dark));
+  border-bottom: 4px solid #101010;
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.intro .bar img {
+  image-rendering: pixelated;
+}
+.intro .bar .pixel {
+  font-family: var(--font-pixel), monospace;
+  font-size: 11px;
+  text-shadow: var(--safari-shadow);
+  color: #fff;
+}
+.intro .bar .pixel small {
+  display: block;
+  font-family: var(--font-display), monospace;
+  font-size: 18px;
+  color: var(--safari-pale);
+  text-shadow: none;
+  margin-top: 2px;
+}
+.intro .say {
+  padding: 18px 20px 8px;
+  color: var(--safari-boxink);
+  font-family: var(--font-display), monospace;
+  font-size: 23px;
+  line-height: 1.3;
+}
+.intro .say p {
+  margin: 0 0 14px;
+}
+.intro .say b {
+  background: #ffec9a;
+}
+.intro footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px 20px;
+}
+.intro footer button {
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+  border: 3px solid var(--safari-edge);
+  border-radius: 7px;
+  padding: 11px 20px;
+  text-shadow: var(--safari-shadow);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.intro footer small {
+  color: var(--safari-boxink);
+  opacity: 0.65;
+  font-family: var(--font-display), monospace;
+  font-size: 17px;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
  * The encounter view (#22): the Active Pokémon standing in its Species'
  * Zone, under a battle-style status box. Ported from mockup B

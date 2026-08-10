@@ -8,7 +8,13 @@ import { provisionPool } from "@/lib/pokemon/pokemon";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireTrainerId } from "@/lib/trainer/session";
 import { NotAllowListedError, NotSignedInError } from "@/lib/trainer/errors";
-import { provisionTrainer, updateDailyTarget, updateTimeZone, type Trainer } from "@/lib/trainer/trainer";
+import {
+  markIntroSeen,
+  provisionTrainer,
+  updateDailyTarget,
+  updateTimeZone,
+  type Trainer,
+} from "@/lib/trainer/trainer";
 
 /**
  * Every write goes through a server action; the browser never talks to the
@@ -93,6 +99,24 @@ export async function updateTimeZoneAction(formData: FormData): Promise<Trainer>
   const trainer = await updateTimeZone(client, trainerId, timeZone);
   revalidatePath("/settings");
   revalidatePath("/");
+  return trainer;
+}
+
+/**
+ * Records that the signed-in trainer has dismissed Warden Baoba's first-day
+ * briefing (#27), so it never shows again on any device. Takes no
+ * parameters — like {@link signOut}, this is a `<form action>` with nothing
+ * for a Ranger to fill in, just something to acknowledge.
+ */
+export async function markIntroSeenAction(): Promise<Trainer> {
+  const client = await createSupabaseServerClient();
+  const trainerId = await requireTrainerId(client);
+
+  const trainer = await markIntroSeen(client, trainerId);
+  // The briefing can render on any authenticated screen, not just one path
+  // — see the layout (#21) — so the whole tree is revalidated rather than
+  // one route.
+  revalidatePath("/", "layout");
   return trainer;
 }
 

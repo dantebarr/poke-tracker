@@ -9,6 +9,7 @@ import {
   renameLabelAction,
 } from "@/app/actions/label";
 import { signOut, updateDailyTargetAction, updateTimeZoneAction } from "@/app/actions/trainer";
+import { FirstDayBriefingText } from "@/app/(app)/chrome/first-day-briefing";
 import { currentLabels } from "@/lib/label/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
@@ -250,6 +251,15 @@ export default async function SettingsPage() {
               Add label
             </button>
           </form>
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-6">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
+            First-day briefing
+          </h2>
+          <div className="mt-4 flex flex-col gap-3 text-sm text-muted">
+            <FirstDayBriefingText />
+          </div>
         </section>
 
         <section className="rounded-lg border border-border bg-surface p-6">

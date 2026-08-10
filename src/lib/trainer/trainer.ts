@@ -13,6 +13,8 @@ export type Trainer = {
   dailyTarget: number;
   timeZone: string;
   createdAt: Date;
+  /** When the trainer dismissed Warden Baoba's first-day briefing, or null if they haven't yet. */
+  introSeenAt: Date | null;
 };
 
 /**
@@ -35,9 +37,10 @@ type TrainerRow = {
   daily_target: number;
   time_zone: string;
   created_at: string;
+  intro_seen_at: string | null;
 };
 
-const COLUMNS = "id, email, display_name, daily_target, time_zone, created_at";
+const COLUMNS = "id, email, display_name, daily_target, time_zone, created_at, intro_seen_at";
 
 function toTrainer(row: TrainerRow): Trainer {
   return {
@@ -47,6 +50,7 @@ function toTrainer(row: TrainerRow): Trainer {
     dailyTarget: row.daily_target,
     timeZone: row.time_zone,
     createdAt: new Date(row.created_at),
+    introSeenAt: row.intro_seen_at ? new Date(row.intro_seen_at) : null,
   };
 }
 
@@ -153,6 +157,24 @@ export async function updateTimeZone(
     await client
       .from("trainer")
       .update({ time_zone: timeZone })
+      .eq("id", trainerId)
+      .select(COLUMNS)
+      .single<TrainerRow>(),
+  );
+  return toTrainer(row);
+}
+
+/**
+ * Records that the trainer has dismissed Warden Baoba's first-day briefing
+ * (#27). Recorded against the trainer rather than the browser, so the
+ * briefing shows exactly once regardless of which device they're on.
+ */
+export async function markIntroSeen(client: SupabaseClient, trainerId: string): Promise<Trainer> {
+  const row = unwrap(
+    "Recording the first-day briefing as seen",
+    await client
+      .from("trainer")
+      .update({ intro_seen_at: new Date().toISOString() })
       .eq("id", trainerId)
       .select(COLUMNS)
       .single<TrainerRow>(),
