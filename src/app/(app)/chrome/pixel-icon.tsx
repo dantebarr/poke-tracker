@@ -43,6 +43,28 @@ const BITMAPS = {
     "................",
     "................",
   ],
+  // a checklist: three short entries, each with a tick beside it (#32). The
+  // ticks are the whole point — `book` above is already a ruled journal, and
+  // at 16px a clipboard would be indistinguishable from it, which would leave
+  // a Ranger's open tasks looking like their settled days.
+  check: [
+    "................",
+    "................",
+    ".....1..........",
+    "..1..1..1111111.",
+    "...11...........",
+    "................",
+    ".....1..........",
+    "..1..1..1111111.",
+    "...11...........",
+    "................",
+    ".....1..........",
+    "..1..1..1111111.",
+    "...11...........",
+    "................",
+    "................",
+    "................",
+  ],
   // a gear: a ring of teeth around a hollow hub
   gear: [
     "................",

@@ -1,88 +1,58 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { DeleteControl, TaskFieldChips } from "@/app/field-log-panel";
-import { type EditableFields, useDebouncedTaskFields } from "@/app/task-edit-fields";
+import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
 import type { Task } from "@/lib/task/task";
 
 /**
- * The mobile task detail screen (#29): what a tapped row opens on a narrow
- * screen instead of the desktop's inline expander, ported from mockup B's
- * `.detail` (`docs/mockups/b/b2-forest.html`). `FieldScreen` renders this in
- * place of the whole two-pane stage — the mockup's own `.detail` sits beside
- * `.stage` as a sibling inside `.app`, not inside one pane's scroll region,
- * so a task takes over the entire screen rather than a slice of it.
+ * The mobile task detail screen (#29, made an explicit form by #32): what a
+ * tapped row opens on a narrow screen instead of the desktop's inline
+ * expander, ported from mockup B's `.detail`
+ * (`docs/mockups/b/b2-forest.html`). `FieldScreen` renders this in place of
+ * the whole two-pane stage — the mockup's own `.detail` sits beside `.stage`
+ * as a sibling inside `.app`, not inside one pane's scroll region, so a task
+ * takes over the entire screen rather than a slice of it.
  *
- * Editing reuses `useDebouncedTaskFields`, the same live-save behaviour the
- * desktop expander uses, so both surfaces persist a task the same way.
+ * Editing is committed by Save and by nothing else (`useTaskFields` without
+ * a live save), so a Ranger can open a task, change their mind, and leave it
+ * as it was. Every other way out — Cancel, the device back gesture, the home
+ * arrow — discards what was typed, silently and without a confirmation.
+ * That is the same footer the add form beside it has always had; the two now
+ * work alike. Save applies the edit optimistically and leaves at once rather
+ * than waiting on the network, so a failure has no screen of its own to
+ * report on and flashes on the task's row in the field log instead — which
+ * is where the Ranger now is.
  *
- * Opening this screen pushes one history entry so the device back gesture
- * closes it (#29's acceptance criteria). Every way of leaving — the back
- * button (`goBack`), completing or deleting (`finishWith`), or the gesture
- * itself — ends in `history.back()`, so the stack never gains a dangling
- * forward entry regardless of which one a Ranger used.
+ * Which task is open is a search parameter, not state here (#32), so the
+ * back gesture closes this screen because it is real navigation — the
+ * hand-rolled `pushState` entry and `popstate` listener that used to
+ * approximate that are gone, and with them the screen's own back arrow,
+ * which Cancel now covers. Complete is gone too: the task row's circle is
+ * the only place a task is completed, so no one has to wonder whether
+ * completing also saved the edit they had open.
  */
 export function TaskDetailScreen({
   task,
   labels,
-  errored,
-  onClose,
+  onCancel,
   onSave,
-  onComplete,
   onDelete,
 }: {
   task: Task;
   labels: Label[];
-  errored: boolean;
-  onClose: () => void;
+  onCancel: () => void;
   onSave: (fields: EditableFields) => void;
-  onComplete: () => void;
   onDelete: () => void;
 }) {
-  const { fields, schedule, flush } = useDebouncedTaskFields(task, onSave);
+  const { fields, edit } = useTaskFields(task);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  });
-
-  useEffect(() => {
-    history.pushState({ taskDetail: task.id }, "");
-    function handlePopState() {
-      flush();
-      onCloseRef.current();
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-    // `flush` has stable identity by design (task-edit-fields.ts) — safe to
-    // close over without retriggering this effect.
-  }, [task.id, flush]);
-
-  function goBack() {
-    flush();
-    history.back();
-  }
-
-  // Complete/delete are terminal for this task, so any still-pending edit
-  // must be saved *before* the terminal write fires — not after, which is
-  // what plain `goBack()` here would do. Saving after would send a stray
-  // `updateTaskAction` for a task that's already completed or gone, and on
-  // delete that write has nothing left to land on.
-  function finishWith(action: () => void) {
-    flush();
-    action();
-    history.back();
-  }
-
   return (
-    <div className={`detail${errored ? " errored" : ""}`}>
+    <div className="detail">
       <div className="detailbar">
-        <button type="button" className="back" aria-label="Back to the field log" onClick={goBack}>
-          ←
-        </button>
         <span className="pixel">Task detail</span>
       </div>
       <div className="detailbody">
@@ -90,14 +60,14 @@ export function TaskDetailScreen({
           className="title"
           type="text"
           value={fields.title}
-          onChange={(event) => schedule({ title: event.target.value })}
+          onChange={(event) => edit({ title: event.target.value })}
           aria-label="Title"
         />
         <textarea
           className="notes"
           placeholder="Notes (optional)"
           value={fields.notes}
-          onChange={(event) => schedule({ notes: event.target.value })}
+          onChange={(event) => edit({ notes: event.target.value })}
           aria-label="Notes"
         />
         <div className="chips">
@@ -106,9 +76,9 @@ export function TaskDetailScreen({
             labelId={fields.labelId}
             size={fields.size}
             labels={labels}
-            onDueChange={(value) => schedule({ dueDate: value })}
-            onLabelChange={(value) => schedule({ labelId: value })}
-            onSizeChange={(value) => schedule({ size: value })}
+            onDueChange={(value) => edit({ dueDate: value })}
+            onLabelChange={(value) => edit({ labelId: value })}
+            onSizeChange={(value) => edit({ size: value })}
           />
         </div>
         <DeleteControl
@@ -116,13 +86,16 @@ export function TaskDetailScreen({
           label="Delete task"
           confirmingWrapperClassName="editactions"
           onRequestConfirm={() => setConfirmingDelete(true)}
-          onConfirm={() => finishWith(onDelete)}
+          onConfirm={onDelete}
           onCancel={() => setConfirmingDelete(false)}
         />
       </div>
       <div className="detailfoot">
-        <button type="button" className="primary complete" onClick={() => finishWith(onComplete)}>
-          Complete
+        <button type="button" className="ghostbtn" onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="button" className="primary" onClick={() => onSave(fields)}>
+          Save
         </button>
       </div>
     </div>

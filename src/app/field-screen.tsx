@@ -1,11 +1,14 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 
+import { ADD_FORM_HREF, FIELD_LOG_HREF, resolveFieldView, taskHref } from "@/app/(app)/chrome/navigation";
 import { TwoPaneStage } from "@/app/(app)/chrome/two-pane-stage";
 import { completeTaskAction, createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions/task";
 import { AddTaskSheet, FieldLogPanel } from "@/app/field-log-panel";
 import { PENDING_ID_PREFIX } from "@/app/pending-task-id";
+import { useSurface } from "@/app/responsive";
 import { TaskDetailScreen } from "@/app/task-detail-screen";
 import { type EditableFields, normalizeNotes } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
@@ -48,6 +51,15 @@ function reduceTasks(state: Task[], action: TaskListAction): Task[] {
  * the moment the transition settles (success or failure alike, since a
  * throw never reaches `revalidatePath`), and a failure gets a visible flash
  * on top of that revert rather than a silent snap-back.
+ *
+ * *Which* of those surfaces is showing is no longer state here (#32): the
+ * pane, the open task and the add form are all search parameters, resolved
+ * by `resolveFieldView`, so the device back gesture closes each of them
+ * because each is real navigation. They are written with the native history
+ * API rather than `useRouter`, which is what Next recommends for exactly
+ * this case — these parameters select between content that is already
+ * loaded, so a router navigation's refetch of the whole screen would buy
+ * nothing and cost a round trip per pane switch.
  */
 export function FieldScreen({
   pokemonPane,
@@ -64,10 +76,10 @@ export function FieldScreen({
   todayKey: string;
   dailyTarget: number;
 }) {
+  const params = useSearchParams();
+  const surface = useSurface();
   const [optimisticTasks, dispatch] = useOptimistic(tasks, reduceTasks);
   const [, startTransition] = useTransition();
-  const [mobileDetailTaskId, setMobileDetailTaskId] = useState<string | null>(null);
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [erroredId, setErroredId] = useState<string | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A failed *completion*, *edit* or *delete* still has a real row to flash
@@ -184,30 +196,30 @@ export function FieldScreen({
     });
   }
 
-  // A successful delete removes the task the detail screen was showing out
-  // from under it — `detailTask` simply goes null, falling through to the
-  // stage below, with no separate "close" step needed: `mobileDetailTaskId`
-  // is left stale rather than reset, harmlessly, since nothing renders off
-  // it directly.
-  const detailTask = mobileDetailTaskId
-    ? (optimisticTasks.find((task) => task.id === mobileDetailTaskId) ?? null)
+  const openTasks = optimisticTasks.filter((task) => task.status === "open");
+  // Until the first effect runs there is no viewport to measure, and a
+  // narrow screen is the one with something to hide: it is the surface where
+  // an opened task covers the stage and a chosen pane slides into view, and
+  // both have to be right in the first paint of a link someone shared.
+  // Getting it wrong the other way costs a wide screen one frame before a
+  // row expands, with nothing on screen moving in the meantime.
+  const view = resolveFieldView({ params, surface: surface ?? "narrow", openTasks });
+  const detailTask = view.detailTaskId
+    ? (optimisticTasks.find((task) => task.id === view.detailTaskId) ?? null)
     : null;
 
   return (
     <>
-      {/* `display: contents` rather than conditionally rendering
-          `TwoPaneStage` at all: it owns its own pane-switch state
-          (`showRight`), and swapping the whole component out while the
-          detail screen is open would remount it on the way back, resetting
-          that state — a Ranger who opened a task from the field log pane
-          would land back on the Pokémon pane instead. Hidden via CSS, its
-          state survives; `display: contents` (rather than `none`) when
-          visible keeps `.stage` a direct flex child of `.app`, which the
-          chrome layout depends on. */}
-      <div style={{ display: detailTask ? "none" : "contents" }}>
+      {/* `display: contents` keeps `.stage` a direct flex child of `.app`,
+          which the chrome layout depends on. `.detailopen` hides it while a
+          task has taken over the screen — a class rather than an inline
+          style so the rule can live inside the mobile media query, since
+          `detailTaskId` is only ever set for a narrow screen and a wide one
+          must go on drawing its panes even during the frame before the
+          viewport has been measured. */}
+      <div className={`stagewrap${detailTask ? " detailopen" : ""}`}>
         <TwoPaneStage
-          leftLabel="the Pokémon"
-          rightLabel="the field log"
+          showRight={view.pane === "log"}
           left={pokemonPane}
           right={
             <FieldLogPanel
@@ -218,12 +230,16 @@ export function FieldScreen({
               dailyTarget={dailyTarget}
               erroredId={erroredId}
               failedDraft={failedDraft}
+              expandedTaskId={view.expandedTaskId}
+              addEditorOpen={view.addEditorOpen}
               onComplete={handleComplete}
               onSave={handleSave}
               onDelete={handleDelete}
               onCreate={handleCreate}
-              onOpenMobileDetail={setMobileDetailTaskId}
-              onOpenAddSheet={() => setAddSheetOpen(true)}
+              onOpenTask={openTask}
+              onLeaveTask={leaveOverlay}
+              onOpenAddForm={openAddForm}
+              onLeaveAddForm={leaveOverlay}
             />
           }
         />
@@ -233,29 +249,51 @@ export function FieldScreen({
           key={detailTask.id}
           task={detailTask}
           labels={labels}
-          errored={erroredId === detailTask.id}
-          onClose={() => setMobileDetailTaskId(null)}
-          onSave={(fields) => handleSave(detailTask, fields)}
-          onComplete={() => handleComplete(detailTask)}
-          onDelete={() => handleDelete(detailTask)}
+          onCancel={leaveOverlay}
+          onSave={(fields) => {
+            leaveOverlay();
+            handleSave(detailTask, fields);
+          }}
+          onDelete={() => {
+            leaveOverlay();
+            handleDelete(detailTask);
+          }}
         />
       )}
       {/* Rendered as a sibling of the stage, not inside `FieldLogPanel`'s
           pane: the sheet is `position: fixed` to cover the true viewport,
           and `.panes` (the pane it would otherwise sit inside) gains a CSS
-          `transform` while the mobile pane-switcher shows the log pane —
+          `transform` while a narrow screen is showing the log pane —
           a `transform` on an ancestor turns `position: fixed` into "fixed
           to that ancestor" instead of the viewport. */}
-      {addSheetOpen && (
+      {view.addSheetOpen && (
         <AddTaskSheet
           labels={labels}
-          onCancel={() => setAddSheetOpen(false)}
+          onCancel={leaveOverlay}
           onSave={(fields) => {
-            setAddSheetOpen(false);
+            leaveOverlay();
             handleCreate(fields);
           }}
         />
       )}
     </>
   );
+}
+
+/**
+ * Opening an overlay is a new place a Ranger can back out of; leaving one
+ * replaces that entry rather than stacking a second, so the back gesture
+ * from the field log goes on to where they were before the task, not
+ * straight back into it.
+ */
+function openTask(taskId: string) {
+  window.history.pushState(null, "", taskHref(taskId));
+}
+
+function openAddForm() {
+  window.history.pushState(null, "", ADD_FORM_HREF);
+}
+
+function leaveOverlay() {
+  window.history.replaceState(null, "", FIELD_LOG_HREF);
 }

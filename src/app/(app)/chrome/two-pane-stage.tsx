@@ -1,55 +1,29 @@
-"use client";
-
-import { useState } from "react";
-
 /**
  * The field screen's two-pane stage shell (#21): the grid mockup B draws on
- * desktop, and — per UI-CONSTRAINTS.md's "a visible affordance beats a
- * gesture every time" — an explicit switch button on mobile rather than a
- * swipe. `left` and `right` arrive pre-rendered from a server component, so
- * this client boundary is only ever the switching mechanism, never the
- * content inside it.
+ * desktop, and on a narrow screen one pane at a time, slid into view.
+ *
+ * Which pane that is arrives as a prop rather than being held here (#32).
+ * The floating arrow in each pane's corner that used to switch them is gone
+ * — it was a control that existed nowhere else in the app, doing a job the
+ * status strip's nav row now does for every screen alike. With nothing left
+ * to own, this component is no longer a client boundary at all: `left` and
+ * `right` were always pre-rendered by a server component, and now the shell
+ * around them is too.
  */
 export function TwoPaneStage({
   left,
   right,
-  leftLabel,
-  rightLabel,
+  showRight,
 }: {
   left: React.ReactNode;
   right: React.ReactNode;
-  leftLabel: string;
-  rightLabel: string;
+  showRight: boolean;
 }) {
-  const [showRight, setShowRight] = useState(false);
-
   return (
     <div className={`stage${showRight ? " show-right" : ""}`}>
       <div className="panes">
-        <section className="pane">
-          {left}
-          <button
-            type="button"
-            className="pane-switch"
-            onClick={() => setShowRight(true)}
-            aria-label={`View ${rightLabel}`}
-            title={rightLabel}
-          >
-            →
-          </button>
-        </section>
-        <section className="pane">
-          {right}
-          <button
-            type="button"
-            className="pane-switch"
-            onClick={() => setShowRight(false)}
-            aria-label={`View ${leftLabel}`}
-            title={leftLabel}
-          >
-            ←
-          </button>
-        </section>
+        <section className="pane">{left}</section>
+        <section className="pane">{right}</section>
       </div>
     </div>
   );

@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { isMobileViewport } from "@/app/responsive";
 import { isPendingTaskId } from "@/app/pending-task-id";
-import { type EditableFields, useDebouncedTaskFields } from "@/app/task-edit-fields";
+import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
 import { dayKeyInTimeZone, dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
 import { BUCKET_LABELS, BUCKET_ORDER, bucketOpenTasks, todayPoints } from "@/lib/task/dates";
@@ -29,11 +28,14 @@ const SIZE_ABBR: Record<TaskSize, string> = { small: "S", medium: "M", large: "L
  * panel rather than a descendant. This component is purely "the list plus
  * the desktop add row and mobile add sheet".
  *
- * Desktop expands a tapped row in place (`OpenTaskRow`'s own `.expander`).
- * Mobile instead hands the tap to `onOpenMobileDetail`, which swaps the
- * entire field screen for the full-screen detail — mockup B never draws an
- * inline expander on a narrow screen, and `UI-CONSTRAINTS.md` wants every
- * field comfortably reachable rather than folded into a cramped row.
+ * Opening a task is one thing a Ranger does, addressed one way (#32):
+ * `onOpenTask` puts the task in the URL, and `expandedTaskId` comes back
+ * only on a wide screen, where a row expands in place (`OpenTaskRow`'s own
+ * `.expander`). On a narrow screen the same address instead swaps the entire
+ * field screen for the full-screen detail — mockup B never draws an inline
+ * expander on a narrow screen, and `UI-CONSTRAINTS.md` wants every field
+ * comfortably reachable rather than folded into a cramped row. Neither this
+ * panel nor the row it holds has to know which of those happened.
  */
 export function FieldLogPanel({
   tasks,
@@ -43,12 +45,16 @@ export function FieldLogPanel({
   dailyTarget,
   erroredId,
   failedDraft,
+  expandedTaskId,
+  addEditorOpen,
   onComplete,
   onSave,
   onDelete,
   onCreate,
-  onOpenMobileDetail,
-  onOpenAddSheet,
+  onOpenTask,
+  onLeaveTask,
+  onOpenAddForm,
+  onLeaveAddForm,
 }: {
   tasks: Task[];
   labels: Label[];
@@ -57,30 +63,23 @@ export function FieldLogPanel({
   dailyTarget: number;
   erroredId: string | null;
   failedDraft: Task | null;
+  expandedTaskId: string | null;
+  addEditorOpen: boolean;
   onComplete: (task: Task) => void;
   onSave: (task: Task, fields: EditableFields) => void;
   onDelete: (task: Task) => void;
   onCreate: (fields: EditableFields) => void;
-  onOpenMobileDetail: (taskId: string) => void;
-  onOpenAddSheet: () => void;
+  onOpenTask: (taskId: string) => void;
+  onLeaveTask: () => void;
+  onOpenAddForm: () => void;
+  onLeaveAddForm: () => void;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [addingOpen, setAddingOpen] = useState(false);
   // Always open on desktop regardless of this — the CSS that would hide
   // `.loggedrows` behind it only exists inside the mobile media query.
   const [loggedExpanded, setLoggedExpanded] = useState(false);
 
-  function openRow(task: Task) {
-    if (isMobileViewport()) {
-      onOpenMobileDetail(task.id);
-      return;
-    }
-    setAddingOpen(false);
-    setExpandedId(task.id);
-  }
-
   function submitCreate(fields: EditableFields) {
-    setAddingOpen(false);
+    onLeaveAddForm();
     onCreate(fields);
   }
 
@@ -121,17 +120,10 @@ export function FieldLogPanel({
       </div>
 
       <div className="addrow">
-        {addingOpen ? (
-          <AddTaskEditor labels={labels} onCancel={() => setAddingOpen(false)} onSave={submitCreate} />
+        {addEditorOpen ? (
+          <AddTaskEditor labels={labels} onCancel={onLeaveAddForm} onSave={submitCreate} />
         ) : (
-          <button
-            type="button"
-            className="addbtn"
-            onClick={() => {
-              setExpandedId(null);
-              setAddingOpen(true);
-            }}
-          >
+          <button type="button" className="addbtn" onClick={onOpenAddForm}>
             + Add a task
           </button>
         )}
@@ -155,18 +147,18 @@ export function FieldLogPanel({
                     key={task.id}
                     task={task}
                     labels={labels}
-                    expanded={expandedId === task.id}
+                    expanded={expandedTaskId === task.id}
                     errored={erroredId === task.id}
                     pending={isPendingTaskId(task.id)}
-                    onExpand={() => openRow(task)}
-                    onCollapse={() => setExpandedId(null)}
+                    onExpand={() => onOpenTask(task.id)}
+                    onCollapse={onLeaveTask}
                     onComplete={() => {
-                      if (expandedId === task.id) setExpandedId(null);
+                      if (expandedTaskId === task.id) onLeaveTask();
                       onComplete(task);
                     }}
                     onSave={(fields) => onSave(task, fields)}
                     onDelete={() => {
-                      if (expandedId === task.id) setExpandedId(null);
+                      if (expandedTaskId === task.id) onLeaveTask();
                       onDelete(task);
                     }}
                   />
@@ -199,15 +191,7 @@ export function FieldLogPanel({
         )}
       </div>
 
-      <button
-        type="button"
-        className="fab"
-        aria-label="Add a task"
-        onClick={() => {
-          setExpandedId(null);
-          onOpenAddSheet();
-        }}
-      >
+      <button type="button" className="fab" aria-label="Add a task" onClick={onOpenAddForm}>
         +
       </button>
     </section>
@@ -247,11 +231,12 @@ function DoneTaskRow({ task, errored }: { task: Task; errored: boolean }) {
 /**
  * An open task's row. Collapsed, it's a read-only summary; on desktop,
  * expanded gains a live-editable title and an expander with notes, due
- * date, label and size (`useDebouncedTaskFields` — shared with the mobile
- * detail screen so both surfaces save the same way). On mobile, `expanded`
- * is never true: a tap hands off to `FieldLogPanel`'s `onOpenMobileDetail`
- * before `onExpand` ever sets it, so the `.expander` this row would show
- * stays unreached rather than merely hidden.
+ * date, label and size — `useTaskFields` with a live save, the fast in-place
+ * editing path, which #32 deliberately left alone when the mobile detail
+ * screen became an explicit Cancel/Save form. On mobile, `expanded` is never
+ * true: `resolveFieldView` only reports an expanded row for a wide screen,
+ * so the `.expander` this row would show stays unreached rather than merely
+ * hidden.
  */
 function OpenTaskRow({
   task,
@@ -276,7 +261,7 @@ function OpenTaskRow({
   onSave: (fields: EditableFields) => void;
   onDelete: () => void;
 }) {
-  const { fields, schedule, reset, flush } = useDebouncedTaskFields(task, onSave);
+  const { fields, edit, reset, flush } = useTaskFields(task, onSave);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const wasExpanded = useRef(expanded);
@@ -325,7 +310,7 @@ function OpenTaskRow({
           onChange={
             expanded
               ? (event) => {
-                  schedule({ title: event.target.value });
+                  edit({ title: event.target.value });
                 }
               : undefined
           }
@@ -350,7 +335,7 @@ function OpenTaskRow({
             className="notes"
             placeholder="Notes"
             value={fields.notes}
-            onChange={(event) => schedule({ notes: event.target.value })}
+            onChange={(event) => edit({ notes: event.target.value })}
             aria-label="Notes"
           />
           <div className="chips">
@@ -359,9 +344,9 @@ function OpenTaskRow({
               labelId={fields.labelId}
               size={fields.size}
               labels={labels}
-              onDueChange={(value) => schedule({ dueDate: value })}
-              onLabelChange={(value) => schedule({ labelId: value })}
-              onSizeChange={(value) => schedule({ size: value })}
+              onDueChange={(value) => edit({ dueDate: value })}
+              onLabelChange={(value) => edit({ labelId: value })}
+              onSizeChange={(value) => edit({ size: value })}
             />
             <div className="editactions">
               <button type="button" className="ghostbtn" onClick={onCollapse}>
@@ -489,7 +474,7 @@ function AddTaskEditor({
  *
  * Rendered by `FieldScreen`, not this panel: it uses `position: fixed` to
  * cover the true viewport, and this panel sits inside `.panes`, which gains
- * a CSS `transform` while the mobile pane-switcher shows the log pane — a
+ * a CSS `transform` while a narrow screen is showing the log pane — a
  * `transform` on an ancestor turns `position: fixed` into "fixed to that
  * ancestor" instead of the viewport. `FieldScreen` renders it as a sibling
  * of the two-pane stage, outside any transformed element, same reasoning as
