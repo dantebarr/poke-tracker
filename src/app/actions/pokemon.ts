@@ -29,12 +29,13 @@ function requiredSpeciesId(formData: FormData, name: string): number {
 }
 
 /**
- * Sets or changes an instance's nickname. Bound to the instance id from the
- * form that calls it — see the home page panel.
+ * Sets an instance's nickname. Bound to the instance id from the form that
+ * calls it — see `@/app/naming-prompt`, the naming prompt's (#24) one form.
  *
  * An empty or whitespace-only nickname clears it back to null rather than
- * storing blank text. Row-level security means the update silently touches
- * nothing if `instanceId` doesn't belong to the caller.
+ * storing blank text — harmless in practice, since the naming prompt's own
+ * submit button stays disabled until there's something to send, but the
+ * action doesn't assume its only caller enforces that.
  *
  * @throws NotSignedInError when there is no session.
  */
@@ -52,6 +53,7 @@ export async function setNickname(instanceId: string, formData: FormData): Promi
   const trimmed = typeof raw === "string" ? raw.trim() : "";
 
   await setInstanceNickname(client, instanceId, trimmed === "" ? null : trimmed);
+  revalidatePath("/");
 }
 
 /**
