@@ -259,6 +259,17 @@ body {
   display: none;
 }
 
+/* Mobile-only chrome (#29): the floating add button, the add sheet and its
+   backdrop, and the full-screen task detail screen. All hidden by default —
+   shown only within the mobile media query below, the same treatment
+   `.pane-switch` already gets above. */
+.fab,
+.sheet,
+.sheet-backdrop,
+.detail {
+  display: none;
+}
+
 /* ── first-day briefing (#27): a full-screen overlay until dismissed,
    ported from the mockup's `dialog#intro` — see that file's comment on why
    this is a plain fixed panel rather than a native `<dialog>`. ─────────── */
@@ -689,6 +700,27 @@ body {
   }
   .pane:last-child .pane-switch {
     left: 16px;
+  }
+
+  /* the floating add button (#29) — always within thumb reach
+     (UI-CONSTRAINTS.md), sharing the field log pane's bottom-right corner
+     with nothing else (the pane switch above sits bottom-left there). */
+  .fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    z-index: 6;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    font-size: 26px;
+    background: linear-gradient(180deg, #f4f7cf, #d8dd96);
+    color: #23330f;
+    border: 3px solid var(--safari-edge);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -1121,4 +1153,240 @@ span.title {
   text-shadow: var(--safari-shadow);
   border: 2px dashed rgba(184, 232, 194, 0.35);
   border-radius: 10px;
+}
+
+/* Logged today: collapsible on mobile, always open on desktop (#29) — only
+   `.loggedhead`'s button-native chrome is reset here, deliberately not its
+   font/color, so it keeps reading as a `.grouphead`. */
+.loggedhead {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+.loggedrows {
+  display: block;
+}
+.grouphead .chev {
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The field log's mobile surface (#29): the floating add button's sheet,
+ * the full-screen task detail screen, and the interaction differences from
+ * desktop (no inline expander, a bigger complete circle, Logged today
+ * collapsed). Ported from mockup B (`docs/mockups/b/b2-forest.html`) the
+ * same way the desktop field log was (#28).
+ * ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .addrow,
+  .addeditor {
+    display: none;
+  }
+  /* Defensive, not load-bearing: a mobile tap never sets `.expanded` in the
+     first place (`FieldLogPanel.openRow` hands it to the mobile detail
+     screen instead), so this rule should never need to fight
+     `.taskrow.expanded .expander`'s higher specificity for real. */
+  .expander {
+    display: none;
+  }
+  .logpanel {
+    padding: 10px;
+  }
+
+  /* Touch targets ≥44px, with extra care on the control that mutates state
+     (UI-CONSTRAINTS.md) — bigger than mockup B's own 26px circle, a
+     deliberate departure from porting it verbatim so the complete control
+     is reliably hittable rather than merely visually present. */
+  .circle {
+    width: 44px;
+    height: 44px;
+  }
+  .circle.check::after {
+    font-size: 20px;
+  }
+  .rowhead {
+    padding: 12px 8px;
+  }
+
+  .loggedhead {
+    cursor: pointer;
+  }
+  .loggedrows {
+    display: none;
+  }
+  .loggedrows.expanded {
+    display: block;
+  }
+
+  /* ── mobile add sheet: rises from the bottom, title focused ────────── */
+  .sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(4, 18, 9, 0.75);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .sheet-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 21;
+    max-height: 82dvh;
+    overflow: auto;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    transform: translateY(100%);
+    opacity: 0;
+    transition:
+      transform 0.22s ease,
+      opacity 0.22s ease;
+  }
+  .sheet.open {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .sheet .handle {
+    align-self: center;
+    width: 40px;
+    height: 5px;
+    border-radius: 3px;
+    background: #c8c8c8;
+  }
+  .sheet input.title {
+    font-size: 20px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+  .sheet textarea.notes {
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    font-size: 16px;
+    line-height: 1.3;
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .sheet .chips {
+    margin-top: 0;
+  }
+  .sheet .chip {
+    background: rgba(0, 0, 0, 0.08);
+    color: #404040;
+    font-size: 8px;
+  }
+  .sheet .chip input,
+  .sheet .chip select {
+    color: #202020;
+  }
+  .sheet .chip input[type="date"] {
+    color-scheme: light;
+  }
+  .sheet .primary {
+    align-self: stretch;
+    text-align: center;
+  }
+
+  /* ── mobile task detail: a full-screen pane in the stage's own flex slot
+     (#29) — `FieldScreen` renders it as a sibling of `TwoPaneStage`, not
+     nested inside it, so it replaces the whole two-pane stage rather than
+     one pane's content. ── */
+  .detail {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .detailbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 6px;
+    flex: none;
+  }
+  .detailbar .back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    color: #fff;
+    background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+    border: 3px solid var(--safari-edge);
+    border-radius: 8px;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  }
+  .detailbar .pixel {
+    font-family: var(--font-pixel), monospace;
+    font-size: 10px;
+    text-shadow: var(--safari-shadow);
+    color: #fff;
+  }
+  .detailbody {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .detailbody input.title {
+    width: 100%;
+    font-size: 22px;
+    background: rgba(0, 0, 0, 0.28);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .detailbody textarea.notes {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    background: rgba(0, 0, 0, 0.22);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 16px;
+    line-height: 1.35;
+    font-family: var(--font-display), monospace;
+  }
+  .detailbody .chips {
+    margin-top: 0;
+  }
+  .detailbody .delbtn {
+    margin: 6px auto 0;
+  }
+  .detailfoot {
+    flex: none;
+    padding: 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .detailfoot .complete {
+    width: 100%;
+    padding: 16px;
+    font-size: 12px;
+  }
+  /* The same "roll back visibly" treatment a list row gets on a failed save
+     (`.taskrow.errored`) — the detail screen is the only view of the task
+     while it's open, so a failed debounced edit needs its own flash here. */
+  .detail.errored .detailbar {
+    animation: row-error-flash 1.1s ease;
+  }
 }
