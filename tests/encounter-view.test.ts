@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildEncounterView } from "@/lib/pokemon/encounter-view";
+import type { EvolutionOption } from "@/lib/pokemon/evolution";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 
 /**
@@ -111,5 +112,48 @@ describe("the naming prompt (#24)", () => {
     const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBeNull();
+  });
+});
+
+const EVOLUTION_OPTIONS: EvolutionOption[] = [
+  { speciesId: 134, name: "vaporeon", spritePath: "/species/134.png" },
+  { speciesId: 135, name: "jolteon", spritePath: "/species/135.png" },
+  { speciesId: 136, name: "flareon", spritePath: "/species/136.png" },
+];
+
+describe("the evolve prompt (#25)", () => {
+  it("is offered to a named Instance with somewhere to evolve to", () => {
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, EVOLUTION_OPTIONS);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("evolve");
+  });
+
+  it("is never offered when there are no evolution options", () => {
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, []);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBeNull();
+  });
+
+  it("is offered for a single-target line exactly the same way as a branch", () => {
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, [EVOLUTION_OPTIONS[0]]);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("evolve");
+  });
+});
+
+describe("precedence between the naming and evolve prompts (#25)", () => {
+  it("offers naming first when an un-named Instance also has somewhere to evolve to", () => {
+    // Reachable when an Instance sat at its bond requirement, left un-named
+    // and un-evolved, and has now returned to the pool still meeting it —
+    // CONTEXT.md's "Naming" and "Evolving" entries both allow this.
+    const view = buildEncounterView(pokemon({ nickname: null }), 3, EVOLUTION_OPTIONS);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("naming");
+  });
+
+  it("falls through to evolve once the Instance is named", () => {
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, EVOLUTION_OPTIONS);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("evolve");
   });
 });

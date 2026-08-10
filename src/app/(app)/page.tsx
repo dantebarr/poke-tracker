@@ -18,10 +18,10 @@ import { currentTrainer } from "@/lib/trainer/session";
  * Pokémon's encounter scene and Baoba's tray in the left pane, the field
  * log — task creation and the task list, restyled to mockup B — in the
  * right, and on a narrow screen, `FieldScreen` swaps the whole stage for
- * the full-screen task detail while one is open. Naming (#24) comes back
- * as `PokemonPane`'s prompt-box slot; the evolve prompt (#25) will join it
- * the same way. Today's effort against the Daily target lives in the Field
- * log header (#28), which is where mockup B draws it, not here.
+ * the full-screen task detail while one is open. Naming (#24) and the
+ * evolve prompt (#25) both come back as `PokemonPane`'s shared prompt-box
+ * slot. Today's effort against the Daily target lives in the Field log
+ * header (#28), which is where mockup B draws it, not here.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -32,19 +32,21 @@ export default async function HomePage() {
     redirect("/sign-in");
   }
 
-  const [activePokemon, tasks, labels, latestDay] = await Promise.all([
-    currentActivePokemon(),
-    currentTasks(trainer.id),
-    currentLabels(trainer.id),
-    currentLatestDayLedgerEvent(trainer.id),
-  ]);
+  // Fetched alone because the evolution-options query below depends on its
+  // result — everything else that doesn't runs alongside that query instead
+  // of waiting for it to finish first.
+  const activePokemon = await currentActivePokemon();
 
   // Only worth asking once an instance has met its current species' bond
   // requirement — the same gate the evolve prompt (#25) itself sits behind.
-  const evolutionOptions =
+  const [tasks, labels, latestDay, evolutionOptions] = await Promise.all([
+    currentTasks(trainer.id),
+    currentLabels(trainer.id),
+    currentLatestDayLedgerEvent(trainer.id),
     activePokemon && activePokemon.distanceToBondRequirement === 0
-      ? await currentEvolutionOptions(trainer.id, activePokemon.species.id)
-      : [];
+      ? currentEvolutionOptions(trainer.id, activePokemon.species.id)
+      : Promise.resolve([]),
+  ]);
 
   const todayKey = dayKeyInTimeZone(new Date(), trainer.timeZone);
   // The same bucketing the field log itself groups by — Baoba's Overdue
@@ -65,7 +67,14 @@ export default async function HomePage() {
 
   return (
     <FieldScreen
-      pokemonPane={<PokemonPane pokemon={activePokemon} dailyTarget={trainer.dailyTarget} baobaLine={baobaLine} />}
+      pokemonPane={
+        <PokemonPane
+          pokemon={activePokemon}
+          dailyTarget={trainer.dailyTarget}
+          evolutionOptions={evolutionOptions}
+          baobaLine={baobaLine}
+        />
+      }
       tasks={tasks}
       labels={labels}
       timeZone={trainer.timeZone}

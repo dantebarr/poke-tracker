@@ -681,6 +681,67 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+ * The evolve prompt (#25): offered whenever `buildEncounterView`'s own
+ * `prompt` field says `"evolve"` — the bond requirement met and somewhere
+ * to evolve to — and never otherwise; see encounter-view.ts for the
+ * precedence rule against the naming prompt above, which shares this same
+ * slot. `.evolve` is the desktop box, the mockup's own corner slot the
+ * naming prompt already mirrors; `.evolvesay` is the same content folded
+ * into Baoba's tray on a narrow screen, mirroring the mockup's `.evolvesay`.
+ * The loudest element on screen either way: alert-coloured and blinking,
+ * unlike naming's quiet "NEW ARRIVAL" label.
+ * ══════════════════════════════════════════════════════════════════════ */
+.evolve {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  max-width: 260px;
+  padding: 11px 13px;
+  text-align: center;
+}
+.evolve .head,
+.dialogue .evolvesay .who {
+  color: var(--urgent);
+  animation: evolve-blink 1.1s steps(2) infinite;
+}
+.evolve .head {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+}
+.evolve p,
+.evolvesay p {
+  margin: 7px 0 9px;
+  font-size: 17px;
+  line-height: 1.25;
+}
+@keyframes evolve-blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+/* Up to three targets (a branching line) side by side; a single-target line
+   is just one button filling the row. */
+.evolveactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+.evolveactions form {
+  flex: 1 1 auto;
+}
+.evolveactions .primary {
+  width: 100%;
+}
+
+/* Hidden by default — `.evolvesay` only ever takes over the tray below the
+   mobile breakpoint, so `.normalsay` is what desktop always sees. */
+.dialogue .lines.evolvesay {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
  * MOBILE (~390px and up to 900px): two full-screen panes, reached by
  * explicit buttons — never a swipe, never a stack (UI-CONSTRAINTS.md).
  * ══════════════════════════════════════════════════════════════════════ */
@@ -790,6 +851,19 @@ body {
     flex-direction: column;
   }
   .dialogue .lines.normalsay:has(~ .namingsay) {
+    display: none;
+  }
+
+  /* the evolve prompt (#25) folds into Baoba's tray the same way, sharing
+     the naming prompt's slot rather than a second one of its own. */
+  .evolve {
+    display: none;
+  }
+  .dialogue .lines.evolvesay {
+    display: flex;
+    flex-direction: column;
+  }
+  .dialogue .lines.normalsay:has(~ .evolvesay) {
     display: none;
   }
 
