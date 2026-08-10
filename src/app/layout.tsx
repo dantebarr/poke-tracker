@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { pixelBodyFont, pixelFont } from "@/app/fonts";
 import { SettleOnEntry } from "@/app/settle-on-entry";
 
 const geistSans = Geist({
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${pixelFont.variable} ${pixelBodyFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <SettleOnEntry />

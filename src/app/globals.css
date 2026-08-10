@@ -1,25 +1,46 @@
 @import "tailwindcss";
 
 /*
- * Poke Tracker is a light-theme app by specification — there is deliberately
- * no dark-mode block here (#14). Warm off-white surfaces, one accent hue for
- * anything interactive, and red/amber held in reserve for urgency only —
- * Jarvis HUD's discipline, carried over with a token block written fresh
- * rather than ported.
+ * The light-theme token block this comment used to sit above (#14) is
+ * superseded by mockup B's dark Safari Zone palette — ADR-0004 records why
+ * and preserves the original reasoning rather than deleting it. This is a
+ * full replacement, not an added dark-mode variant: there is still exactly
+ * one theme.
+ *
+ * The semantic tokens below (background/surface/foreground/...) are the same
+ * names the rest of the app already reaches for via Tailwind's `bg-surface`,
+ * `text-muted`, etc. — every page that hasn't been ported to the new chrome
+ * classes yet still renders through them, so swapping the values here is what
+ * makes "existing content sits inside the new chrome unrestyled" (#21) true
+ * without editing those pages. Values are drawn from mockup B's own swatches
+ * (`docs/mockups/b/*.html`), not invented fresh.
  */
 :root {
-  --background: #faf3e7;
-  --surface: #ffffff;
-  --foreground: #2e2117;
-  --muted: #6b5d4c;
-  --border: #e4d6c3;
-  --accent: #146b62;
-  --accent-foreground: #ffffff;
-  --urgent: #b3261e;
+  --background: #0a2a14; /* mockup B's body background */
+  --surface: #123a22; /* a shade lighter than --background, for card separation */
+  --foreground: #d7f0dd; /* close to mockup B's --pale */
+  --muted: #8fbfa0;
+  --border: #2f6b46;
+  --accent: #f2f5c8; /* mockup B's --sel — its primary-button fill */
+  --accent-foreground: #23330f; /* mockup B's primary-button ink */
+  --urgent: #e04030; /* mockup B's --alert */
   --urgent-foreground: #ffffff;
-  --caution: #b45309;
-  --caution-foreground: #ffffff;
-  --success: #2f7d4f;
+  --caution: #f0c020; /* mockup B's --hp-mid */
+  --caution-foreground: #23330f;
+  --success: #3fbf4f; /* mockup B's --hp-hi */
+
+  /* Raw Safari Zone swatches, for the chrome classes below — kept distinct
+     from the semantic tokens above because the chrome (green gradient
+     panels, white Gen2 textboxes) uses hues no semantic token maps onto. */
+  --safari-edge: #0d3a1c;
+  --safari-dark: #1d6a33;
+  --safari-mid: #2f8f47;
+  --safari-light: #58ba6c;
+  --safari-pale: #b8e8c2;
+  --safari-sel: #f2f5c8;
+  --safari-box: #f8f8f8;
+  --safari-boxink: #202020;
+  --safari-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
 }
 
 @theme inline {
@@ -37,6 +58,8 @@
   --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-pixel: var(--font-press-start);
+  --font-display: var(--font-vt323);
 }
 
 body {
@@ -63,5 +86,267 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Safari Zone chrome (#21): the status strip, icon nav and stage shell
+ * every authenticated screen wears. Ported from mockup B
+ * (`docs/mockups/b/*.html`, consistent across all four of its screens)
+ * rather than reinvented — classes and values are kept close to the source
+ * so a diff against the mockup stays legible.
+ *
+ * Two deliberate departures from the mockup, both because the content these
+ * wrap hasn't been ported yet (later slices) and forcing its hand here would
+ * be restyling, not chrome: `.app` uses `min-height` rather than a hard
+ * `height`, so unrestyled content that's taller than one viewport still
+ * scrolls the whole page instead of fighting an inner scroll region: and
+ * pane classes are named generically (`.pane`, not `.field`/`.log`) since
+ * this shell is reused by every screen, not just the field screen's
+ * eventual two-pane content.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+.app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--font-display), ui-monospace, monospace;
+  -webkit-font-smoothing: none;
+}
+
+/* the classic rounded green panel: dark rim, lighter fill, white inner keyline */
+.panel {
+  background: linear-gradient(180deg, var(--safari-mid), var(--safari-dark));
+  border: 4px solid var(--safari-edge);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.28),
+    0 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* the classic white textbox: black rim, white fill, thin inner rule */
+.textbox {
+  background: var(--safari-box);
+  color: var(--safari-boxink);
+  border: 4px solid #101010;
+  border-radius: 9px;
+  box-shadow:
+    inset 0 0 0 2px #c8c8c8,
+    0 5px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* ── status strip ──────────────────────────────────────────────────── */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 16px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+  color: #fff;
+}
+.strip .ball {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
+  border: 2px solid #101010;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.identity .who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--safari-pale);
+}
+.strip nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.strip nav a.back {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  text-decoration: none;
+  background: linear-gradient(180deg, #f4f7cf, #d8dd96);
+  color: #23330f;
+  border: 3px solid var(--safari-edge);
+  border-radius: 7px;
+  padding: 7px 8px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.strip nav a.icobtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+  border: 3px solid var(--safari-edge);
+  border-radius: 7px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 3px 0 rgba(0, 0, 0, 0.35);
+  color: inherit;
+  text-decoration: none;
+}
+.strip nav a.icobtn:hover {
+  background: linear-gradient(180deg, #74d086, var(--safari-light));
+}
+.strip nav a.icobtn.active {
+  background: linear-gradient(180deg, var(--safari-sel), #d8dd96);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.strip nav a.icobtn.active svg {
+  fill: #23330f;
+}
+.strip nav a.icobtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── stage: the shell every screen's own content fills ────────────── */
+.stage {
+  flex: 1;
+  min-height: 640px;
+  min-width: 0;
+  position: relative;
+}
+
+/* the two-pane grid, for the one screen (the field screen) that needs it —
+   the shell exists now so the ticket that builds the encounter view fills a
+   pane that's already there (#21's brief). */
+.panes {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+}
+.pane {
+  position: relative;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane-switch {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MOBILE (~390px and up to 900px): two full-screen panes, reached by
+ * explicit buttons — never a swipe, never a stack (UI-CONSTRAINTS.md).
+ * ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .app {
+    padding: 10px;
+    gap: 8px;
+  }
+  .strip {
+    padding: 9px 11px;
+    gap: 10px;
+    align-items: flex-start;
+    /* 44px touch targets (below) no longer fit next to identity on one row
+       at ~390px, so nav wraps onto a row of its own rather than crushing
+       identity's text into a wrap of its own. */
+    flex-wrap: wrap;
+  }
+  .strip nav {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+  .identity {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+  .identity .zone {
+    font-size: 9px;
+  }
+  .identity .who {
+    gap: 8px;
+    font-size: 7px;
+  }
+  .strip .ball {
+    margin-top: 2px;
+  }
+
+  /* Below 900px this is the primary way a Ranger moves between screens —
+     UI-CONSTRAINTS.md's 44px touch-target minimum applies for real here,
+     unlike the desktop chrome above where a mouse is doing the pointing. */
+  .strip nav a.icobtn {
+    width: 44px;
+    height: 44px;
+  }
+  .strip nav a.back {
+    min-height: 44px;
+    padding: 0 10px;
+  }
+
+  .stage {
+    min-height: 0;
+  }
+
+  /* the two panes sit side by side at double width; translateX shows one */
+  .stage:has(.panes) {
+    overflow: hidden;
+  }
+  .panes {
+    display: flex;
+    width: 200%;
+    height: 100%;
+    gap: 0;
+    transition: transform 0.22s ease;
+  }
+  .panes > .pane {
+    width: 50%;
+    flex: none;
+  }
+  .stage.show-right .panes {
+    transform: translateX(-50%);
+  }
+
+  .pane-switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    bottom: 16px;
+    z-index: 6;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 20px;
+    color: #fff;
+    background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+    border: 3px solid var(--safari-edge);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  }
+  .pane:first-child .pane-switch {
+    right: 16px;
+  }
+  .pane:last-child .pane-switch {
+    left: 16px;
   }
 }

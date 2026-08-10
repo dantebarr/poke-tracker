@@ -12,6 +12,7 @@ export type Trainer = {
   displayName: string | null;
   dailyTarget: number;
   timeZone: string;
+  createdAt: Date;
 };
 
 /**
@@ -33,9 +34,10 @@ type TrainerRow = {
   display_name: string | null;
   daily_target: number;
   time_zone: string;
+  created_at: string;
 };
 
-const COLUMNS = "id, email, display_name, daily_target, time_zone";
+const COLUMNS = "id, email, display_name, daily_target, time_zone, created_at";
 
 function toTrainer(row: TrainerRow): Trainer {
   return {
@@ -44,6 +46,7 @@ function toTrainer(row: TrainerRow): Trainer {
     displayName: row.display_name,
     dailyTarget: row.daily_target,
     timeZone: row.time_zone,
+    createdAt: new Date(row.created_at),
   };
 }
 
