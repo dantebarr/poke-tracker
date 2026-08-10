@@ -1390,3 +1390,605 @@ span.title {
     animation: row-error-flash 1.1s ease;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Settings (#30): the Daily target and Labels, ported from mockup B
+ * (`docs/mockups/b/b-settings.html`) the same way the chrome and field log
+ * were. Two sections mockup B never drew — Time zone and Session — reuse
+ * the same `.setsection`/`.sethead`/`.sethelp` vocabulary rather than
+ * inventing a second one, per #18's rule for states the mockup didn't draw.
+ * ══════════════════════════════════════════════════════════════════════ */
+.setpanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.settop {
+  margin: 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+  padding: 2px 4px 11px;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
+}
+.setsection {
+  padding: 16px 6px 20px;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
+}
+.setsection:last-child {
+  border-bottom: none;
+}
+.sethead {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  text-shadow: var(--safari-shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sethead::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.sethelp {
+  margin: 8px 2px 14px;
+  font-size: 17px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.65);
+}
+.setscroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: 4px 2px 2px;
+}
+.setscroll::-webkit-scrollbar {
+  width: 8px;
+}
+.setscroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+
+/* ── daily target ───────────────────────────────────────────────────── */
+.targetrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.targetinput {
+  width: 72px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 15px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 7px;
+  padding: 9px 4px;
+}
+.targetunit {
+  font-size: 17px;
+  color: var(--safari-pale);
+  text-transform: uppercase;
+}
+
+/* ── time zone: same row shape as the daily target, a `<select>` in place
+   of the number input ──────────────────────────────────────────────── */
+.tzselect {
+  flex: 1;
+  min-width: 0;
+  max-width: 22rem;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 7px;
+  padding: 9px 10px;
+}
+.tzselect option {
+  color: #202020;
+}
+
+/* ── labels ─────────────────────────────────────────────────────────── */
+.labellist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.labelrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 8px 8px 8px 4px;
+  border-radius: 7px;
+}
+.labelrow:hover {
+  background: rgba(0, 0, 0, 0.14);
+}
+.reorder {
+  display: flex;
+  flex-direction: column;
+}
+.arrowbtn {
+  font-size: 10px;
+  padding: 1px 4px;
+  color: var(--safari-pale);
+}
+.arrowbtn:hover:not(:disabled) {
+  color: #fff;
+}
+.arrowbtn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.swatch {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--safari-edge);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.swatch::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+.fieldform {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.labelrow input.title {
+  min-width: 0;
+  width: 9rem;
+  font-size: 20px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.labelrow input.title:focus {
+  outline: none;
+}
+.abbrinput {
+  width: 4.5rem;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--safari-sel);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 8px 4px;
+}
+.savebtn {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  padding: 7px 8px;
+  border-radius: 6px;
+  flex: none;
+}
+.savebtn:hover {
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+.labelrow .delbtn {
+  margin-left: auto;
+}
+
+/* The add-label control is a native `<details>` — its own `<summary>` is
+   both the dashed toggle button and, once open, the row's Cancel (a second
+   click collapses it again), so no client JS is needed for either. */
+.addeditor > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.addeditor > summary::-webkit-details-marker,
+.addeditor > summary::marker {
+  display: none;
+}
+.addeditor[open] > summary {
+  margin-bottom: 4px;
+}
+.addeditorrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.addeditorrow input.title {
+  flex: 1;
+  min-width: 8rem;
+  font-size: 20px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.addeditorrow input.title::placeholder,
+.addeditorrow .abbrinput::placeholder {
+  color: rgba(242, 245, 200, 0.5);
+}
+
+/* ── briefing ───────────────────────────────────────────────────────── */
+.briefingbox {
+  padding: 16px 18px;
+  color: var(--safari-boxink);
+  font-family: var(--font-display), monospace;
+  font-size: 19px;
+  line-height: 1.3;
+}
+.briefingbox p {
+  margin: 0 0 12px;
+}
+.briefingbox p:last-child {
+  margin-bottom: 0;
+}
+.briefingbox b {
+  background: #ffec9a;
+}
+
+/* ── session ────────────────────────────────────────────────────────── */
+.sessionrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sessionrow span {
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The Pokédex (#30): all 151, unlocked entries in full and locked ones as
+ * silhouettes, static sprites only. Ported from mockup B
+ * (`docs/mockups/b/b-pokedex.html`).
+ * ══════════════════════════════════════════════════════════════════════ */
+.dexpanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+.dextop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+  padding: 2px 4px 11px;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
+}
+.dextop h1 {
+  margin: 0;
+  font: inherit;
+  text-transform: inherit;
+}
+.dextop .seen {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dextrack {
+  width: 120px;
+  height: 11px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  padding: 2px;
+}
+.dextrack i {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--safari-sel);
+}
+.dexscroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: 14px 4px 4px;
+}
+.dexscroll::-webkit-scrollbar {
+  width: 8px;
+}
+.dexscroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+.dexgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.dextile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 10px 6px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.dextile.seen {
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(242, 245, 200, 0.35);
+}
+.dextile img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.dextile img.silhouette {
+  filter: brightness(0) opacity(0.32);
+}
+.dexnum {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  color: var(--safari-pale);
+}
+.dextile.seen .dexnum {
+  color: var(--safari-sel);
+}
+.dexname {
+  font-size: 15px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.55);
+}
+.dextile.seen .dexname {
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The Logbook (#30): every settled day, grouped by month with a count,
+ * most recent first — reusing `.grouphead` from the field log's Bucket
+ * groups (#28), since a month group and a Bucket group are the same shape.
+ * Ported from mockup B (`docs/mockups/b/b-history.html`).
+ * ══════════════════════════════════════════════════════════════════════ */
+.histpanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.histtop {
+  margin: 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+  padding: 2px 4px 11px;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
+}
+.histscroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: 4px 2px 2px;
+}
+.histscroll::-webkit-scrollbar {
+  width: 8px;
+}
+.histscroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+.ledgerrow {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 9px 8px;
+  border-radius: 7px;
+  text-shadow: var(--safari-shadow);
+}
+.ledgerrow:hover {
+  background: rgba(0, 0, 0, 0.14);
+}
+.ledgerdate {
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+}
+.ledgerpts {
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  color: var(--success);
+}
+.ledgerpts .sign {
+  color: rgba(255, 255, 255, 0.5);
+}
+.ledgerpts.bad {
+  color: var(--urgent);
+}
+.ledgerpts.muted {
+  color: rgba(255, 255, 255, 0.4);
+}
+.ledgerdesc {
+  grid-column: 3;
+  font-size: 19px;
+  line-height: 1.15;
+  color: #fff;
+}
+.ledgerrow.none .ledgerdesc {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+.ledgerrow.left .ledgerdesc {
+  color: #ffd0c8;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The way in (#30): the sign-in and error screens, in the same visual
+ * language as every screen behind them, so there's no seam either side of
+ * authentication. Original work — mockup B never drew these two states —
+ * built from the same panel/textbox/pixel vocabulary as the rest of the
+ * chrome rather than a new one.
+ * ══════════════════════════════════════════════════════════════════════ */
+.gate {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  font-family: var(--font-display), ui-monospace, monospace;
+  -webkit-font-smoothing: none;
+}
+.gatecard {
+  width: 100%;
+  max-width: 400px;
+  padding: 26px 24px 28px;
+  text-align: center;
+}
+.gateball {
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
+  border: 3px solid #101010;
+}
+.gatecard .pixel {
+  font-family: var(--font-pixel), monospace;
+  font-size: 15px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+  margin: 0 0 8px;
+}
+.gatecard .tagline {
+  font-size: 19px;
+  line-height: 1.3;
+  color: var(--safari-pale);
+  margin: 0 0 22px;
+}
+.gatealert {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 17px;
+  line-height: 1.3;
+  color: #ffd0c8;
+  background: rgba(224, 64, 48, 0.18);
+  border: 2px solid rgba(224, 64, 48, 0.5);
+  border-radius: 8px;
+}
+.gatecard .primary {
+  width: 100%;
+}
+.gatecard .primary:not(:disabled):hover {
+  background: linear-gradient(180deg, #fdffe0, #e4e9a6);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Narrow-width overrides for everything above (#30). Deliberately its own
+ * trailing block rather than folded into the shared one earlier in this
+ * file: that block sits *before* the base rules it would need to override
+ * here, and a same-specificity rule loses to whichever comes later in the
+ * stylesheet regardless of which is inside a media query — so an override
+ * placed ahead of its own base rule is silently dead. Every rule below
+ * targets a class whose base definition is further up this file.
+ * ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  /* the three read-mostly screens: each mockup's own narrow-width rule,
+     carried over unchanged — a fixed max-width stops making sense once the
+     viewport is narrower than it. */
+  .setpanel {
+    padding: 10px;
+    max-width: none;
+  }
+  .dexpanel {
+    padding: 10px;
+  }
+  .dextop {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .dexgrid {
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 8px;
+  }
+  .dextile img {
+    width: 42px;
+    height: 42px;
+  }
+  .dexname {
+    font-size: 13px;
+  }
+  .histpanel {
+    padding: 10px;
+    max-width: none;
+  }
+  .ledgerrow {
+    grid-template-columns: auto auto;
+    row-gap: 4px;
+  }
+  .ledgerdesc {
+    grid-column: 1 / -1;
+  }
+
+  /* Settings is the first screen to put this chrome's small buttons —
+     sized for a mouse in the field log's desktop-only debut (#28) — in
+     front of a thumb. UI-CONSTRAINTS.md's 44px minimum applies for real
+     here, the same reason the icon nav gets it in the shared chrome block. */
+  .arrowbtn,
+  .savebtn,
+  .delbtn,
+  .ghostbtn,
+  .primary {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .addbtn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .swatch {
+    width: 44px;
+    height: 44px;
+  }
+  .reorder {
+    flex-direction: row;
+  }
+}
