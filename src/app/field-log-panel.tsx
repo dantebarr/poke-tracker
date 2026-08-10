@@ -52,9 +52,8 @@ export function FieldLogPanel({
   onDelete,
   onCreate,
   onOpenTask,
-  onLeaveTask,
   onOpenAddForm,
-  onLeaveAddForm,
+  onLeaveOverlay,
 }: {
   tasks: Task[];
   labels: Label[];
@@ -70,16 +69,16 @@ export function FieldLogPanel({
   onDelete: (task: Task) => void;
   onCreate: (fields: EditableFields) => void;
   onOpenTask: (taskId: string) => void;
-  onLeaveTask: () => void;
   onOpenAddForm: () => void;
-  onLeaveAddForm: () => void;
+  /** Closing an expanded row and cancelling the add editor are the same move: back to the plain field log. */
+  onLeaveOverlay: () => void;
 }) {
   // Always open on desktop regardless of this — the CSS that would hide
   // `.loggedrows` behind it only exists inside the mobile media query.
   const [loggedExpanded, setLoggedExpanded] = useState(false);
 
   function submitCreate(fields: EditableFields) {
-    onLeaveAddForm();
+    onLeaveOverlay();
     onCreate(fields);
   }
 
@@ -121,7 +120,7 @@ export function FieldLogPanel({
 
       <div className="addrow">
         {addEditorOpen ? (
-          <AddTaskEditor labels={labels} onCancel={onLeaveAddForm} onSave={submitCreate} />
+          <AddTaskEditor labels={labels} onCancel={onLeaveOverlay} onSave={submitCreate} />
         ) : (
           <button type="button" className="addbtn" onClick={onOpenAddForm}>
             + Add a task
@@ -151,14 +150,14 @@ export function FieldLogPanel({
                     errored={erroredId === task.id}
                     pending={isPendingTaskId(task.id)}
                     onExpand={() => onOpenTask(task.id)}
-                    onCollapse={onLeaveTask}
+                    onCollapse={onLeaveOverlay}
                     onComplete={() => {
-                      if (expandedTaskId === task.id) onLeaveTask();
+                      if (expandedTaskId === task.id) onLeaveOverlay();
                       onComplete(task);
                     }}
                     onSave={(fields) => onSave(task, fields)}
                     onDelete={() => {
-                      if (expandedTaskId === task.id) onLeaveTask();
+                      if (expandedTaskId === task.id) onLeaveOverlay();
                       onDelete(task);
                     }}
                   />

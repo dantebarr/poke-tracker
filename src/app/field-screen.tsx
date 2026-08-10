@@ -208,42 +208,74 @@ export function FieldScreen({
     ? (optimisticTasks.find((task) => task.id === view.detailTaskId) ?? null)
     : null;
 
+  // True while there is a history entry of our own below this one — set by
+  // opening an overlay, spent by leaving one, and cleared whenever no
+  // overlay is showing, which is how a Ranger's own back gesture is
+  // accounted for. A task reached by a shared link is the case this exists
+  // for: nothing of ours sits underneath it.
+  const pushedOverlay = useRef(false);
+  const overlayShowing =
+    view.detailTaskId !== null || view.expandedTaskId !== null || view.addSheetOpen || view.addEditorOpen;
+  useEffect(() => {
+    if (!overlayShowing) pushedOverlay.current = false;
+  }, [overlayShowing]);
+
+  function openOverlay(href: string) {
+    pushedOverlay.current = true;
+    window.history.pushState(null, "", href);
+  }
+
+  /**
+   * Leaving an overlay any way other than the back gesture — Cancel, Save,
+   * a delete — has to *pop* the entry that opened it, not replace it: the
+   * replaced entry would still sit underneath, and the Ranger's next back
+   * press would appear to do nothing. Popping is also what makes the back
+   * gesture and Cancel agree about what happens, which is the point of both
+   * being in the URL. The exception is an overlay we never pushed, reached
+   * by a link straight into it, where there is nothing to pop and popping
+   * would leave the app entirely.
+   */
+  function leaveOverlay() {
+    if (pushedOverlay.current) {
+      pushedOverlay.current = false;
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(null, "", FIELD_LOG_HREF);
+  }
+
   return (
     <>
-      {/* `display: contents` keeps `.stage` a direct flex child of `.app`,
-          which the chrome layout depends on. `.detailopen` hides it while a
-          task has taken over the screen — a class rather than an inline
-          style so the rule can live inside the mobile media query, since
-          `detailTaskId` is only ever set for a narrow screen and a wide one
-          must go on drawing its panes even during the frame before the
-          viewport has been measured. */}
-      <div className={`stagewrap${detailTask ? " detailopen" : ""}`}>
-        <TwoPaneStage
-          showRight={view.pane === "log"}
-          left={pokemonPane}
-          right={
-            <FieldLogPanel
-              tasks={optimisticTasks}
-              labels={labels}
-              timeZone={timeZone}
-              todayKey={todayKey}
-              dailyTarget={dailyTarget}
-              erroredId={erroredId}
-              failedDraft={failedDraft}
-              expandedTaskId={view.expandedTaskId}
-              addEditorOpen={view.addEditorOpen}
-              onComplete={handleComplete}
-              onSave={handleSave}
-              onDelete={handleDelete}
-              onCreate={handleCreate}
-              onOpenTask={openTask}
-              onLeaveTask={leaveOverlay}
-              onOpenAddForm={openAddForm}
-              onLeaveAddForm={leaveOverlay}
-            />
-          }
-        />
-      </div>
+      <TwoPaneStage
+        showRight={view.pane === "log"}
+        // Covered, not unmounted, while a task has taken over a narrow
+        // screen: `detailTaskId` is only ever set for a narrow screen, and a
+        // wide one must go on drawing its panes even in the frame before the
+        // viewport has been measured — so the hiding is a class scoped to the
+        // mobile media query rather than a conditional render here.
+        covered={detailTask !== null}
+        left={pokemonPane}
+        right={
+          <FieldLogPanel
+            tasks={optimisticTasks}
+            labels={labels}
+            timeZone={timeZone}
+            todayKey={todayKey}
+            dailyTarget={dailyTarget}
+            erroredId={erroredId}
+            failedDraft={failedDraft}
+            expandedTaskId={view.expandedTaskId}
+            addEditorOpen={view.addEditorOpen}
+            onComplete={handleComplete}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onCreate={handleCreate}
+            onOpenTask={(taskId) => openOverlay(taskHref(taskId))}
+            onOpenAddForm={() => openOverlay(ADD_FORM_HREF)}
+            onLeaveOverlay={leaveOverlay}
+          />
+        }
+      />
       {detailTask && (
         <TaskDetailScreen
           key={detailTask.id}
@@ -278,22 +310,4 @@ export function FieldScreen({
       )}
     </>
   );
-}
-
-/**
- * Opening an overlay is a new place a Ranger can back out of; leaving one
- * replaces that entry rather than stacking a second, so the back gesture
- * from the field log goes on to where they were before the task, not
- * straight back into it.
- */
-function openTask(taskId: string) {
-  window.history.pushState(null, "", taskHref(taskId));
-}
-
-function openAddForm() {
-  window.history.pushState(null, "", ADD_FORM_HREF);
-}
-
-function leaveOverlay() {
-  window.history.replaceState(null, "", FIELD_LOG_HREF);
 }

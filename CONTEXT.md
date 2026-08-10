@@ -200,10 +200,7 @@ costs something. Speaks in a dialogue tray on every visit to the field screen, n
 loop has already computed — never a second source of truth for them.
 
 **Encounter view**:
-The half of the field screen a trainer's **Active Pokémon** stands in, in its **Zone**, with
-Warden Baoba's tray beneath it. The app's front door: the plain home address shows it, and the
-nav row's home arrow returns to it from anywhere. On a wide screen it shares the field screen
-with the **Field log**; on a narrow one the two are separate destinations.
+The interface's name for the scene a trainer's **Active Pokémon** stands in, in its **Zone**.
 
 **Field log**:
 The interface's name for a trainer's **task** list.

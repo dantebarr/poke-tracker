@@ -203,10 +203,9 @@ body {
 }
 /* Every nav button's look is three custom properties, so marking one is a
    matter of setting them rather than restating the button (#32) — which
-   matters because the field log's mark is surface-dependent and therefore
-   has to be spelled three times: once for the marks that hold at any width,
-   and once inside each surface's own media query. Only the media query can
-   be right in the first paint; a viewport read in JS cannot. */
+   matters because the field log's mark is surface-dependent, so the marked
+   values have to be stated once per surface. Only a media query can be right
+   in the first paint; a viewport read in JS cannot. */
 .strip nav a.icobtn {
   --icobtn-face: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
   --icobtn-keyline: rgba(255, 255, 255, 0.3);
@@ -228,12 +227,11 @@ body {
 .strip nav a.icobtn:hover {
   --icobtn-face: linear-gradient(180deg, #74d086, var(--safari-light));
 }
-.strip nav a.icobtn.active {
-  --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
-  --icobtn-keyline: rgba(0, 0, 0, 0.2);
-  --icobtn-ink: #23330f;
-}
+/* `.active` marks at any width; the other two are the status strip's answer
+   for one surface only. The two queries are exact complements, so every
+   width gets one of these rules and `.active` is honoured by both. */
 @media not all and (max-width: 900px) {
+  .strip nav a.icobtn.active,
   .strip nav a.icobtn.active-wide {
     --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
     --icobtn-keyline: rgba(0, 0, 0, 0.2);
@@ -241,6 +239,7 @@ body {
   }
 }
 @media (max-width: 900px) {
+  .strip nav a.icobtn.active,
   .strip nav a.icobtn.active-narrow {
     --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
     --icobtn-keyline: rgba(0, 0, 0, 0.2);
@@ -293,15 +292,6 @@ body {
      harmless elsewhere in this shell, since every other pane has one child. */
   gap: 12px;
 }
-/* The field screen's stage is wrapped so it can be hidden while a task has
-   taken over a narrow screen; `display: contents` keeps `.stage` itself a
-   direct flex child of `.app`, which the chrome layout depends on. The
-   hiding rule lives in the mobile media query below — a wide screen goes on
-   drawing its panes whatever the address says. */
-.stagewrap {
-  display: contents;
-}
-
 /* Mobile-only chrome (#29): the floating add button, the add sheet and its
    backdrop, and the full-screen task detail screen. All hidden by default —
    shown only within the mobile media query below, the same treatment the
@@ -830,8 +820,10 @@ body {
     min-height: 0;
   }
   /* A task takes over the whole screen, so the stage behind it goes away
-     rather than scrolling underneath (#32). */
-  .stagewrap.detailopen {
+     rather than scrolling underneath (#32). Scoped to this query because a
+     wide screen never has a task covering it, and must go on drawing its
+     panes in the frame before the viewport has been measured. */
+  .stage.covered {
     display: none;
   }
 
