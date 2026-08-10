@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import Image from "next/image";
 
 import { buildEncounterView } from "@/lib/pokemon/encounter-view";
@@ -10,8 +12,22 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  * `buildEncounterView`'s output and derives nothing of its own — later
  * tickets (#23's dialogue tray, #24's naming prompt, #25's evolve prompt)
  * extend this pane rather than replace it.
+ *
+ * `prompt` is the pane's prompt-box slot (#24, #25): whoever calls this
+ * decides *whether* to pass one using `buildEncounterView`'s own `prompt`
+ * field, never by re-deriving the same rule here — this component only
+ * places whatever it's handed inside `.scene`, over the artwork, the same
+ * corner the mockup's `.evolve` box claims.
  */
-export function EncounterView({ pokemon, dailyTarget }: { pokemon: ActivePokemon | null; dailyTarget: number }) {
+export function EncounterView({
+  pokemon,
+  dailyTarget,
+  prompt,
+}: {
+  pokemon: ActivePokemon | null;
+  dailyTarget: number;
+  prompt?: ReactNode;
+}) {
   const view = buildEncounterView(pokemon, dailyTarget);
 
   if (!view.hasPokemon) {
@@ -59,6 +75,8 @@ export function EncounterView({ pokemon, dailyTarget }: { pokemon: ActivePokemon
           </span>
         </div>
       </div>
+
+      {prompt}
     </div>
   );
 }

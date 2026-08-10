@@ -22,6 +22,14 @@ export type EncounterBond = {
   percent: number;
 };
 
+/**
+ * Which prompt-box slot (#24, #25) the encounter view is offering, decided
+ * here rather than by whichever component renders it — see CONTEXT.md's
+ * "Naming" entry: a Nickname of `null` is the trigger, an Instance that
+ * already has one is never asked. `"naming"` is the only case built so far.
+ */
+export type EncounterPrompt = "naming" | null;
+
 export type EncounterView =
   | { hasPokemon: false }
   | {
@@ -33,6 +41,7 @@ export type EncounterView =
       spritePath: string;
       mood: EncounterMood;
       bond: EncounterBond;
+      prompt: EncounterPrompt;
     };
 
 const MOOD_TIERS: { max: number; tier: MoodTier; label: string }[] = [
@@ -78,5 +87,6 @@ export function buildEncounterView(pokemon: ActivePokemon | null, dailyTarget: n
     spritePath: pokemon.species.animatedSpritePath,
     mood: moodFor(pokemon.happiness, dailyTarget),
     bond: bondFor(pokemon.bondLevel, pokemon.bondRequirement),
+    prompt: pokemon.nickname === null ? "naming" : null,
   };
 }

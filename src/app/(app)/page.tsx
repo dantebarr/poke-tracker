@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { BaobaTray } from "@/app/baoba-tray";
-import { EncounterView } from "@/app/encounter-view";
 import { FieldScreen } from "@/app/field-screen";
+import { PokemonPane } from "@/app/pokemon-pane";
 import { buildBaobaLine } from "@/lib/baoba/dialogue";
 import { dayKeyInTimeZone } from "@/lib/day/day";
 import { currentLabels } from "@/lib/label/session";
@@ -19,11 +18,10 @@ import { currentTrainer } from "@/lib/trainer/session";
  * Pokémon's encounter scene and Baoba's tray in the left pane, the field
  * log — task creation and the task list, restyled to mockup B — in the
  * right, and on a narrow screen, `FieldScreen` swaps the whole stage for
- * the full-screen task detail while one is open. Nickname editing and the
- * evolve prompt come back with #24 and #25, in the encounter view's own
- * prompt-box slot — that pane is otherwise display-only for now. Today's
- * effort against the Daily target lives in the Field log header (#28),
- * which is where mockup B draws it, not here.
+ * the full-screen task detail while one is open. Naming (#24) comes back
+ * as `PokemonPane`'s prompt-box slot; the evolve prompt (#25) will join it
+ * the same way. Today's effort against the Daily target lives in the Field
+ * log header (#28), which is where mockup B draws it, not here.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -67,12 +65,7 @@ export default async function HomePage() {
 
   return (
     <FieldScreen
-      pokemonPane={
-        <>
-          <EncounterView pokemon={activePokemon} dailyTarget={trainer.dailyTarget} />
-          <BaobaTray line={baobaLine} />
-        </>
-      }
+      pokemonPane={<PokemonPane pokemon={activePokemon} dailyTarget={trainer.dailyTarget} baobaLine={baobaLine} />}
       tasks={tasks}
       labels={labels}
       timeZone={trainer.timeZone}

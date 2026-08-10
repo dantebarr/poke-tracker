@@ -20,6 +20,10 @@ vi.mock("next/headers", () => ({
   },
 }));
 
+vi.mock("next/cache", () => ({
+  revalidatePath: () => {},
+}));
+
 const { ensureTrainer } = await import("@/app/actions/trainer");
 const { setNickname } = await import("@/app/actions/pokemon");
 const { currentActivePokemon } = await import("@/lib/pokemon/session");

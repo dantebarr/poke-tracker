@@ -360,7 +360,15 @@ body {
 .scene {
   position: relative;
   flex: 1;
-  min-height: 0;
+  /* A floor, not a target: `.pane`'s height is otherwise driven by content
+     (`.panes { height: 100% }` doesn't reliably resolve against `.stage`'s
+     flex-grown height — a pre-existing shell quirk, not this ticket's to
+     fix), so a Ranger with an empty Field log can otherwise leave `.scene`
+     shorter than its own absolutely-positioned children need. 260px is
+     enough for `.statusbox` and a prompt box (`.naming`/#25's `.evolve`)
+     side by side without `overflow: hidden` clipping either one.
+  */
+  min-height: 260px;
   border: 4px solid var(--safari-edge);
   border-radius: 12px;
   overflow: hidden;
@@ -556,7 +564,8 @@ body {
  * box above it. Ported from mockup B (`docs/mockups/b/b3-marshland.html`'s
  * `.dialogue`) the same way the encounter view above was. The mockup's
  * `.evolvesay` variant — the naming/evolve prompt folded into this tray on
- * mobile — belongs to #24/#25 and isn't ported here.
+ * mobile — is `.namingsay` below, ported for #24; the evolve half still
+ * belongs to #25.
  * ══════════════════════════════════════════════════════════════════════ */
 .dialogue {
   position: relative;
@@ -603,6 +612,72 @@ body {
   50% {
     transform: translateY(3px);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The naming prompt (#24): offered whenever `buildEncounterView`'s own
+ * `prompt` field says `"naming"` — a Nickname of null — and never
+ * otherwise, so nothing here decides *whether* to show; `PokemonPane` only
+ * ever puts `.naming`/`.namingsay` in the DOM when there's something to
+ * name. `.naming` is the desktop box, mirroring the mockup's `.evolve`
+ * corner slot; `.namingsay` is the same content folded into Baoba's tray on
+ * a narrow screen instead, mirroring the mockup's `.evolvesay`. Exactly one
+ * is ever visible — see the MOBILE media query below for the swap.
+ * ══════════════════════════════════════════════════════════════════════ */
+.naming {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  max-width: 220px;
+  padding: 11px 13px;
+  text-align: center;
+}
+.naming .head {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  color: var(--safari-boxink);
+  opacity: 0.6;
+}
+.naming p,
+.namingsay p {
+  margin: 7px 0 9px;
+  font-size: 17px;
+  line-height: 1.25;
+}
+.naming input,
+.namingsay input {
+  width: 100%;
+  border: 2px solid var(--safari-edge);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 15px;
+  color: var(--safari-boxink);
+}
+.namingactions {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+}
+.namingactions .primary,
+.namingactions .skip {
+  flex: 1;
+}
+.namingactions .skip {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--safari-boxink);
+  opacity: 0.55;
+  border: 2px solid currentColor;
+  border-radius: 7px;
+  padding: 8px 6px;
+}
+
+/* Hidden by default — `.namingsay` only ever takes over the tray below the
+   mobile breakpoint, so `.normalsay` is what desktop always sees. */
+.dialogue .lines.namingsay {
+  display: none;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -700,6 +775,22 @@ body {
   }
   .pane:last-child .pane-switch {
     left: 16px;
+  }
+
+  /* the naming prompt (#24) folds into Baoba's tray down here instead of
+     keeping its own desktop corner — see globals.css's ".naming" comment
+     above for why. `:has(~ .namingsay)` only matches a `.normalsay` that
+     actually has a `.namingsay` sibling, i.e. only while the prompt is
+     showing at all; the rest of the time `.normalsay` is untouched. */
+  .naming {
+    display: none;
+  }
+  .dialogue .lines.namingsay {
+    display: flex;
+    flex-direction: column;
+  }
+  .dialogue .lines.normalsay:has(~ .namingsay) {
+    display: none;
   }
 
   /* the floating add button (#29) — always within thumb reach

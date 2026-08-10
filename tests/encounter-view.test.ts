@@ -99,3 +99,17 @@ describe("the rest of the view", () => {
     expect(view.nickname).toBe("Scyther");
   });
 });
+
+describe("the naming prompt (#24)", () => {
+  it("is offered when the Instance has no Nickname", () => {
+    const view = buildEncounterView(pokemon({ nickname: null }), 3);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("naming");
+  });
+
+  it("is never offered to a returning Instance that already has a Nickname", () => {
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBeNull();
+  });
+});
