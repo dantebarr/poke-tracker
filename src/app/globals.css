@@ -630,3 +630,434 @@ body {
     left: 16px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The field log (#28): the right pane's task list on desktop, ported from
+ * mockup B (`docs/mockups/b/b2-forest.html`) the same way the chrome was
+ * (#21). The encounter pane's own classes (.scene/.statusbox/.dialogue/
+ * .mood/.evolve) belong to that pane's own ticket and aren't ported here.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+.logpanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+.logtop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+  color: #fff;
+  padding: 2px 4px 11px;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
+}
+.logtop .date {
+  color: var(--safari-pale);
+}
+.quota {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.quota .track {
+  width: 92px;
+  height: 11px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  padding: 2px;
+}
+.quota .track i {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--safari-sel);
+  /* No transition here: animating `width` is exactly what
+     UI-CONSTRAINTS.md rules out ("never width, height, top, or left") —
+     the fill just snaps to the new value. */
+}
+
+/* ── pinned add row ────────────────────────────────────────────────── */
+.addrow {
+  flex: none;
+  padding: 10px 4px 0;
+}
+.addbtn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 10px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--safari-sel);
+  border: 2px dashed rgba(242, 245, 200, 0.5);
+  border-radius: 8px;
+}
+.addbtn:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+.addeditor {
+  padding: 10px 0 14px;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
+}
+.addeditor .rowhead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 4px;
+}
+.addeditor .circle.ghost {
+  opacity: 0.35;
+}
+.addeditor input.title::placeholder,
+.addeditor textarea.notes::placeholder,
+.expander textarea.notes::placeholder {
+  color: rgba(242, 245, 200, 0.5);
+}
+
+/* `overflow-y: scroll` (not `auto`) keeps the scrollbar's width reserved at
+   all times, so expanding or completing a task — which changes the list's
+   total height and can cross the scroll threshold — never nudges the
+   column's content width side to side. */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: 4px 2px 2px;
+}
+.scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+
+.grouphead {
+  width: 100%;
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  text-shadow: var(--safari-shadow);
+  margin: 13px 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+.grouphead::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.25);
+}
+/* Overdue is the only alarm state (CONTEXT.md) — the only bucket heading
+   allowed this accent. */
+.grouphead.late {
+  color: #ffd0c8;
+}
+.grouphead.late .count {
+  color: #fff;
+  background: var(--urgent);
+}
+.grouphead .count {
+  font-size: 8px;
+  color: var(--safari-pale);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 3px;
+  padding: 2px 5px;
+}
+
+/* ── task rows ─────────────────────────────────────────────────────── */
+.taskrow {
+  border-radius: 7px;
+}
+.taskrow:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+.taskrow.expanded {
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 2px rgba(242, 245, 200, 0.5);
+}
+.rowhead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 8px 8px 6px;
+  text-shadow: var(--safari-shadow);
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+.taskrow.done .rowhead:hover {
+  background: none;
+}
+
+/* Circle to complete — a one-way door. No hover affordance that reads as a
+   toggle: it only ever darkens slightly, never fills, so it can't be
+   mistaken for a checkbox that comes back. The fill-in on completion is
+   opacity/transform only (UI-CONSTRAINTS.md); the global reduced-motion
+   rule collapses it to an instant state change. */
+.circle {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--safari-pale);
+  background: transparent;
+}
+.circle:hover {
+  background: rgba(184, 232, 194, 0.25);
+}
+/* A task still waiting on its create request to resolve — no real id to
+   complete, edit or delete yet. */
+.circle:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.circle:disabled:hover {
+  background: transparent;
+}
+.circle.check {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+  position: relative;
+  opacity: 0;
+  transform: scale(0.7);
+  animation: circle-check-in 0.18s ease forwards;
+}
+.circle.check::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+}
+@keyframes circle-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* A failed reconciliation: the row is already back to its true (open) state
+   by the time this plays, so the flash is the only visible sign anything
+   went wrong — "rolls back visibly" (#28's acceptance criteria). */
+.taskrow.errored .rowhead {
+  animation: row-error-flash 1.1s ease;
+}
+@keyframes row-error-flash {
+  0%,
+  100% {
+    background: none;
+  }
+  20% {
+    background: rgba(224, 64, 48, 0.4);
+  }
+}
+
+.tag {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  text-transform: uppercase;
+  padding: 4px 5px;
+  border-radius: 3px;
+  color: #fff;
+  flex: none;
+}
+
+.rowhead .title {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+}
+input.title {
+  font-family: var(--font-display), monospace;
+}
+input.title[readonly] {
+  cursor: pointer;
+}
+input.title:focus {
+  outline: none;
+}
+.taskrow.expanded input.title {
+  text-decoration: underline dotted rgba(255, 255, 255, 0.4);
+}
+span.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 1.1;
+}
+.taskrow.done span.title {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: line-through;
+}
+
+.sz {
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  color: var(--safari-pale);
+  min-width: 16px;
+  text-align: center;
+  flex: none;
+}
+
+/* the expander — fades in via opacity only, per UI-CONSTRAINTS: never
+   height. Collapsed by default; only an `.expanded` row shows it. */
+.expander {
+  display: none;
+}
+.taskrow.expanded .expander {
+  display: block;
+  animation: fadein 0.12s ease;
+}
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.expander,
+.editbody {
+  padding: 2px 8px 14px 39px;
+}
+.expander textarea.notes,
+.editbody textarea.notes {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-size: 16px;
+  line-height: 1.3;
+  font-family: var(--font-display), monospace;
+}
+.chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.chip input,
+.chip select {
+  font-size: 16px;
+  background: transparent;
+  color: #fff;
+  border: none;
+  font-family: var(--font-display), monospace;
+}
+.chip input[type="date"] {
+  color-scheme: dark;
+}
+.chip select {
+  cursor: pointer;
+}
+.chip select option {
+  color: #202020;
+}
+.delbtn {
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: #ffb9ae;
+  padding: 7px 9px;
+  border-radius: 6px;
+}
+.delbtn:hover {
+  background: rgba(224, 64, 48, 0.25);
+}
+
+.editactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  margin-left: auto;
+}
+.ghostbtn {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 2px solid rgba(184, 232, 194, 0.4);
+}
+.primary {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #f4f7cf, #d8dd96);
+  color: #23330f;
+  border: 3px solid var(--safari-edge);
+  border-radius: 7px;
+  padding: 9px 14px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* "A Ranger with nothing Open sees a clear-day state, not an empty panel"
+   (#28's acceptance criteria). */
+.clearday {
+  margin: 28px 8px;
+  padding: 20px 16px;
+  text-align: center;
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  text-shadow: var(--safari-shadow);
+  border: 2px dashed rgba(184, 232, 194, 0.35);
+  border-radius: 10px;
+}

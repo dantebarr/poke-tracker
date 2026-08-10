@@ -20,8 +20,11 @@ import { requireTrainerId } from "@/lib/trainer/session";
  * row-level security scope the effect to their own tasks — see
  * `@/app/actions/trainer` for the fuller rationale.
  *
- * Each takes a `FormData`, not typed parameters, so it can be bound directly
- * to a `<form action>` — see the task panel.
+ * Each takes a `FormData`, not typed parameters. The field log (#28) calls
+ * these directly rather than binding them to a `<form action>`, building the
+ * `FormData` itself, so its writes can be optimistic; kept as `FormData`
+ * anyway rather than typed parameters, matching the rest of the app's server
+ * actions (see the settings page's label actions).
  */
 
 function requiredField(formData: FormData, name: string): string {
