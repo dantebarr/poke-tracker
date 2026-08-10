@@ -41,6 +41,9 @@
   --safari-box: #f8f8f8;
   --safari-boxink: #202020;
   --safari-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  /* One height for Warden Baoba's dialogue tray (#23), so it never grows or
+     shrinks with the length of the line the rule list chose. */
+  --safari-tray: 118px;
 }
 
 @theme inline {
@@ -248,6 +251,9 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Spaces the encounter view from Baoba's dialogue tray beneath it (#23);
+     harmless elsewhere in this shell, since every other pane has one child. */
+  gap: 12px;
 }
 .pane-switch {
   display: none;
@@ -531,6 +537,61 @@ body {
   height: 6px;
   border-radius: 3px;
   background: var(--success);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Warden Baoba's dialogue tray (#23): the line `buildBaobaLine` chose,
+ * beneath the scene at a fixed height so it can never overlap the status
+ * box above it. Ported from mockup B (`docs/mockups/b/b3-marshland.html`'s
+ * `.dialogue`) the same way the encounter view above was. The mockup's
+ * `.evolvesay` variant — the naming/evolve prompt folded into this tray on
+ * mobile — belongs to #24/#25 and isn't ported here.
+ * ══════════════════════════════════════════════════════════════════════ */
+.dialogue {
+  position: relative;
+  height: var(--safari-tray);
+  flex: none;
+  overflow: hidden;
+  padding: 14px 18px 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.dialogue img {
+  width: 56px;
+  height: 56px;
+  flex: none;
+}
+.dialogue .lines {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  overflow: auto;
+  padding-right: 18px;
+}
+.dialogue .who {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  color: #383838;
+}
+.dialogue .said {
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--safari-boxink);
+  margin-top: 6px;
+}
+.dialogue .next {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  color: #202020;
+  font-size: 16px;
+  animation: dialogue-bob 0.8s steps(2) infinite;
+}
+@keyframes dialogue-bob {
+  50% {
+    transform: translateY(3px);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

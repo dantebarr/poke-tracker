@@ -1,4 +1,4 @@
-import { listDayLedger, type DayLedgerEntry } from "@/lib/settlement/ledger";
+import { findLatestDayLedgerEvent, listDayLedger, type DayLedgerEntry, type LatestDayLedgerEvent } from "@/lib/settlement/ledger";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
@@ -12,4 +12,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function currentDayLedger(trainerId: string): Promise<DayLedgerEntry[]> {
   const client = await createSupabaseServerClient();
   return listDayLedger(client, trainerId);
+}
+
+/** The most recent settled day's event, for the field screen's dialogue tray (#23). */
+export async function currentLatestDayLedgerEvent(trainerId: string): Promise<LatestDayLedgerEvent> {
+  const client = await createSupabaseServerClient();
+  return findLatestDayLedgerEvent(client, trainerId);
 }
