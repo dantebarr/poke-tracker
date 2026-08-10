@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DayLedgerPanel } from "@/app/day-ledger-panel";
@@ -20,15 +19,12 @@ export default async function HistoryPage() {
   const entries = await currentDayLedger(trainer.id);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-8">
-      <header className="flex items-baseline justify-between gap-4">
+    <div className="stage">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-8">
         <h1 className="text-2xl font-semibold">History</h1>
-        <Link className="text-sm text-accent underline underline-offset-4" href="/">
-          Back to home
-        </Link>
-      </header>
 
-      <DayLedgerPanel entries={entries} />
-    </main>
+        <DayLedgerPanel entries={entries} />
+      </main>
+    </div>
   );
 }

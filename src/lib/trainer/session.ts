@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { cache } from "react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NotSignedInError } from "@/lib/trainer/errors";
@@ -13,8 +14,12 @@ import { findTrainer, type Trainer } from "@/lib/trainer/trainer";
  * The signed-in trainer, or null when nobody is signed in or the account has no
  * trainer record. Row-level security means this can only ever be the caller's
  * own row.
+ *
+ * `cache`d per request: the chrome layout (#21) and the page it wraps both
+ * need this, and without memoization every navigation would cost two
+ * auth+trainer round trips instead of one.
  */
-export async function currentTrainer(): Promise<Trainer | null> {
+export const currentTrainer = cache(async (): Promise<Trainer | null> => {
   const client = await createSupabaseServerClient();
   const {
     data: { user },
@@ -23,7 +28,7 @@ export async function currentTrainer(): Promise<Trainer | null> {
   if (!user) return null;
 
   return findTrainer(client, user.id);
-}
+});
 
 /**
  * The signed-in trainer's id, for a client that already carries their
