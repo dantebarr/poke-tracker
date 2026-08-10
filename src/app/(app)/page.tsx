@@ -3,21 +3,22 @@ import { redirect } from "next/navigation";
 import { TwoPaneStage } from "@/app/(app)/chrome/two-pane-stage";
 import { createTaskAction } from "@/app/actions/task";
 import { CreateTaskPanel } from "@/app/create-task-panel";
-import { PokemonPanel } from "@/app/pokemon-panel";
+import { EncounterView } from "@/app/encounter-view";
 import { TaskPanel } from "@/app/task-panel";
 import { dayKeyInTimeZone } from "@/lib/day/day";
 import { currentLabels } from "@/lib/label/session";
-import { currentActivePokemon, currentEvolutionOptions } from "@/lib/pokemon/session";
-import { todayPoints } from "@/lib/task/dates";
+import { currentActivePokemon } from "@/lib/pokemon/session";
 import { currentTasks } from "@/lib/task/session";
 import { currentTrainer } from "@/lib/trainer/session";
 
 /**
- * Home / the field screen (#14, restyled by #21): the active Pokémon and
- * today's effort in the left pane, task creation and the task list in the
- * right — the stage's two-pane shell, with its content still exactly what
- * it was before the chrome (#21's brief: fill the shell, don't redesign
- * what's inside it yet).
+ * Home / the field screen (#14, restyled by #21, given its encounter view by
+ * #22): the Active Pokémon's encounter scene in the left pane, task creation
+ * and the task list in the right. Nickname editing and the evolve prompt
+ * come back with #24 and #25, in the encounter view's own prompt-box slot —
+ * this ticket is display-only. Today's effort against the Daily target,
+ * previously shown here, moves to the Field log header with #28, which is
+ * where mockup B draws it.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
@@ -35,15 +36,6 @@ export default async function HomePage() {
   ]);
 
   const todayKey = dayKeyInTimeZone(new Date(), trainer.timeZone);
-  const points = todayPoints(tasks, trainer.timeZone, todayKey);
-
-  // Only queried once the bond requirement is actually met — the same gate
-  // the evolve button itself is under, so a trainer who isn't there yet
-  // costs nothing extra.
-  const evolutionOptions =
-    activePokemon && activePokemon.distanceToBondRequirement === 0
-      ? await currentEvolutionOptions(trainer.id, activePokemon.species.id)
-      : [];
 
   // `createTaskAction` returns the created task — useful to callers that
   // need it (the tests do). A `<form action>` must return `void`, so it's
@@ -58,14 +50,7 @@ export default async function HomePage() {
     <TwoPaneStage
       leftLabel="the Pokémon"
       rightLabel="the field log"
-      left={
-        <PokemonPanel
-          pokemon={activePokemon}
-          evolutionOptions={evolutionOptions}
-          points={points}
-          dailyTarget={trainer.dailyTarget}
-        />
-      }
+      left={<EncounterView pokemon={activePokemon} dailyTarget={trainer.dailyTarget} />}
       right={
         <div className="flex flex-col gap-6">
           <CreateTaskPanel labels={labels} onCreate={submitCreateTask} />
