@@ -78,3 +78,64 @@ export async function listDayLedger(client: SupabaseClient, trainerId: string): 
 
   return entries.reverse();
 }
+
+/**
+ * What the most recently settled day did, for Warden Baoba's dialogue tray
+ * (#23) to narrate — see CONTEXT.md's "Warden Baoba" entry: he states facts
+ * the loop already computed, never a second source of truth for them.
+ * `pokemonName` only matters for `event: "left"`, the one case where the
+ * Pokémon concerned is no longer the trainer's active one. Null when the
+ * trainer has no settled days yet.
+ */
+export type LatestDayLedgerEvent = {
+  event: DayLedgerEvent;
+  pokemonName: string | null;
+  delta: number;
+} | null;
+
+type LatestDayLedgerRow = {
+  delta: number;
+  outcome: LedgerOutcome;
+  active_instance_id: string | null;
+  instance: { nickname: string | null; species: { name: string } } | null;
+};
+
+const LATEST_COLUMNS =
+  "delta, outcome, active_instance_id, instance:active_instance_id(nickname, species:species_id(name))";
+
+/**
+ * The two most recent settled days — the one Baoba narrates, plus the day
+ * before it, needed only to tell an arrival from an uneventful one the same
+ * way `listDayLedger` does. Reads two rows rather than the whole history
+ * `listDayLedger` returns, since the field screen only ever needs the latest.
+ */
+export async function findLatestDayLedgerEvent(
+  client: SupabaseClient,
+  trainerId: string,
+): Promise<LatestDayLedgerEvent> {
+  const { data, error } = await client
+    .from("day_ledger")
+    .select(LATEST_COLUMNS)
+    .eq("trainer_id", trainerId)
+    .order("day", { ascending: false })
+    .limit(2)
+    .returns<LatestDayLedgerRow[]>();
+
+  if (error) {
+    throw new DatabaseError("Reading latest day ledger event", error);
+  }
+  if (data.length === 0) {
+    return null;
+  }
+
+  const [latest, previous] = data;
+  return {
+    event: deriveDayLedgerEvent({
+      outcome: latest.outcome,
+      activeInstanceId: latest.active_instance_id,
+      previousInstanceId: previous?.active_instance_id ?? null,
+    }),
+    pokemonName: latest.instance ? (latest.instance.nickname ?? latest.instance.species.name) : null,
+    delta: latest.delta,
+  };
+}
