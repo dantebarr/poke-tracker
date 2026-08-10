@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  abbreviateLabel,
   createLabel,
   deleteLabel,
   moveLabel,
@@ -38,8 +39,9 @@ export async function createLabelAction(formData: FormData): Promise<Label> {
 
   const name = requiredField(formData, "name");
   const color = requiredField(formData, "color");
+  const abbreviation = requiredField(formData, "abbreviation");
 
-  const label = await createLabel(client, trainerId, { name, color });
+  const label = await createLabel(client, trainerId, { name, color, abbreviation });
   revalidatePath("/settings");
   return label;
 }
@@ -66,6 +68,19 @@ export async function recolorLabelAction(formData: FormData): Promise<Label> {
   const color = requiredField(formData, "color");
 
   const label = await recolorLabel(client, id, color);
+  revalidatePath("/settings");
+  return label;
+}
+
+/** Sets a label's abbreviation, the short tag Task rows show in its place. */
+export async function abbreviateLabelAction(formData: FormData): Promise<Label> {
+  const client = await createSupabaseServerClient();
+  await requireTrainerId(client);
+
+  const id = requiredField(formData, "id");
+  const abbreviation = requiredField(formData, "abbreviation");
+
+  const label = await abbreviateLabel(client, id, abbreviation);
   revalidatePath("/settings");
   return label;
 }

@@ -263,14 +263,17 @@ function OpenTaskRow({
 }
 
 // The colour is a stored value, not a style class name (label.ts) — an
-// alpha-suffixed hex for the chip's tint, the bare hex for its text.
-function LabelChip({ label }: { label: { name: string; color: string } }) {
+// alpha-suffixed hex for the chip's tint, the bare hex for its text. Shows
+// the trainer-authored abbreviation (#26), not the full name, so a Task
+// title never loses room to it; `title` keeps the full name reachable.
+function LabelChip({ label }: { label: { name: string; color: string; abbreviation: string } }) {
   return (
     <span
+      title={label.name}
       className="rounded px-1.5 py-0.5 font-mono text-[0.7rem] uppercase tracking-wide"
       style={{ backgroundColor: `${label.color}1A`, color: label.color }}
     >
-      {label.name}
+      {label.abbreviation}
     </span>
   );
 }

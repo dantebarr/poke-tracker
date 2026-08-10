@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import {
+  abbreviateLabelAction,
   createLabelAction,
   deleteLabelAction,
   moveLabelAction,
@@ -51,6 +52,10 @@ export default async function SettingsPage() {
   async function submitRecolorLabel(formData: FormData) {
     "use server";
     await recolorLabelAction(formData);
+  }
+  async function submitAbbreviateLabel(formData: FormData) {
+    "use server";
+    await abbreviateLabelAction(formData);
   }
   async function submitCreateLabel(formData: FormData) {
     "use server";
@@ -174,6 +179,22 @@ export default async function SettingsPage() {
                   </button>
                 </form>
 
+                <form action={submitAbbreviateLabel} className="flex items-center gap-2">
+                  <input type="hidden" name="id" value={label.id} />
+                  <input
+                    type="text"
+                    name="abbreviation"
+                    defaultValue={label.abbreviation}
+                    maxLength={4}
+                    required
+                    aria-label={`${label.name} abbreviation`}
+                    className="w-16 rounded-md border border-border px-2 py-1 text-sm uppercase transition-colors focus:border-accent"
+                  />
+                  <button type="submit" className="text-xs text-accent underline underline-offset-4">
+                    Abbreviate
+                  </button>
+                </form>
+
                 <form action={submitRecolorLabel} className="flex items-center gap-2">
                   <input type="hidden" name="id" value={label.id} />
                   <input
@@ -205,6 +226,15 @@ export default async function SettingsPage() {
               placeholder="New label"
               required
               className="w-40 rounded-md border border-border px-3 py-2 text-sm transition-colors focus:border-accent"
+            />
+            <input
+              type="text"
+              name="abbreviation"
+              placeholder="Tag"
+              maxLength={4}
+              required
+              aria-label="New label abbreviation"
+              className="w-20 rounded-md border border-border px-3 py-2 text-sm uppercase transition-colors focus:border-accent"
             />
             <input
               type="color"

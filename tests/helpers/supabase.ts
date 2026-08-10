@@ -91,11 +91,11 @@ export async function countTrainers(): Promise<number> {
 
 /** A trainer's label rows as an auditor would see them, ignoring row-level security. */
 export async function labelsFor(trainerId: string): Promise<
-  { id: string; name: string; color: string; position: number }[]
+  { id: string; name: string; color: string; position: number; abbreviation: string }[]
 > {
   const { data, error } = await adminClient()
     .from("label")
-    .select("id, name, color, position")
+    .select("id, name, color, position, abbreviation")
     .eq("trainer_id", trainerId)
     .order("position");
 
