@@ -15,8 +15,39 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://pokeapi.co/api/v2";
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
+const ANIMATED_SPRITE_BASE = `${SPRITE_BASE}/versions/generation-v/black-white/animated`;
 const USER_AGENT = "poke-tracker-species-generator (gitlab.com/Infernite/poke-tracker)";
 const ORIGINAL_GAME_VERSION_GROUP = "red-blue";
+
+// The Safari Zone interface's six real areas (#22), matching the six habitat
+// screenshots under docs/mockups/assets/. PokéAPI's `habitat` field has nine
+// values that don't line up one-to-one with these six, so several collapse
+// onto the same area:
+//   - forest stays forest.
+//   - grassland becomes savannah — PokéAPI files the open-plains grazers
+//     (Tauros, Kangaskhan, Doduo, ...) under "grassland", and a real Safari
+//     Zone's Savanna area is exactly that roster.
+//   - sea and waters-edge both become marshland, the only wet area of the six.
+//   - cave, mountain and rough-terrain all become peak — the reserve doesn't
+//     distinguish "underground" from "rocky outcrop".
+//   - urban becomes meadow — none of the six areas is a town, and the
+//     human-adjacent species PokéAPI files there (Meowth, Persian, ...) read
+//     closest to the open, cultivated meadow of the six.
+// `rare` (legendaries) and species PokéAPI records no habitat for get the
+// same fallback, landing them in the plainest, least distinctive area rather
+// than a wrong-but-specific one.
+type Zone = "forest" | "marshland" | "meadow" | "peak" | "plains" | "savannah";
+const FALLBACK_ZONE: Zone = "plains";
+const ZONE_BY_HABITAT: Record<string, Zone> = {
+  cave: "peak",
+  forest: "forest",
+  grassland: "savannah",
+  mountain: "peak",
+  "rough-terrain": "peak",
+  sea: "marshland",
+  "waters-edge": "marshland",
+  urban: "meadow",
+};
 
 // Evolution chains 1-78 are exactly the original 151 species; chain 79 is
 // Chikorita, the first Gen 2 addition. A handful of these chains were later
@@ -29,11 +60,24 @@ const CHAIN_COUNT = 78;
 const LAST_GEN1_ID = 151;
 
 const SPRITE_DIR = path.join(REPO_ROOT, "public", "species");
+const ANIMATED_SPRITE_DIR = path.join(REPO_ROOT, "public", "species", "animated");
 const MIGRATION_PATH = path.join(
   REPO_ROOT,
   "supabase",
   "migrations",
   "20260806170100_seed_species.sql",
+);
+// The species table (and its seed migration above) was already deployed
+// before #22 — see CLAUDE.md on writes going through migrations, and
+// ADR-0006 on migrations reaching the remote database on push to main. A
+// migration already applied there won't re-run just because its file
+// content changes, so the zone and animated sprite columns arrive through a
+// second, additive migration rather than an edit to the first.
+const ZONE_MIGRATION_PATH = path.join(
+  REPO_ROOT,
+  "supabase",
+  "migrations",
+  "20260809110000_species_zone_and_animated_sprite.sql",
 );
 
 type EvolutionDetail = {
@@ -191,6 +235,30 @@ async function downloadSprite(id: number): Promise<void> {
   await writeFile(path.join(SPRITE_DIR, `${id}.png`), bytes);
 }
 
+/**
+ * The Gen-V (Black/White) battle-animation sprite (#22's encounter view).
+ * Distinct from `downloadSprite` above: that static PNG keeps serving
+ * Pokédex tiles and Logbook rows, this animated GIF is for the encounter
+ * scene only. Confirmed present for all of ids 1-151 in PokéAPI's sprite
+ * repo, so unlike the zone lookup this has no fallback — a 404 here means
+ * something upstream changed and the run should fail loudly.
+ */
+async function downloadAnimatedSprite(id: number): Promise<void> {
+  const response = await fetch(`${ANIMATED_SPRITE_BASE}/${id}.gif`, { headers: { "User-Agent": USER_AGENT } });
+  if (!response.ok) throw new Error(`${response.status} downloading animated sprite for species ${id}`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  await writeFile(path.join(ANIMATED_SPRITE_DIR, `${id}.gif`), bytes);
+}
+
+type SpeciesHabitatResponse = { habitat: { name: string } | null };
+
+/** The zone a species' Safari Zone encounter is set in — see `ZONE_BY_HABITAT`. */
+async function fetchZone(id: number): Promise<Zone> {
+  const { habitat } = await fetchJson<SpeciesHabitatResponse>(`${API}/pokemon-species/${id}`);
+  if (!habitat) return FALLBACK_ZONE;
+  return ZONE_BY_HABITAT[habitat.name] ?? FALLBACK_ZONE;
+}
+
 function sqlString(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
@@ -208,6 +276,44 @@ function buildMigration(nodes: Map<number, SpeciesNode>, insertOrder: number[]):
 insert into public.species (id, name, sprite_path, evolves_from_id, bond_requirement)
 values
 ${rows.join(",\n")};
+`;
+}
+
+/**
+ * The additive migration for #22: `zone` and `animated_sprite_path` on the
+ * already-deployed `species` table. Columns arrive nullable, get backfilled
+ * in the same migration, then get their `not null` — the standard shape for
+ * adding a required column to a populated table without a window where it's
+ * enforced against rows that don't have it yet.
+ */
+function buildZoneMigration(nodes: Map<number, SpeciesNode>, insertOrder: number[], zones: Map<number, Zone>): string {
+  const updates = insertOrder.map((id) => {
+    const zone = zones.get(id) as Zone;
+    return `update public.species set zone = ${sqlString(zone)}, animated_sprite_path = ${sqlString(`/species/animated/${id}.gif`)} where id = ${id};`;
+  });
+
+  return `-- Generated by scripts/generate-species.mts from a single PokéAPI run.
+-- Do not hand-edit — re-run the generator and commit its output instead.
+--
+-- Additive: supabase/migrations/20260806170100_seed_species.sql already shipped
+-- to the remote database (ADR-0006), so these columns arrive here rather than
+-- by editing that file, which an already-applied migration would silently skip.
+
+alter table public.species
+  add column zone text,
+  add column animated_sprite_path text;
+
+${updates.join("\n")}
+
+alter table public.species
+  alter column zone set not null,
+  alter column animated_sprite_path set not null,
+  add constraint species_zone_check check (zone in ('forest', 'marshland', 'meadow', 'peak', 'plains', 'savannah'));
+
+comment on column public.species.zone is
+  'The habitat this species stands in on the Safari Zone encounter view — one of six real Safari Zone areas. Belongs to the species, not any instance: every instance of a given species is met in the same zone.';
+comment on column public.species.animated_sprite_path is
+  'An animated battle sprite for the encounter view only. The static sprite_path above continues to serve Pokédex tiles and Logbook rows.';
 `;
 }
 
@@ -249,9 +355,21 @@ async function main() {
   }
 
   await writeFile(MIGRATION_PATH, buildMigration(nodes, insertOrder));
-
   console.log(`Wrote ${nodes.size} species to ${MIGRATION_PATH}`);
   console.log(`Wrote ${nodes.size} sprites to ${SPRITE_DIR}`);
+
+  const zones = new Map<number, Zone>();
+  await mkdir(ANIMATED_SPRITE_DIR, { recursive: true });
+  for (const id of nodes.keys()) {
+    zones.set(id, await fetchZone(id));
+    await sleep(150);
+    await downloadAnimatedSprite(id);
+    await sleep(50);
+  }
+
+  await writeFile(ZONE_MIGRATION_PATH, buildZoneMigration(nodes, insertOrder, zones));
+  console.log(`Wrote ${nodes.size} zones to ${ZONE_MIGRATION_PATH}`);
+  console.log(`Wrote ${nodes.size} animated sprites to ${ANIMATED_SPRITE_DIR}`);
 }
 
 main().catch((error) => {

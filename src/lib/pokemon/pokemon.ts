@@ -14,7 +14,13 @@ export type ActivePokemon = {
   bondLevel: number;
   bondRequirement: number;
   distanceToBondRequirement: number;
-  species: { id: number; name: string; spritePath: string };
+  species: {
+    id: number;
+    name: string;
+    spritePath: string;
+    zone: string;
+    animatedSpritePath: string;
+  };
 };
 
 type TrainerPoolRow = {
@@ -31,11 +37,13 @@ type InstanceRow = {
     name: string;
     sprite_path: string;
     bond_requirement: number;
+    zone: string;
+    animated_sprite_path: string;
   };
 };
 
 const ACTIVE_INSTANCE_COLUMNS =
-  "id, nickname, bond_level, species:species_id(id, name, sprite_path, bond_requirement)";
+  "id, nickname, bond_level, species:species_id(id, name, sprite_path, bond_requirement, zone, animated_sprite_path)";
 
 function toActivePokemon(instance: InstanceRow, happiness: number): ActivePokemon {
   return {
@@ -49,6 +57,8 @@ function toActivePokemon(instance: InstanceRow, happiness: number): ActivePokemo
       id: instance.species.id,
       name: instance.species.name,
       spritePath: instance.species.sprite_path,
+      zone: instance.species.zone,
+      animatedSpritePath: instance.species.animated_sprite_path,
     },
   };
 }
