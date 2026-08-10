@@ -69,7 +69,7 @@ export default async function SettingsPage() {
   return (
     <div className="stage">
       <div className="setpanel panel">
-        <div className="settop">Ranger settings</div>
+        <h1 className="settop">Ranger settings</h1>
         <div className="setscroll">
           <section className="setsection">
             <div className="sethead">Daily target</div>
@@ -154,7 +154,7 @@ export default async function SettingsPage() {
                       defaultValue={label.color}
                       aria-label={`${label.name} colour`}
                     />
-                    <button type="submit" className="savebtn">
+                    <button type="submit" className="savebtn" aria-label={`Save ${label.name} colour`}>
                       Save
                     </button>
                   </form>
@@ -162,7 +162,7 @@ export default async function SettingsPage() {
                   <form action={submitRenameLabel} className="fieldform">
                     <input type="hidden" name="id" value={label.id} />
                     <input className="title" type="text" name="name" defaultValue={label.name} required />
-                    <button type="submit" className="savebtn">
+                    <button type="submit" className="savebtn" aria-label={`Rename ${label.name}`}>
                       Rename
                     </button>
                   </form>
@@ -178,7 +178,7 @@ export default async function SettingsPage() {
                       required
                       aria-label={`${label.name} abbreviation`}
                     />
-                    <button type="submit" className="savebtn">
+                    <button type="submit" className="savebtn" aria-label={`Save ${label.name} abbreviation`}>
                       Save
                     </button>
                   </form>

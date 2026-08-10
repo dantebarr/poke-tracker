@@ -10,7 +10,7 @@ const WEEKDAY_MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatDay(day: string): string {
-  return WEEKDAY_MONTH_DAY_FORMAT.format(parseDateOnly(day)).toUpperCase();
+  return WEEKDAY_MONTH_DAY_FORMAT.format(parseDateOnly(day));
 }
 
 function describeEvent(entry: DayLedgerEntry): string | null {
@@ -42,7 +42,7 @@ export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
 
   return (
     <div className="histpanel panel">
-      <div className="histtop">Logbook</div>
+      <h1 className="histtop">Logbook</h1>
       <div className="histscroll">
         {months.length === 0 ? (
           <p className="clearday">No settled days yet. Come back after your first day passes.</p>
@@ -50,7 +50,7 @@ export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
           months.map((month) => (
             <div key={month.key}>
               <div className="grouphead">
-                <span>{month.label.toUpperCase()}</span>
+                <span>{month.label}</span>
                 <span className="count">{month.entries.length}</span>
               </div>
               {month.entries.map((entry) => (

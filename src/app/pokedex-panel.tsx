@@ -21,7 +21,7 @@ export function PokedexPanel({ entries }: { entries: PokedexEntry[] }) {
   return (
     <div className="dexpanel panel">
       <div className="dextop">
-        <span>Pokédex</span>
+        <h1>Pokédex</h1>
         <span className="seen">
           <span>
             {unlockedCount} / {entries.length} seen
