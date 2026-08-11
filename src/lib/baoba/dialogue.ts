@@ -60,7 +60,7 @@ export function buildBaobaLine(facts: BaobaLineFacts): string {
   // never contradict each other, even for that one stale render.
   if (!view.hasPokemon && facts.latestDay?.event === "left") {
     const name = capitalise(facts.latestDay.pokemonName ?? "Your Pokémon");
-    return `${name} couldn't wait any longer and slipped off — missed the target by ${-facts.latestDay.delta} today. Hit it again and another will come find you.${overdue}`;
+    return `${name} couldn't wait any longer and slipped off — missed the target by ${-facts.latestDay.delta} yesterday. Hit it again and another will come find you.${overdue}`;
   }
 
   // `view.prompt` here can only ever be `"naming"` or `null` — this call
@@ -74,7 +74,7 @@ export function buildBaobaLine(facts: BaobaLineFacts): string {
   }
 
   if (!view.hasPokemon) {
-    return `No Pokémon keeping you company right now, Ranger. Hit your daily target and one will come find you.${overdue}`;
+    return `No Pokémon keeping you company right now, Ranger. Hit your daily target and one's bound to come find you.${overdue}`;
   }
 
   return `${MOOD_LINES[view.mood.tier](view.nickname)}${overdue}`;
