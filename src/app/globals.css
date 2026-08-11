@@ -439,28 +439,6 @@ body {
   background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 3px);
 }
 
-.scene-empty {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 5;
-  max-width: 260px;
-  padding: 16px 18px;
-  text-align: center;
-}
-.scene-empty .pixel {
-  font-family: var(--font-pixel), monospace;
-  font-size: 12px;
-  margin: 0 0 8px;
-}
-.scene-empty p:not(.pixel) {
-  font-family: var(--font-display), monospace;
-  font-size: 18px;
-  margin: 0;
-  color: #585858;
-}
-
 .mon {
   position: absolute;
   left: 50%;

@@ -31,14 +31,7 @@ export function EncounterView({
   const view = buildEncounterView(pokemon, dailyTarget);
 
   if (!view.hasPokemon) {
-    return (
-      <div className="scene" data-zone="plains">
-        <div className="scene-empty textbox">
-          <p className="pixel">No Pokémon right now</p>
-          <p>Hit your daily target to bring one home.</p>
-        </div>
-      </div>
-    );
+    return <div className="scene" data-zone="plains" />;
   }
 
   return (
