@@ -1,6 +1,7 @@
 import { parseDateOnly } from "@/lib/task/dates";
 import type { DayLedgerEntry } from "@/lib/settlement/ledger";
 import { groupDayLedgerByMonth } from "@/lib/settlement/ledger-months";
+import { describeLedgerRowDisplay } from "@/lib/settlement/ledger-row-display";
 import { capitalise } from "@/lib/text";
 
 const WEEKDAY_MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", {
@@ -65,14 +66,13 @@ export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
 
 function DayLedgerRow({ entry }: { entry: DayLedgerEntry }) {
   const description = describeEvent(entry);
-  const rowVariant = entry.event === "left" ? " left" : entry.pokemon === null ? " none" : "";
-  const ptsVariant = entry.pokemon === null ? " muted" : entry.delta < 0 ? " bad" : "";
+  const { rowVariant, ptsVariant, pointsDisplay } = describeLedgerRowDisplay(entry);
 
   return (
     <div className={`ledgerrow${rowVariant}`}>
       <span className="ledgerdate">{formatDay(entry.day)}</span>
       <span className={`ledgerpts${ptsVariant}`}>
-        {entry.pokemon === null ? "—" : entry.pointsEarned}
+        {pointsDisplay}
         <span className="sign">/{entry.target}</span>
       </span>
       {description && <span className="ledgerdesc">{description}</span>}
