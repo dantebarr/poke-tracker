@@ -1,23 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { deriveDayLedgerEvent, type DayLedgerEvent } from "@/lib/settlement/ledger-events";
 import type { LedgerOutcome } from "@/lib/settlement/reducer";
 import { DatabaseError } from "@/lib/supabase/errors";
 
 /**
- * A settled day, as the history screen (#11) reads it. `pokemon` names the
- * instance the day concerned — nickname if the trainer set one, the species'
- * name otherwise — resolved from the instance's *current* record, since
- * day_ledger snapshots the target and the points but not the species (the
- * settlement migration's comment). Null on a day that concerned no instance
- * at all.
+ * A settled day, as the history screen (#11) reads it. `event` is the row's
+ * own stored `outcome` — settlement (ADR-0007) already knows the day it
+ * happened on, so nothing here infers it from a neighbouring row. `pokemon`
+ * names the instance the day concerned — nickname if the trainer set one,
+ * the species' name otherwise — resolved from the instance's *current*
+ * record, since day_ledger snapshots the target and the points but not the
+ * species (the settlement migration's comment). Null on a day that
+ * concerned no instance at all.
  */
 export type DayLedgerEntry = {
   day: string;
   pointsEarned: number;
   target: number;
   delta: number;
-  event: DayLedgerEvent;
+  event: LedgerOutcome;
   pokemon: { name: string; spritePath: string } | null;
 };
 
@@ -27,7 +28,6 @@ type DayLedgerRow = {
   target: number;
   delta: number;
   outcome: LedgerOutcome;
-  active_instance_id: string | null;
   instance: {
     nickname: string | null;
     species: { name: string; sprite_path: string };
@@ -35,7 +35,7 @@ type DayLedgerRow = {
 };
 
 const COLUMNS =
-  "day, points_earned, target, delta, outcome, active_instance_id, instance:active_instance_id(nickname, species:species_id(name, sprite_path))";
+  "day, points_earned, target, delta, outcome, instance:active_instance_id(nickname, species:species_id(name, sprite_path))";
 
 /**
  * A trainer's settled days, most recent first — today never appears, since
@@ -56,27 +56,18 @@ export async function listDayLedger(client: SupabaseClient, trainerId: string): 
     throw new DatabaseError("Listing day ledger", error);
   }
 
-  const entries: DayLedgerEntry[] = [];
-  let previousInstanceId: string | null = null;
-  for (const row of data) {
-    entries.push({
+  return data
+    .map((row) => ({
       day: row.day,
       pointsEarned: row.points_earned,
       target: row.target,
       delta: row.delta,
-      event: deriveDayLedgerEvent({
-        outcome: row.outcome,
-        activeInstanceId: row.active_instance_id,
-        previousInstanceId,
-      }),
+      event: row.outcome,
       pokemon: row.instance
         ? { name: row.instance.nickname ?? row.instance.species.name, spritePath: row.instance.species.sprite_path }
         : null,
-    });
-    previousInstanceId = row.active_instance_id;
-  }
-
-  return entries.reverse();
+    }))
+    .reverse();
 }
 
 /**
@@ -88,7 +79,7 @@ export async function listDayLedger(client: SupabaseClient, trainerId: string): 
  * trainer has no settled days yet.
  */
 export type LatestDayLedgerEvent = {
-  event: DayLedgerEvent;
+  event: LedgerOutcome;
   pokemonName: string | null;
   delta: number;
 } | null;
@@ -96,18 +87,15 @@ export type LatestDayLedgerEvent = {
 type LatestDayLedgerRow = {
   delta: number;
   outcome: LedgerOutcome;
-  active_instance_id: string | null;
   instance: { nickname: string | null; species: { name: string } } | null;
 };
 
-const LATEST_COLUMNS =
-  "delta, outcome, active_instance_id, instance:active_instance_id(nickname, species:species_id(name))";
+const LATEST_COLUMNS = "delta, outcome, instance:active_instance_id(nickname, species:species_id(name))";
 
 /**
- * The two most recent settled days — the one Baoba narrates, plus the day
- * before it, needed only to tell an arrival from an uneventful one the same
- * way `listDayLedger` does. Reads two rows rather than the whole history
- * `listDayLedger` returns, since the field screen only ever needs the latest.
+ * The single most recently settled day — the one Baoba narrates. `outcome`
+ * is read straight off that row (ADR-0007): the field screen never needs to
+ * look at the day before it to know what this one did.
  */
 export async function findLatestDayLedgerEvent(
   client: SupabaseClient,
@@ -118,7 +106,7 @@ export async function findLatestDayLedgerEvent(
     .select(LATEST_COLUMNS)
     .eq("trainer_id", trainerId)
     .order("day", { ascending: false })
-    .limit(2)
+    .limit(1)
     .returns<LatestDayLedgerRow[]>();
 
   if (error) {
@@ -128,13 +116,9 @@ export async function findLatestDayLedgerEvent(
     return null;
   }
 
-  const [latest, previous] = data;
+  const [latest] = data;
   return {
-    event: deriveDayLedgerEvent({
-      outcome: latest.outcome,
-      activeInstanceId: latest.active_instance_id,
-      previousInstanceId: previous?.active_instance_id ?? null,
-    }),
+    event: latest.outcome,
     pokemonName: latest.instance ? (latest.instance.nickname ?? latest.instance.species.name) : null,
     delta: latest.delta,
   };

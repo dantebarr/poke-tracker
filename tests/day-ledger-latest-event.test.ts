@@ -5,7 +5,7 @@ import { adminClient, clientForJar, createAccount, deleteAccount, insertTask, la
 
 /**
  * `findLatestDayLedgerEvent` (#23), against the real schema: it reads only
- * the two most recent settled days rather than `listDayLedger`'s whole
+ * the single most recent settled day rather than `listDayLedger`'s whole
  * history, so this proves it agrees with what `listDayLedger` already reads
  * — see day-ledger-read.test.ts for the fuller read-side coverage this
  * doesn't repeat.
@@ -152,36 +152,36 @@ describe("reading the latest day ledger event", () => {
     expect(latest!.delta).toBeLessThan(0);
   });
 
-  it("marks an arrival distinct from an ordinary uneventful day", async () => {
+  it("marks an Approaching day distinct from an ordinary uneventful day", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const [label] = await labelsFor(trainer.id);
     const { error } = await adminClient().from("trainer").update({ active_instance_id: null }).eq("id", trainer.id);
     if (error) throw new Error(JSON.stringify(error));
 
-    await setLastSettledDay(trainer.id, dayKey(3));
-    // Two days ago meets target (2 large tasks = 6 vs target 3): a
-    // qualifying pokemon-less day, so the arrival lands the day after —
-    // yesterday, the most recent settled day.
+    await setLastSettledDay(trainer.id, dayKey(2));
+    // Yesterday meets target (2 large tasks = 6 vs target 3) and is the most
+    // recent — and only — settled day: the Approaching day itself, naming no
+    // Pokémon even though the draw already happened.
     await insertTask({
       trainerId: trainer.id,
       labelId: label.id,
       size: "large",
       status: "done",
-      completedAt: noonOf(dayKey(2)),
+      completedAt: noonOf(dayKey(1)),
     });
     await insertTask({
       trainerId: trainer.id,
       labelId: label.id,
       size: "large",
       status: "done",
-      completedAt: noonOf(dayKey(2)),
+      completedAt: noonOf(dayKey(1)),
     });
 
     await settleOnEntry();
 
     const latest = await findLatestDayLedgerEvent(clientForJar(jar), trainer.id);
-    expect(latest?.event).toBe("arrived");
-    expect(latest?.pokemonName).not.toBeNull();
+    expect(latest?.event).toBe("approaching");
+    expect(latest?.pokemonName).toBeNull();
   });
 
   it("hides one trainer's latest event from another", async () => {

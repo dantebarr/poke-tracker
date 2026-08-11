@@ -48,7 +48,7 @@ export function buildBaobaLine(facts: BaobaLineFacts): string {
   const overdue = overdueClause(facts.overdueCount);
   const view = buildEncounterView(facts.pokemon, facts.dailyTarget);
 
-  if (view.hasPokemon && facts.latestDay?.event === "arrived") {
+  if (view.hasPokemon && facts.latestDay?.event === "approaching") {
     return `${view.nickname}'s turned up at camp, Ranger — go say hello.${overdue}`;
   }
 

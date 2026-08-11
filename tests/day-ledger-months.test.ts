@@ -4,7 +4,7 @@ import { groupDayLedgerByMonth } from "@/lib/settlement/ledger-months";
 import type { DayLedgerEntry } from "@/lib/settlement/ledger";
 
 /**
- * Pure logic, no database — same rationale as day-ledger-events.test.ts.
+ * Pure logic, no database — same rationale as settlement-reducer.test.ts.
  */
 
 function entry(day: string): DayLedgerEntry {
