@@ -391,6 +391,8 @@ body {
 .scene {
   position: relative;
   flex: 1;
+  /* the box `.mon` sizes itself against — see its rule below */
+  container-type: size;
   border: 4px solid var(--safari-edge);
   border-radius: 12px;
   overflow: hidden;
@@ -439,14 +441,26 @@ body {
   background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 3px);
 }
 
+/* Sized off `.scene` rather than a fixed 150px, so the Pokémon grows with
+   the screen instead of shrinking into a tall zone photo: a square, 50% of
+   the scene's height, but never wider than 80% of its width.
+
+   `min()` of two container units rather than `height: 50%` + `max-width:
+   80%`, because that pair cannot stay square — with a definite height,
+   clamping the width just stretches the box rather than re-deriving the
+   height from `aspect-ratio`. Reading both axes in one axis' value is what
+   container query units are for, hence `container-type: size` above; the
+   scene can afford size containment since its height comes from `.pane`'s
+   flexbox and its width from `.panes`' grid, never from these children (all
+   absolutely positioned). */
 .mon {
   position: absolute;
   left: 50%;
   top: 52%;
   transform: translate(-50%, -50%);
   z-index: 2;
-  width: 150px;
-  height: 150px;
+  height: min(50cqh, 80cqw);
+  aspect-ratio: 1;
 }
 .mon img {
   width: 100%;
@@ -454,13 +468,15 @@ body {
   object-fit: contain;
   image-rendering: pixelated;
 }
+/* proportions kept from the old 150px sprite (150 × 37, sunk 17) so the
+   shadow still reads as ground under the feet at any size */
 .mon .platform {
   position: absolute;
   left: 50%;
-  bottom: -17px;
+  bottom: -11%;
   transform: translateX(-50%);
-  width: 150px;
-  height: 37px;
+  width: 100%;
+  height: 25%;
   border-radius: 50%;
   background: radial-gradient(50% 50%, rgba(120, 180, 110, 0.5), rgba(20, 50, 25, 0.35) 62%, transparent 72%);
   box-shadow: inset 0 -6px 0 rgba(255, 255, 255, 0.12);
