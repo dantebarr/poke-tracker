@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { findLatestDayLedgerEvent, listDayLedger, type DayLedgerEntry, type LatestDayLedgerEvent } from "@/lib/settlement/ledger";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -14,8 +16,14 @@ export async function currentDayLedger(trainerId: string): Promise<DayLedgerEntr
   return listDayLedger(client, trainerId);
 }
 
-/** The most recent settled day's event, for the field screen's dialogue tray (#23). */
-export async function currentLatestDayLedgerEvent(trainerId: string): Promise<LatestDayLedgerEvent> {
-  const client = await createSupabaseServerClient();
-  return findLatestDayLedgerEvent(client, trainerId);
-}
+/**
+ * The most recent settled day's event, for Warden Baoba's dialogue tray
+ * (#23), read by the chrome layout now that the tray is chrome-level (#33).
+ * `cache`d for the same reason `currentActivePokemon` is.
+ */
+export const currentLatestDayLedgerEvent = cache(
+  async (trainerId: string): Promise<LatestDayLedgerEvent> => {
+    const client = await createSupabaseServerClient();
+    return findLatestDayLedgerEvent(client, trainerId);
+  },
+);

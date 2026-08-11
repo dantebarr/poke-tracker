@@ -73,6 +73,11 @@ export async function ensureTrainer(): Promise<Trainer> {
  *
  * Takes a `FormData`, not a typed parameter, so it can be bound directly to a
  * `<form action>` — see the settings page.
+ *
+ * Layout-scoped, not page-scoped (#33): the daily target also feeds the
+ * chrome layout's persistent left pane (the encounter view's mood tier), so
+ * a page-scoped revalidation would leave that pane stale on every
+ * destination other than Settings itself.
  */
 export async function updateDailyTargetAction(formData: FormData): Promise<Trainer> {
   const client = await createSupabaseServerClient();
@@ -81,7 +86,7 @@ export async function updateDailyTargetAction(formData: FormData): Promise<Train
   const target = Number(formData.get("target"));
 
   const trainer = await updateDailyTarget(client, trainerId, target);
-  revalidatePath("/settings");
+  revalidatePath("/", "layout");
   return trainer;
 }
 
@@ -89,6 +94,11 @@ export async function updateDailyTargetAction(formData: FormData): Promise<Train
  * Sets the signed-in trainer's time zone. Never detected from the browser
  * (ADR-0004) — this is the only way it changes. Takes a `FormData` for the
  * same reason {@link updateDailyTargetAction} does.
+ *
+ * Layout-scoped for the same reason {@link updateDailyTargetAction} is
+ * (#33): the time zone feeds the status strip's day count and Warden
+ * Baoba's overdue clause, both drawn by the chrome layout on every
+ * destination.
  */
 export async function updateTimeZoneAction(formData: FormData): Promise<Trainer> {
   const client = await createSupabaseServerClient();
@@ -97,8 +107,7 @@ export async function updateTimeZoneAction(formData: FormData): Promise<Trainer>
   const timeZone = String(formData.get("timeZone"));
 
   const trainer = await updateTimeZone(client, trainerId, timeZone);
-  revalidatePath("/settings");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return trainer;
 }
 

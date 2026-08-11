@@ -23,6 +23,9 @@ export async function settleOnEntry(): Promise<void> {
 
   const settled = await settle(client, trainerId);
   if (settled) {
-    revalidatePath("/");
+    // Layout-scoped, not page-scoped (#33): a settlement can change which
+    // Pokémon is active and Baoba's line about it, both drawn by the chrome
+    // layout on every destination, not only `/`.
+    revalidatePath("/", "layout");
   }
 }

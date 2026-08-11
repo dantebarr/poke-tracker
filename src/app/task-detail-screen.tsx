@@ -10,11 +10,12 @@ import type { Task } from "@/lib/task/task";
 /**
  * The mobile task detail screen (#29, made an explicit form by #32): what a
  * tapped row opens on a narrow screen instead of the desktop's inline
- * expander, ported from mockup B's `.detail`
- * (`docs/mockups/b/b2-forest.html`). `FieldScreen` renders this in place of
- * the whole two-pane stage — the mockup's own `.detail` sits beside `.stage`
- * as a sibling inside `.app`, not inside one pane's scroll region, so a task
- * takes over the entire screen rather than a slice of it.
+ * expander, ported from mockup B's `.detail` — the mockup's own `.detail`
+ * sits beside `.stage` as a sibling inside `.app`, not inside one pane's
+ * scroll region, so a task takes over the entire screen rather than a slice
+ * of it. `FieldScreen` portals this into the chrome layout's overlay slot
+ * (#33) to get the same sibling-of-the-stage placement now that the layout,
+ * not the field screen, owns the stage.
  *
  * Editing is committed by Save and by nothing else (`useTaskFields` without
  * a live save), so a Ranger can open a task, change their mind, and leave it
@@ -51,6 +52,10 @@ export function TaskDetailScreen({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
+    // The root class is load-bearing beyond styling: globals.css's mobile
+    // `.stage:has(~ .overlay-slot .detail)` rule hides the stage while this
+    // is open, keyed off this exact class name. Renaming it needs a matching
+    // update there, or the stage stops hiding behind an open task.
     <div className="detail">
       <div className="detailbar">
         <span className="pixel">Task detail</span>

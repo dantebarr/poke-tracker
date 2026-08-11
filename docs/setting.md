@@ -32,10 +32,8 @@ He is the only voice in the app that speaks in first person. He is warm,
 unhurried, and matter-of-fact about the work — a man who has run this place for
 decades and does not need to oversell it.
 
-> _Asset status:_ no Baoba sprite is in `public/` yet. The mockups under
-> `docs/mockups/` use a hand-drawn pixel stand-in (`assets/baoba.svg`), clearly
-> marked as a placeholder. Sourcing the real sprite is a prerequisite for the
-> intro modal shipping.
+> _Asset status:_ Warden Baoba's sprite lives in `public/npc/`, sourced from his
+> HGSS game model as this setting requires.
 
 ### The Ranger
 
@@ -134,6 +132,7 @@ fourth is still open.
 
 ## Mockups
 
-Three UI directions built against this setting live in `docs/mockups/` — open
-`docs/mockups/index.html` in a browser. They are static HTML with fake data and
-are not wired to anything.
+Retired (#33). Three UI directions were built against this setting to find the
+interface before implementation started; the app is the source of truth for
+its own appearance now. `UI-CONSTRAINTS.md` carries forward the surface,
+touch and animation rules the implementation still answers to.

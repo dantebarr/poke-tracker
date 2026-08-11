@@ -6,10 +6,10 @@ import { markIntroSeenAction } from "@/app/actions/trainer";
  * Warden Baoba's first-day briefing (#27): the only place the loop — do the
  * work and a Pokémon stays, let it down often enough and it leaves — is
  * explained before it starts costing anything. The paragraphs live here
- * rather than as a plain string array so the one bold phrase in the mockup
- * (`docs/mockups/b/b-safari-gear.html`'s `<dialog id="intro">`) survives the
- * port; {@link FirstDayBriefingText} is exported separately so Settings can
- * show the same words without the overlay chrome around them.
+ * rather than as a plain string array so the one bold phrase in the
+ * mockup's `<dialog id="intro">` survives the port; {@link
+ * FirstDayBriefingText} is exported separately so Settings can show the
+ * same words without the overlay chrome around them.
  */
 export function FirstDayBriefingText() {
   return (

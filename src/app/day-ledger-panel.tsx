@@ -33,9 +33,8 @@ function describeEvent(entry: DayLedgerEntry): string | null {
  * navigable, most recent first — and never Today, since settlement never
  * settles it (CONTEXT.md). There is nothing here that could show it anyway,
  * since this only ever reads `day_ledger` rows and none exists for today.
- * Ported from mockup B (`docs/mockups/b/b-history.html`); `.grouphead` is
- * reused from the field log's Bucket groups (#28) rather than redefined,
- * since a month group is the same shape.
+ * Ported from mockup B; `.grouphead` is reused from the field log's Bucket
+ * groups (#28) rather than redefined, since a month group is the same shape.
  */
 export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
   const months = groupDayLedgerByMonth(entries);
