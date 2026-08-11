@@ -201,49 +201,68 @@ body {
   gap: 8px;
   flex: none;
 }
-.strip nav a.back {
-  display: flex;
-  align-items: center;
-  font-family: var(--font-pixel), monospace;
-  font-size: 8px;
-  text-decoration: none;
-  background: linear-gradient(180deg, #f4f7cf, #d8dd96);
-  color: #23330f;
-  border: 3px solid var(--safari-edge);
-  border-radius: 7px;
-  padding: 7px 8px;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
-}
+/* Every nav button's look is three custom properties, so marking one is a
+   matter of setting them rather than restating the button (#32) — which
+   matters because the field log's mark is surface-dependent, so the marked
+   values have to be stated once per surface. Only a media query can be right
+   in the first paint; a viewport read in JS cannot. */
 .strip nav a.icobtn {
+  --icobtn-face: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+  --icobtn-keyline: rgba(255, 255, 255, 0.3);
+  --icobtn-ink: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
-  background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+  background: var(--icobtn-face);
   border: 3px solid var(--safari-edge);
   border-radius: 7px;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px var(--icobtn-keyline),
     0 3px 0 rgba(0, 0, 0, 0.35);
-  color: inherit;
+  color: var(--icobtn-ink);
   text-decoration: none;
 }
 .strip nav a.icobtn:hover {
-  background: linear-gradient(180deg, #74d086, var(--safari-light));
+  --icobtn-face: linear-gradient(180deg, #74d086, var(--safari-light));
 }
-.strip nav a.icobtn.active {
-  background: linear-gradient(180deg, var(--safari-sel), #d8dd96);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.2),
-    0 3px 0 rgba(0, 0, 0, 0.35);
+/* `.active` marks at any width; the other two are the status strip's answer
+   for one surface only. The two queries are exact complements, so every
+   width gets one of these rules and `.active` is honoured by both. */
+@media not all and (max-width: 900px) {
+  .strip nav a.icobtn.active,
+  .strip nav a.icobtn.active-wide {
+    --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
+    --icobtn-keyline: rgba(0, 0, 0, 0.2);
+    --icobtn-ink: #23330f;
+  }
 }
-.strip nav a.icobtn.active svg {
-  fill: #23330f;
+@media (max-width: 900px) {
+  .strip nav a.icobtn.active,
+  .strip nav a.icobtn.active-narrow {
+    --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
+    --icobtn-keyline: rgba(0, 0, 0, 0.2);
+    --icobtn-ink: #23330f;
+  }
 }
 .strip nav a.icobtn svg {
   width: 16px;
   height: 16px;
+}
+/* The home arrow (#32): the one control that returns a Ranger to the
+   encounter view, at the left end of the same row as the destinations, which
+   it pushes to the right. Never drawn on a wide screen, where the field log
+   icon already leads to the screen holding both panes — hidden by CSS rather
+   than decided in JS for the same first-paint reason as the marking above,
+   and the same treatment the mobile-only chrome below gets. It sits in flow
+   here, never floating, so it cannot cover a Pokédex tile, a ledger row, or
+   one of Settings' own reorder arrows. */
+.strip nav a.home {
+  display: none;
+  margin-right: auto;
+  font-size: 18px;
+  line-height: 1;
 }
 
 /* ── stage: the shell every screen's own content fills ────────────── */
@@ -273,14 +292,10 @@ body {
      harmless elsewhere in this shell, since every other pane has one child. */
   gap: 12px;
 }
-.pane-switch {
-  display: none;
-}
-
 /* Mobile-only chrome (#29): the floating add button, the add sheet and its
    backdrop, and the full-screen task detail screen. All hidden by default —
-   shown only within the mobile media query below, the same treatment
-   `.pane-switch` already gets above. */
+   shown only within the mobile media query below, the same treatment the
+   nav row's home arrow gets above. */
 .fab,
 .sheet,
 .sheet-backdrop,
@@ -789,20 +804,27 @@ body {
     margin-top: 2px;
   }
 
-  /* Below 900px this is the primary way a Ranger moves between screens —
-     UI-CONSTRAINTS.md's 44px touch-target minimum applies for real here,
-     unlike the desktop chrome above where a mouse is doing the pointing. */
+  /* Below 900px this is the *only* way a Ranger moves between screens (#32)
+     — UI-CONSTRAINTS.md's 44px touch-target minimum applies for real here,
+     unlike the desktop chrome above where a mouse is doing the pointing. The
+     home arrow is an `.icobtn` too, so it is sized by the same rule. */
   .strip nav a.icobtn {
     width: 44px;
     height: 44px;
   }
-  .strip nav a.back {
-    min-height: 44px;
-    padding: 0 10px;
+  .strip nav a.home {
+    display: flex;
   }
 
   .stage {
     min-height: 0;
+  }
+  /* A task takes over the whole screen, so the stage behind it goes away
+     rather than scrolling underneath (#32). Scoped to this query because a
+     wide screen never has a task covering it, and must go on drawing its
+     panes in the frame before the viewport has been measured. */
+  .stage.covered {
+    display: none;
   }
 
   /* the two panes sit side by side at double width; translateX shows one */
@@ -822,29 +844,6 @@ body {
   }
   .stage.show-right .panes {
     transform: translateX(-50%);
-  }
-
-  .pane-switch {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    bottom: 16px;
-    z-index: 6;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    font-size: 20px;
-    color: #fff;
-    background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
-    border: 3px solid var(--safari-edge);
-    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
-  }
-  .pane:first-child .pane-switch {
-    right: 16px;
-  }
-  .pane:last-child .pane-switch {
-    left: 16px;
   }
 
   /* the naming prompt (#24) folds into Baoba's tray down here instead of
@@ -877,8 +876,8 @@ body {
   }
 
   /* the floating add button (#29) — always within thumb reach
-     (UI-CONSTRAINTS.md), sharing the field log pane's bottom-right corner
-     with nothing else (the pane switch above sits bottom-left there). */
+     (UI-CONSTRAINTS.md), and since #32 removed the pane switch that used to
+     sit bottom-left, the only thing floating over the field log pane. */
   .fab {
     display: flex;
     align-items: center;
@@ -1477,34 +1476,23 @@ span.title {
   }
 
   /* ── mobile task detail: a full-screen pane in the stage's own flex slot
-     (#29) — `FieldScreen` renders it as a sibling of `TwoPaneStage`, not
-     nested inside it, so it replaces the whole two-pane stage rather than
-     one pane's content. ── */
+     (#29) — `FieldScreen` renders it as a sibling of the stage, not nested
+     inside it, so it replaces the whole two-pane stage (see `.stagewrap`)
+     rather than one pane's content. ── */
   .detail {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
   }
+  /* Just the title since #32: the bar's own back arrow was a second control
+     doing what the footer's Cancel now does. */
   .detailbar {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 11px 6px;
     flex: none;
-  }
-  .detailbar .back {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
-    color: #fff;
-    background: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
-    border: 3px solid var(--safari-edge);
-    border-radius: 8px;
-    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
   }
   .detailbar .pixel {
     font-family: var(--font-pixel), monospace;
@@ -1547,21 +1535,22 @@ span.title {
   .detailbody .delbtn {
     margin: 6px auto 0;
   }
+  /* Cancel and Save, in the add editor's order and to its proportions
+     (#32) — creating a task and editing one are the same gesture now, so
+     they should not look like two different kinds of form. */
   .detailfoot {
     flex: none;
+    display: flex;
+    gap: 10px;
     padding: 14px;
     padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
-  .detailfoot .complete {
-    width: 100%;
+  .detailfoot .ghostbtn,
+  .detailfoot .primary {
+    flex: 1;
+    text-align: center;
     padding: 16px;
     font-size: 12px;
-  }
-  /* The same "roll back visibly" treatment a list row gets on a failed save
-     (`.taskrow.errored`) — the detail screen is the only view of the task
-     while it's open, so a failed debounced edit needs its own flash here. */
-  .detail.errored .detailbar {
-    animation: row-error-flash 1.1s ease;
   }
 }
 

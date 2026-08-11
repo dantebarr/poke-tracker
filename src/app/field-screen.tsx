@@ -1,11 +1,14 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 
+import { ADD_FORM_HREF, FIELD_LOG_HREF, resolveFieldView, taskHref } from "@/app/(app)/chrome/navigation";
 import { TwoPaneStage } from "@/app/(app)/chrome/two-pane-stage";
 import { completeTaskAction, createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions/task";
 import { AddTaskSheet, FieldLogPanel } from "@/app/field-log-panel";
 import { PENDING_ID_PREFIX } from "@/app/pending-task-id";
+import { useSurface } from "@/app/responsive";
 import { TaskDetailScreen } from "@/app/task-detail-screen";
 import { type EditableFields, normalizeNotes } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
@@ -48,6 +51,15 @@ function reduceTasks(state: Task[], action: TaskListAction): Task[] {
  * the moment the transition settles (success or failure alike, since a
  * throw never reaches `revalidatePath`), and a failure gets a visible flash
  * on top of that revert rather than a silent snap-back.
+ *
+ * *Which* of those surfaces is showing is no longer state here (#32): the
+ * pane, the open task and the add form are all search parameters, resolved
+ * by `resolveFieldView`, so the device back gesture closes each of them
+ * because each is real navigation. They are written with the native history
+ * API rather than `useRouter`, which is what Next recommends for exactly
+ * this case — these parameters select between content that is already
+ * loaded, so a router navigation's refetch of the whole screen would buy
+ * nothing and cost a round trip per pane switch.
  */
 export function FieldScreen({
   pokemonPane,
@@ -64,10 +76,10 @@ export function FieldScreen({
   todayKey: string;
   dailyTarget: number;
 }) {
+  const params = useSearchParams();
+  const surface = useSurface();
   const [optimisticTasks, dispatch] = useOptimistic(tasks, reduceTasks);
   const [, startTransition] = useTransition();
-  const [mobileDetailTaskId, setMobileDetailTaskId] = useState<string | null>(null);
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [erroredId, setErroredId] = useState<string | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A failed *completion*, *edit* or *delete* still has a real row to flash
@@ -184,74 +196,114 @@ export function FieldScreen({
     });
   }
 
-  // A successful delete removes the task the detail screen was showing out
-  // from under it — `detailTask` simply goes null, falling through to the
-  // stage below, with no separate "close" step needed: `mobileDetailTaskId`
-  // is left stale rather than reset, harmlessly, since nothing renders off
-  // it directly.
-  const detailTask = mobileDetailTaskId
-    ? (optimisticTasks.find((task) => task.id === mobileDetailTaskId) ?? null)
+  const openTasks = optimisticTasks.filter((task) => task.status === "open");
+  // Until the first effect runs there is no viewport to measure, and a
+  // narrow screen is the one with something to hide: it is the surface where
+  // an opened task covers the stage and a chosen pane slides into view, and
+  // both have to be right in the first paint of a link someone shared.
+  // Getting it wrong the other way costs a wide screen one frame before a
+  // row expands, with nothing on screen moving in the meantime.
+  const view = resolveFieldView({ params, surface: surface ?? "narrow", openTasks });
+  const detailTask = view.detailTaskId
+    ? (optimisticTasks.find((task) => task.id === view.detailTaskId) ?? null)
     : null;
+
+  // True while there is a history entry of our own below this one — set by
+  // opening an overlay, spent by leaving one, and cleared whenever no
+  // overlay is showing, which is how a Ranger's own back gesture is
+  // accounted for. A task reached by a shared link is the case this exists
+  // for: nothing of ours sits underneath it.
+  const pushedOverlay = useRef(false);
+  const overlayShowing =
+    view.detailTaskId !== null || view.expandedTaskId !== null || view.addSheetOpen || view.addEditorOpen;
+  useEffect(() => {
+    if (!overlayShowing) pushedOverlay.current = false;
+  }, [overlayShowing]);
+
+  function openOverlay(href: string) {
+    pushedOverlay.current = true;
+    window.history.pushState(null, "", href);
+  }
+
+  /**
+   * Leaving an overlay any way other than the back gesture — Cancel, Save,
+   * a delete — has to *pop* the entry that opened it, not replace it: the
+   * replaced entry would still sit underneath, and the Ranger's next back
+   * press would appear to do nothing. Popping is also what makes the back
+   * gesture and Cancel agree about what happens, which is the point of both
+   * being in the URL. The exception is an overlay we never pushed, reached
+   * by a link straight into it, where there is nothing to pop and popping
+   * would leave the app entirely.
+   */
+  function leaveOverlay() {
+    if (pushedOverlay.current) {
+      pushedOverlay.current = false;
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(null, "", FIELD_LOG_HREF);
+  }
 
   return (
     <>
-      {/* `display: contents` rather than conditionally rendering
-          `TwoPaneStage` at all: it owns its own pane-switch state
-          (`showRight`), and swapping the whole component out while the
-          detail screen is open would remount it on the way back, resetting
-          that state — a Ranger who opened a task from the field log pane
-          would land back on the Pokémon pane instead. Hidden via CSS, its
-          state survives; `display: contents` (rather than `none`) when
-          visible keeps `.stage` a direct flex child of `.app`, which the
-          chrome layout depends on. */}
-      <div style={{ display: detailTask ? "none" : "contents" }}>
-        <TwoPaneStage
-          leftLabel="the Pokémon"
-          rightLabel="the field log"
-          left={pokemonPane}
-          right={
-            <FieldLogPanel
-              tasks={optimisticTasks}
-              labels={labels}
-              timeZone={timeZone}
-              todayKey={todayKey}
-              dailyTarget={dailyTarget}
-              erroredId={erroredId}
-              failedDraft={failedDraft}
-              onComplete={handleComplete}
-              onSave={handleSave}
-              onDelete={handleDelete}
-              onCreate={handleCreate}
-              onOpenMobileDetail={setMobileDetailTaskId}
-              onOpenAddSheet={() => setAddSheetOpen(true)}
-            />
-          }
-        />
-      </div>
+      <TwoPaneStage
+        showRight={view.pane === "log"}
+        // Covered, not unmounted, while a task has taken over a narrow
+        // screen: `detailTaskId` is only ever set for a narrow screen, and a
+        // wide one must go on drawing its panes even in the frame before the
+        // viewport has been measured — so the hiding is a class scoped to the
+        // mobile media query rather than a conditional render here.
+        covered={detailTask !== null}
+        left={pokemonPane}
+        right={
+          <FieldLogPanel
+            tasks={optimisticTasks}
+            labels={labels}
+            timeZone={timeZone}
+            todayKey={todayKey}
+            dailyTarget={dailyTarget}
+            erroredId={erroredId}
+            failedDraft={failedDraft}
+            expandedTaskId={view.expandedTaskId}
+            addEditorOpen={view.addEditorOpen}
+            onComplete={handleComplete}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onCreate={handleCreate}
+            onOpenTask={(taskId) => openOverlay(taskHref(taskId))}
+            onOpenAddForm={() => openOverlay(ADD_FORM_HREF)}
+            onLeaveOverlay={leaveOverlay}
+          />
+        }
+      />
       {detailTask && (
         <TaskDetailScreen
           key={detailTask.id}
           task={detailTask}
           labels={labels}
-          errored={erroredId === detailTask.id}
-          onClose={() => setMobileDetailTaskId(null)}
-          onSave={(fields) => handleSave(detailTask, fields)}
-          onComplete={() => handleComplete(detailTask)}
-          onDelete={() => handleDelete(detailTask)}
+          onCancel={leaveOverlay}
+          onSave={(fields) => {
+            leaveOverlay();
+            handleSave(detailTask, fields);
+          }}
+          onDelete={() => {
+            leaveOverlay();
+            handleDelete(detailTask);
+          }}
         />
       )}
       {/* Rendered as a sibling of the stage, not inside `FieldLogPanel`'s
           pane: the sheet is `position: fixed` to cover the true viewport,
           and `.panes` (the pane it would otherwise sit inside) gains a CSS
-          `transform` while the mobile pane-switcher shows the log pane —
+          `transform` while a narrow screen is showing the log pane —
           a `transform` on an ancestor turns `position: fixed` into "fixed
           to that ancestor" instead of the viewport. */}
-      {addSheetOpen && (
+      {view.addSheetOpen && (
         <AddTaskSheet
           labels={labels}
-          onCancel={() => setAddSheetOpen(false)}
+          onCancel={leaveOverlay}
           onSave={(fields) => {
-            setAddSheetOpen(false);
+            leaveOverlay();
             handleCreate(fields);
           }}
         />

@@ -199,6 +199,9 @@ The Safari Zone's warden, and the only surface in the interface that states **wh
 costs something. Speaks in a dialogue tray on every visit to the field screen, narrating facts the
 loop has already computed — never a second source of truth for them.
 
+**Encounter view**:
+The interface's name for the scene a trainer's **Active Pokémon** stands in, in its **Zone**.
+
 **Field log**:
 The interface's name for a trainer's **task** list.
 

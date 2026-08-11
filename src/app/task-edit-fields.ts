@@ -29,26 +29,37 @@ export function normalizeNotes(notes: string): string | null {
 }
 
 /**
- * Live-saved editing for one task's fields: every change is debounced 600ms
- * before it reaches `onSave`, so a title typed character by character is one
- * write, not one per keystroke (UI-CONSTRAINTS.md's complaint about the
- * mockup's own per-keystroke model). Shared by the desktop inline expander
- * (`OpenTaskRow` in `field-log-panel.tsx`) and the mobile full-screen detail
- * screen (`task-detail-screen.tsx`, #29) — the same editing behaviour, two
- * different shells around it.
+ * One task's editable fields, backing the two persistence models this app
+ * has (#32).
  *
- * `reset`/`schedule`/`flush` have stable identity (empty-deps `useCallback`,
+ * Pass `liveSave` and every change is debounced 600ms before it reaches it,
+ * so a title typed character by character is one write, not one per
+ * keystroke (UI-CONSTRAINTS.md's complaint about the mockup's own
+ * per-keystroke model). That is the desktop inline expander (`OpenTaskRow`
+ * in `field-log-panel.tsx`), where editing is a fast in-place thing and
+ * there is no moment that reads as "done".
+ *
+ * Leave it out and nothing is ever saved on this hook's own initiative: the
+ * caller reads `fields` and commits them itself. That is the mobile detail
+ * screen (`task-detail-screen.tsx`), which since #32 is an explicit form —
+ * Cancel and Save, like the add form it sits beside — so that a Ranger can
+ * open a task, change their mind and leave it as it was. The two surfaces
+ * therefore no longer persist a task the same way, deliberately: creating a
+ * task has always been an explicit commit, and the detail screen has moved
+ * to the model of the add sheet it shares a footer with.
+ *
+ * `reset`/`edit`/`flush` have stable identity (empty-deps `useCallback`,
  * state read via refs) so callers can put them in effect dependency arrays
  * without the effect re-running on every render.
  */
-export function useDebouncedTaskFields(task: Task, onSave: (fields: EditableFields) => void) {
+export function useTaskFields(task: Task, liveSave?: (fields: EditableFields) => void) {
   const [fields, setFields] = useState<EditableFields>(() => taskToFields(task));
   const fieldsRef = useRef(fields);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onSaveRef = useRef(onSave);
+  const liveSaveRef = useRef(liveSave);
 
   useEffect(() => {
-    onSaveRef.current = onSave;
+    liveSaveRef.current = liveSave;
   });
 
   const reset = useCallback((nextTask: Task) => {
@@ -57,24 +68,26 @@ export function useDebouncedTaskFields(task: Task, onSave: (fields: EditableFiel
     setFields(next);
   }, []);
 
-  const schedule = useCallback((patch: Partial<EditableFields>) => {
+  const edit = useCallback((patch: Partial<EditableFields>) => {
     const next = { ...fieldsRef.current, ...patch };
     fieldsRef.current = next;
     setFields(next);
+    if (!liveSaveRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveTimer.current = null;
-      onSaveRef.current(fieldsRef.current);
+      liveSaveRef.current?.(fieldsRef.current);
     }, 600);
   }, []);
 
+  // A no-op without a `liveSave`, since nothing was ever scheduled.
   const flush = useCallback(() => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
-      onSaveRef.current(fieldsRef.current);
+      liveSaveRef.current?.(fieldsRef.current);
     }
   }, []);
 
-  return { fields, schedule, reset, flush };
+  return { fields, edit, reset, flush };
 }

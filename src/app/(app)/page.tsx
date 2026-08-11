@@ -14,14 +14,19 @@ import { currentTrainer } from "@/lib/trainer/session";
 /**
  * Home / the field screen (#14, restyled by #21, given its encounter view by
  * #22, given Warden Baoba's dialogue tray by #23, its right pane rebuilt as
- * the field log by #28, given a mobile surface by #29): the Active
- * Pokémon's encounter scene and Baoba's tray in the left pane, the field
+ * the field log by #28, given a mobile surface by #29): the encounter view —
+ * the Active Pokémon's scene and Baoba's tray — in the left pane, the field
  * log — task creation and the task list, restyled to mockup B — in the
- * right, and on a narrow screen, `FieldScreen` swaps the whole stage for
- * the full-screen task detail while one is open. Naming (#24) and the
- * evolve prompt (#25) both come back as `PokemonPane`'s shared prompt-box
- * slot. Today's effort against the Daily target lives in the Field log
- * header (#28), which is where mockup B draws it, not here.
+ * right, and on a narrow screen, one of the two at a time. Naming (#24) and
+ * the evolve prompt (#25) both come back as `PokemonPane`'s shared
+ * prompt-box slot. Today's effort against the Daily target lives in the
+ * Field log header (#28), which is where mockup B draws it, not here.
+ *
+ * Which pane is showing, which task is open and whether the add form is up
+ * are all search parameters since #32, but they are read on the client
+ * (`FieldScreen`) rather than through this page's `searchParams` prop: they
+ * choose between content this page has already fetched, so re-running the
+ * queries below for a pane switch would buy nothing.
  */
 export default async function HomePage() {
   const trainer = await currentTrainer();
