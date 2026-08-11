@@ -11,12 +11,12 @@ import { settleDays, type SettlementState } from "@/lib/settlement/reducer";
 const STARTER = "starter-instance";
 const ARRIVAL = "arrival-instance";
 
-function noPokemon(pendingArrivalDelta: number | null = null): SettlementState {
-  return { happiness: 0, activeInstanceId: null, pendingArrivalDelta };
+function noPokemon(): SettlementState {
+  return { happiness: 0, activeInstanceId: null };
 }
 
 function withPokemon(happiness: number, activeInstanceId: string = STARTER): SettlementState {
-  return { happiness, activeInstanceId, pendingArrivalDelta: null };
+  return { happiness, activeInstanceId };
 }
 
 function days(tasksByDay: Record<string, { size: "small" | "medium" | "large" }[]>) {
@@ -90,9 +90,11 @@ describe("a day with an active Pokémon", () => {
 });
 
 describe("a day with no active Pokémon", () => {
-  it("marks an arrival pending for the next day on a qualifying delta, without drawing yet", () => {
+  it("draws an Arrival immediately on a qualifying day, its row naming no Pokémon", () => {
     const { days: ds, tasksByDay } = days({ "2024-01-01": [large, large] }); // 6, target 3
-    const result = settleDays(noPokemon(), ds, tasksByDay, 3, noDraw);
+    const draw = vi.fn().mockReturnValue(ARRIVAL);
+
+    const result = settleDays(noPokemon(), ds, tasksByDay, 3, draw);
 
     expect(result.ledgerRows[0]).toEqual({
       day: "2024-01-01",
@@ -101,9 +103,10 @@ describe("a day with no active Pokémon", () => {
       delta: 3,
       happinessAfter: 0,
       activeInstanceId: null,
-      outcome: "none",
+      outcome: "approaching",
     });
-    expect(result.state).toEqual(noPokemon(3));
+    expect(draw).toHaveBeenCalledTimes(1);
+    expect(result.state).toEqual({ happiness: 3, activeInstanceId: ARRIVAL });
   });
 
   it("does nothing on a day below target", () => {
@@ -114,43 +117,36 @@ describe("a day with no active Pokémon", () => {
     expect(result.ledgerRows[0].outcome).toBe("none");
   });
 
-  it("leave, then a good day, then arrival the day after carrying that day's delta as happiness", () => {
+  it("leave, then an Approaching day, then the Arrival's first day settles as an ordinary one on top of that day's delta", () => {
     const { days: ds, tasksByDay } = days({
       "2024-01-01": [], // leaves (happiness 0 - 3 < 0)
-      "2024-01-02": [large, large], // good day, no pokemon: marks arrival, delta = 6 - 3 = 3
-      "2024-01-03": [], // arrival materializes here, at happiness 3
+      "2024-01-02": [large, large], // Approaching: draws now, delta = 6 - 3 = 3
+      "2024-01-03": [large], // the Arrival's first day: 3 points, delta = 0, an ordinary bond day
     });
     const draw = vi.fn().mockReturnValue(ARRIVAL);
 
     const result = settleDays(withPokemon(0), ds, tasksByDay, 3, draw);
 
-    expect(result.ledgerRows.map((row) => row.outcome)).toEqual(["left", "none", "none"]);
+    expect(result.ledgerRows.map((row) => row.outcome)).toEqual(["left", "approaching", "bond"]);
     expect(result.ledgerRows[1].activeInstanceId).toBeNull();
-    expect(result.ledgerRows[2]).toMatchObject({ activeInstanceId: ARRIVAL, happinessAfter: 3 });
+    expect(result.ledgerRows[2]).toMatchObject({ activeInstanceId: ARRIVAL, delta: 0, happinessAfter: 3 });
     expect(draw).toHaveBeenCalledTimes(1);
-    expect(result.state).toEqual({ happiness: 3, activeInstanceId: ARRIVAL, pendingArrivalDelta: null });
+    expect(result.state).toEqual({ happiness: 3, activeInstanceId: ARRIVAL });
   });
 
-  it("an absence containing a would-be good day still produces no Pokémon when it falls on the last day settled", () => {
+  it("draws even when the qualifying day is the last one in the batch — no second day needed", () => {
     const { days: ds, tasksByDay } = days({
       "2024-01-01": [],
       "2024-01-02": [],
-      "2024-01-03": [large, large], // qualifies (6 - 3 = 3 >= 0), but it's the last day in this batch
+      "2024-01-03": [large, large], // qualifies (6 - 3 = 3 >= 0), and it's the last day in this batch
     });
-
-    const result = settleDays(noPokemon(), ds, tasksByDay, 3, noDraw);
-
-    expect(result.state.activeInstanceId).toBeNull();
-    expect(result.state.pendingArrivalDelta).toBe(3);
-  });
-
-  it("an arrival draws a random instance and meets one already known in the form it was left in, bond intact — the reducer only carries its id", () => {
-    const { days: ds, tasksByDay } = days({ "2024-01-01": [] });
     const draw = vi.fn().mockReturnValue(ARRIVAL);
 
-    const result = settleDays(noPokemon(5), ds, tasksByDay, 3, draw);
+    const result = settleDays(noPokemon(), ds, tasksByDay, 3, draw);
 
-    expect(result.state).toEqual({ happiness: 5, activeInstanceId: ARRIVAL, pendingArrivalDelta: null });
+    expect(result.ledgerRows[2]).toMatchObject({ day: "2024-01-03", outcome: "approaching", activeInstanceId: null });
+    expect(draw).toHaveBeenCalledTimes(1);
+    expect(result.state).toEqual({ happiness: 3, activeInstanceId: ARRIVAL });
   });
 });
 

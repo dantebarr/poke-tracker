@@ -104,13 +104,12 @@ type TrainerSettlementRow = {
   happiness: number;
   active_instance_id: string | null;
   last_settled_day: string;
-  pending_arrival_delta: number | null;
 };
 
 async function trainerRow(trainerId: string): Promise<TrainerSettlementRow> {
   const { data, error } = await adminClient()
     .from("trainer")
-    .select("happiness, active_instance_id, last_settled_day, pending_arrival_delta")
+    .select("happiness, active_instance_id, last_settled_day")
     .eq("id", trainerId)
     .single<TrainerSettlementRow>();
   if (error) throw new Error(`Reading trainer failed: ${JSON.stringify(error)}`);
@@ -289,7 +288,7 @@ describe("what a day does to the active Pokémon", () => {
     expect(ledger.some((row) => row.outcome === "left" && row.active_instance_id === activeId)).toBe(true);
   });
 
-  it("draws a fresh arrival the day after a qualifying pokemon-less day", async () => {
+  it("draws an Arrival on the Approaching day itself, active from the very next day settled", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const [label] = await labelsFor(trainer.id);
 
@@ -300,8 +299,10 @@ describe("what a day does to the active Pokémon", () => {
     if (error) throw new Error(JSON.stringify(error));
 
     await setLastSettledDay(trainer.id, dayKey(3));
-    // Two days ago meets target (2 large tasks = 6 vs target 3, delta 3);
-    // yesterday is untouched, so the arrival happens then.
+    // Two days ago meets target (2 large tasks = 6 vs target 3, delta 3): the
+    // Approaching day. Yesterday exactly meets target too (1 large task, delta
+    // 0), the Arrival's first day — an ordinary bond day, its own effort
+    // counted rather than discarded (ADR-0007).
     await insertTask({
       trainerId: trainer.id,
       labelId: label.id,
@@ -315,6 +316,13 @@ describe("what a day does to the active Pokémon", () => {
       size: "large",
       status: "done",
       completedAt: noonOf(dayKey(2)),
+    });
+    await insertTask({
+      trainerId: trainer.id,
+      labelId: label.id,
+      size: "large",
+      status: "done",
+      completedAt: noonOf(dayKey(1)),
     });
 
     await settleOnEntry();
@@ -322,11 +330,18 @@ describe("what a day does to the active Pokémon", () => {
     const after = await trainerRow(trainer.id);
     expect(after.active_instance_id).not.toBeNull();
     expect(after.happiness).toBe(3);
-    expect(after.pending_arrival_delta).toBeNull();
 
     const ledger = await ledgerFor(trainer.id);
+    const approachingRow = ledger.find((row) => row.day === dayKey(2));
+    expect(approachingRow).toMatchObject({ outcome: "approaching", active_instance_id: null, happiness_after: 0 });
+
     const arrivalRow = ledger.find((row) => row.day === dayKey(1));
-    expect(arrivalRow).toMatchObject({ active_instance_id: after.active_instance_id, happiness_after: 3 });
+    expect(arrivalRow).toMatchObject({
+      outcome: "bond",
+      active_instance_id: after.active_instance_id,
+      happiness_after: 3,
+    });
+    expect(await bondLevelOf(after.active_instance_id!)).toBe(1);
 
     const { data: ownedInstance } = await adminClient()
       .from("instance")
@@ -335,6 +350,45 @@ describe("what a day does to the active Pokémon", () => {
       .eq("trainer_id", trainer.id)
       .maybeSingle();
     expect(ownedInstance).not.toBeNull();
+  });
+
+  it("draws an Arrival even when the Approaching day is the last one settled", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [label] = await labelsFor(trainer.id);
+
+    const { error } = await adminClient()
+      .from("trainer")
+      .update({ active_instance_id: null })
+      .eq("id", trainer.id);
+    if (error) throw new Error(JSON.stringify(error));
+
+    await setLastSettledDay(trainer.id, dayKey(2));
+    // Yesterday meets target (2 large tasks = 6 vs target 3, delta 3) and is
+    // the last day this run settles — the bug ADR-0007 fixes: a trainer who
+    // hits their target must not go a second day without a Pokémon.
+    await insertTask({
+      trainerId: trainer.id,
+      labelId: label.id,
+      size: "large",
+      status: "done",
+      completedAt: noonOf(dayKey(1)),
+    });
+    await insertTask({
+      trainerId: trainer.id,
+      labelId: label.id,
+      size: "large",
+      status: "done",
+      completedAt: noonOf(dayKey(1)),
+    });
+
+    await settleOnEntry();
+
+    const after = await trainerRow(trainer.id);
+    expect(after.active_instance_id).not.toBeNull();
+    expect(after.happiness).toBe(3);
+
+    const ledger = await ledgerFor(trainer.id);
+    expect(ledger).toMatchObject([{ day: dayKey(1), outcome: "approaching", active_instance_id: null }]);
   });
 });
 
@@ -387,7 +441,6 @@ describe("row-level security", () => {
       p_ending_happiness: 999999,
       p_ending_active_instance_id: before.active_instance_id,
       p_ending_last_settled_day: before.last_settled_day,
-      p_ending_pending_arrival_delta: null,
     });
 
     expect(error).not.toBeNull();
@@ -415,7 +468,6 @@ describe("row-level security", () => {
       p_ending_happiness: 999999,
       p_ending_active_instance_id: rivalBefore.active_instance_id,
       p_ending_last_settled_day: rivalBefore.last_settled_day,
-      p_ending_pending_arrival_delta: null,
     });
 
     expect(error).not.toBeNull();

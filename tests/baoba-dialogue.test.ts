@@ -46,7 +46,7 @@ function facts(overrides: Partial<BaobaLineFacts> = {}): BaobaLineFacts {
 describe("a Ranger with no Active Pokémon", () => {
   it("gets a line saying what brings one back", () => {
     const line = buildBaobaLine(facts({ pokemon: null }));
-    expect(line).toBe("No Pokémon keeping you company right now, Ranger. Hit your daily target and one will come find you.");
+    expect(line).toBe("No Pokémon keeping you company right now, Ranger. Hit your daily target and one's bound to come find you.");
   });
 });
 
@@ -55,7 +55,7 @@ describe("special states, ahead of the mood fallback", () => {
     const line = buildBaobaLine(
       facts({
         pokemon: pokemon({ nickname: "Sickle" }),
-        latestDay: { event: "arrived", pokemonName: "Sickle", delta: 0 },
+        latestDay: { event: "approaching", pokemonName: null, delta: 3 },
       }),
     );
     expect(line).toContain("Sickle");
@@ -98,7 +98,7 @@ describe("special states, ahead of the mood fallback", () => {
     const line = buildBaobaLine(
       facts({
         pokemon: pokemon({ nickname: "Sickle", distanceToBondRequirement: 0 }),
-        latestDay: { event: "arrived", pokemonName: "Sickle", delta: 0 },
+        latestDay: { event: "approaching", pokemonName: null, delta: 3 },
         readyToEvolve: true,
       }),
     );

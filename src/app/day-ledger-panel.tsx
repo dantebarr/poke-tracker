@@ -18,10 +18,10 @@ function describeEvent(entry: DayLedgerEntry): string | null {
   switch (entry.event) {
     case "bond":
       return `${name} gained a bond point`;
-    case "arrived":
-      return `${name} arrived`;
     case "left":
       return `${name} left — missed target by ${-entry.delta}`;
+    case "approaching":
+      return "A Pokémon is watching you carefully";
     case "none":
       return entry.pokemon === null ? "No Pokémon" : null;
   }

@@ -5,10 +5,10 @@ import { adminClient, clientForJar, createAccount, deleteAccount, insertTask, la
 
 /**
  * The history screen's read side (#11), against the real schema: the joins
- * to instance and species, row-level security, and ordering. The pure
- * arrival-inference logic is covered with no database at all in
- * day-ledger-events.test.ts; settlement itself (the trigger, the ledger rows
- * it produces) is covered in settlement.test.ts. This suite only proves
+ * to instance and species, row-level security, and ordering. `event` is read
+ * straight off the stored `outcome` (ADR-0007), so there is no separate
+ * inference logic to cover here. Settlement itself (the trigger, the ledger
+ * rows it produces) is covered in settlement.test.ts. This suite only proves
  * `listDayLedger` reads what settlement already wrote, correctly.
  */
 const jarRef = vi.hoisted(() => ({ current: null as CookieJar | null }));
@@ -155,15 +155,16 @@ describe("reading the day ledger", () => {
     expect(leftEntry).toMatchObject({ pokemon: { name: speciesName } });
   });
 
-  it("marks the day a Pokémon arrives, distinct from an ordinary uneventful day", async () => {
+  it("marks the Approaching day distinct from an ordinary uneventful day, naming no Pokémon", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const [label] = await labelsFor(trainer.id);
     const { error } = await adminClient().from("trainer").update({ active_instance_id: null }).eq("id", trainer.id);
     if (error) throw new Error(JSON.stringify(error));
 
     await setLastSettledDay(trainer.id, dayKey(3));
-    // Two days ago meets target (2 large tasks = 6 vs target 3): a
-    // qualifying pokemon-less day, so the arrival lands the day after.
+    // Two days ago meets target (2 large tasks = 6 vs target 3): the
+    // Approaching day. Yesterday is untouched, an ordinary day for the
+    // Arrival it earned.
     await insertTask({
       trainerId: trainer.id,
       labelId: label.id,
@@ -182,9 +183,12 @@ describe("reading the day ledger", () => {
     await settleOnEntry();
 
     const ledger = await listDayLedger(clientForJar(jar), trainer.id);
-    const arrivalEntry = ledger.find((entry) => entry.day === dayKey(1));
-    expect(arrivalEntry?.event).toBe("arrived");
-    expect(arrivalEntry?.pokemon).not.toBeNull();
+    const approachingEntry = ledger.find((entry) => entry.day === dayKey(2));
+    expect(approachingEntry?.event).toBe("approaching");
+    expect(approachingEntry?.pokemon).toBeNull();
+
+    const arrivalDayEntry = ledger.find((entry) => entry.day === dayKey(1));
+    expect(arrivalDayEntry?.pokemon).not.toBeNull();
   });
 
   it("hides one trainer's ledger from another", async () => {

@@ -11,7 +11,6 @@ type TrainerSettlementRow = {
   happiness: number;
   active_instance_id: string | null;
   last_settled_day: string;
-  pending_arrival_delta: number | null;
   daily_target: number;
   time_zone: string;
 };
@@ -30,7 +29,7 @@ type TrainerSettlementRow = {
 export async function settle(client: SupabaseClient, trainerId: string): Promise<boolean> {
   const { data: trainerRow, error: trainerError } = await client
     .from("trainer")
-    .select("happiness, active_instance_id, last_settled_day, pending_arrival_delta, daily_target, time_zone")
+    .select("happiness, active_instance_id, last_settled_day, daily_target, time_zone")
     .eq("id", trainerId)
     .single<TrainerSettlementRow>();
 
@@ -81,7 +80,6 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
   const startingState: SettlementState = {
     happiness: trainerRow.happiness,
     activeInstanceId: trainerRow.active_instance_id,
-    pendingArrivalDelta: trainerRow.pending_arrival_delta,
   };
 
   const result = settleDays(
@@ -99,7 +97,6 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
     p_ending_happiness: result.state.happiness,
     p_ending_active_instance_id: result.state.activeInstanceId,
     p_ending_last_settled_day: days[days.length - 1],
-    p_ending_pending_arrival_delta: result.state.pendingArrivalDelta,
   });
 
   if (applyError) {

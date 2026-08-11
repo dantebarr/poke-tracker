@@ -77,7 +77,11 @@ tomorrow). Buckets replace raw dates as the thing you read.
 
 **Settlement**:
 Working out what each unsettled day did to the trainer's Pokémon. Days are
-settled one at a time, in order, up to yesterday — never in aggregate.
+settled one at a time, in order, up to yesterday — never in aggregate. It runs
+*between* days, not during one: a Pokémon **leaves** or **arrives** at that
+boundary, so a **day ledger** row records only who was with the trainer during
+the day itself.
+_Avoid_: overnight — interface flavour, not the domain term.
 
 **Missed day**:
 A day that was never settled at the time because the trainer didn't open the
@@ -118,10 +122,23 @@ to the **instance**, is that Pokémon's permanent record, and is what evolution
 and Pokédex entries are gated on.
 
 **Leaves**:
-What a Pokémon does when its happiness falls below zero. It returns to the pool
-in its current form, keeping its bond level; happiness resets to zero. The
-trainer has no Pokémon until they hit their daily target again — and the new
-arrival is credited with that qualifying day's delta as its starting happiness.
+What a Pokémon does when its happiness falls below zero. It happens at
+**settlement**, after the day that caused it: the day's ledger row still names
+the Pokémon, because it was there for all of it. It returns to the pool in its
+current form, keeping its bond level; happiness resets to zero.
+
+**Arrival**:
+The Pokémon a trainer earns by hitting their daily target on a day they had
+none. Drawn from the **pool** at **settlement**, it is active from the *next*
+day — never the qualifying day, which the trainer spent alone — and starts with
+that day's delta as its happiness. It gains no bond level for a day it wasn't
+there for.
+_Avoid_: Attracted, encounter (the interface's **encounter view** is unrelated).
+
+**Approaching**:
+What a day is called when the trainer hit their target with no Pokémon: the day
+that earns an **arrival**. Its ledger row names no Pokémon, since none was there
+yet.
 
 **Day ledger**:
 The append-only record of what every settled day did — points earned, the target

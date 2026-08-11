@@ -12,16 +12,9 @@ export type SettlementState = {
   /** Belongs to the trainer, not any one instance — 0 whenever none is active. */
   happiness: number;
   activeInstanceId: string | null;
-  /**
-   * A qualifying pokemon-less day's delta, waiting to become the next day's
-   * arrival. Set the day it qualifies, consumed the day after — unless that
-   * day falls outside the batch being settled, in which case it survives in
-   * the ending state for a later run to pick up.
-   */
-  pendingArrivalDelta: number | null;
 };
 
-export type LedgerOutcome = "bond" | "left" | "none";
+export type LedgerOutcome = "bond" | "left" | "approaching" | "none";
 
 export type LedgerRow = {
   day: string;
@@ -105,7 +98,7 @@ function settleActiveDay(
 
   if (happinessAfter < 0) {
     return {
-      state: { happiness: 0, activeInstanceId: null, pendingArrivalDelta: null },
+      state: { happiness: 0, activeInstanceId: null },
       row: { day, pointsEarned, target, delta, happinessAfter: 0, activeInstanceId, outcome: "left" },
     };
   }
@@ -116,7 +109,14 @@ function settleActiveDay(
   };
 }
 
-/** With no active Pokémon: a pending arrival materializes unconditionally; otherwise a qualifying day marks one pending for the day after. */
+/**
+ * With no active Pokémon: hitting the target draws an Arrival right away —
+ * ADR-0007. The row this day produces still names no Pokémon and carries the
+ * `approaching` outcome, since nobody was with the trainer during it; the
+ * drawn instance only becomes `state.activeInstanceId`, which is what makes
+ * it the Active Pokémon from the very next day settled — an ordinary
+ * `settleActiveDay`, starting from the happiness this day's delta banked.
+ */
 function settlePokemonlessDay(
   state: SettlementState,
   day: string,
@@ -125,19 +125,11 @@ function settlePokemonlessDay(
   delta: number,
   drawArrivalInstanceId: () => string,
 ): SettledDay {
-  if (state.pendingArrivalDelta !== null) {
-    const activeInstanceId = drawArrivalInstanceId();
-    const happinessAfter = state.pendingArrivalDelta;
-    return {
-      state: { happiness: happinessAfter, activeInstanceId, pendingArrivalDelta: null },
-      row: { day, pointsEarned, target, delta, happinessAfter, activeInstanceId, outcome: "none" },
-    };
-  }
-
   if (delta >= 0) {
+    const activeInstanceId = drawArrivalInstanceId();
     return {
-      state: { happiness: 0, activeInstanceId: null, pendingArrivalDelta: delta },
-      row: { day, pointsEarned, target, delta, happinessAfter: 0, activeInstanceId: null, outcome: "none" },
+      state: { happiness: delta, activeInstanceId },
+      row: { day, pointsEarned, target, delta, happinessAfter: 0, activeInstanceId: null, outcome: "approaching" },
     };
   }
 
