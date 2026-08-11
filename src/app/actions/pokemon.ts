@@ -10,6 +10,12 @@ import { NotSignedInError } from "@/lib/trainer/errors";
 /**
  * Every write goes through a server action; the browser never talks to the
  * database. See `@/app/actions/trainer` for the fuller rationale.
+ *
+ * Both writes here revalidate the root layout, not just `/` (#33): the
+ * naming and evolve prompts they answer render in the chrome layout's
+ * persistent left pane, reachable from any destination, so a page-scoped
+ * revalidation would leave that pane stale everywhere but the screen the
+ * write happened from.
  */
 
 function requiredField(formData: FormData, name: string): string {
@@ -53,7 +59,7 @@ export async function setNickname(instanceId: string, formData: FormData): Promi
   const trimmed = typeof raw === "string" ? raw.trim() : "";
 
   await setInstanceNickname(client, instanceId, trimmed === "" ? null : trimmed);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 /**
@@ -82,5 +88,5 @@ export async function evolvePokemon(formData: FormData): Promise<void> {
   const targetSpeciesId = requiredSpeciesId(formData, "targetSpeciesId");
 
   await evolveInstance(client, instanceId, expectedSpeciesId, targetSpeciesId);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }

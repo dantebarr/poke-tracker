@@ -12,8 +12,8 @@
  * `text-muted`, etc. — every page that hasn't been ported to the new chrome
  * classes yet still renders through them, so swapping the values here is what
  * makes "existing content sits inside the new chrome unrestyled" (#21) true
- * without editing those pages. Values are drawn from mockup B's own swatches
- * (`docs/mockups/b/*.html`), not invented fresh.
+ * without editing those pages. Values are drawn from mockup B's own
+ * swatches, not invented fresh.
  */
 :root {
   --background: #0a2a14; /* mockup B's body background */
@@ -94,10 +94,9 @@ body {
 
 /* ══════════════════════════════════════════════════════════════════════
  * Safari Zone chrome (#21): the status strip, icon nav and stage shell
- * every authenticated screen wears. Ported from mockup B
- * (`docs/mockups/b/*.html`, consistent across all four of its screens)
- * rather than reinvented — classes and values are kept close to the source
- * so a diff against the mockup stays legible.
+ * every authenticated screen wears. Ported from mockup B, consistent across
+ * all four of its screens, rather than reinvented — classes and values are
+ * kept close to the source so a diff against it stays legible.
  *
  * One deliberate departure from the mockup: pane classes are named
  * generically (`.pane`, not `.field`/`.log`) since this shell is reused by
@@ -273,9 +272,10 @@ body {
   position: relative;
 }
 
-/* the two-pane grid, for the one screen (the field screen) that needs it —
-   the shell exists now so the ticket that builds the encounter view fills a
-   pane that's already there (#21's brief). */
+/* the two-pane grid every destination shares (#33): the left pane is the
+   chrome layout's persistent encounter view and Baoba's tray, fixed
+   geometry on every screen; the right is whichever destination `AppStage`
+   was handed as `right`. */
 .panes {
   height: 100%;
   display: grid;
@@ -386,9 +386,8 @@ body {
 
 /* ══════════════════════════════════════════════════════════════════════
  * The encounter view (#22): the Active Pokémon standing in its Species'
- * Zone, under a battle-style status box. Ported from mockup B
- * (`docs/mockups/b/b2-forest.html`'s `.field`/`.scene`/`.statusbox`), the
- * same way the chrome above was.
+ * Zone, under a battle-style status box. Ported from mockup B's
+ * `.field`/`.scene`/`.statusbox`, the same way the chrome above was.
  * ══════════════════════════════════════════════════════════════════════ */
 .scene {
   position: relative;
@@ -585,8 +584,8 @@ body {
 /* ══════════════════════════════════════════════════════════════════════
  * Warden Baoba's dialogue tray (#23): the line `buildBaobaLine` chose,
  * beneath the scene at a fixed height so it can never overlap the status
- * box above it. Ported from mockup B (`docs/mockups/b/b3-marshland.html`'s
- * `.dialogue`) the same way the encounter view above was. The mockup's
+ * box above it. Ported from mockup B's `.dialogue` the same way the
+ * encounter view above was. The mockup's
  * `.evolvesay` variant — the naming/evolve prompt folded into this tray on
  * mobile — is `.namingsay` below, ported for #24; the evolve half still
  * belongs to #25.
@@ -818,18 +817,21 @@ body {
 
   .stage {
     min-height: 0;
+    /* the two panes sit side by side at double width; translateX shows one */
+    overflow: hidden;
   }
   /* A task takes over the whole screen, so the stage behind it goes away
-     rather than scrolling underneath (#32). Scoped to this query because a
-     wide screen never has a task covering it, and must go on drawing its
-     panes in the frame before the viewport has been measured. */
-  .stage.covered {
+     rather than scrolling underneath (#32) — the mobile task detail
+     (`.detail`) is portalled into the chrome layout's overlay slot, a
+     sibling of `.stage` (#33's `AppStage`/`overlay-slot.tsx`), and this is
+     what hides the stage in its place rather than stacking both. Scoped to
+     this query because a wide screen never has a task covering it, and must
+     go on drawing its panes in the frame before the viewport has been
+     measured. `:has()` rather than a class the field screen sets directly:
+     the field screen no longer renders `.stage` itself (#33), so it has no
+     element of its own to put a `covered` class on. */
+  .stage:has(~ .overlay-slot .detail) {
     display: none;
-  }
-
-  /* the two panes sit side by side at double width; translateX shows one */
-  .stage:has(.panes) {
-    overflow: hidden;
   }
   .panes {
     display: flex;
@@ -899,9 +901,9 @@ body {
 
 /* ══════════════════════════════════════════════════════════════════════
  * The field log (#28): the right pane's task list on desktop, ported from
- * mockup B (`docs/mockups/b/b2-forest.html`) the same way the chrome was
- * (#21). The encounter pane's own classes (.scene/.statusbox/.dialogue/
- * .mood/.evolve) belong to that pane's own ticket and aren't ported here.
+ * mockup B the same way the chrome was (#21). The encounter pane's own
+ * classes (.scene/.statusbox/.dialogue/.mood/.evolve) belong to that pane's
+ * own ticket and aren't ported here.
  * ══════════════════════════════════════════════════════════════════════ */
 
 .logpanel {
@@ -1348,8 +1350,8 @@ span.title {
  * The field log's mobile surface (#29): the floating add button's sheet,
  * the full-screen task detail screen, and the interaction differences from
  * desktop (no inline expander, a bigger complete circle, Logged today
- * collapsed). Ported from mockup B (`docs/mockups/b/b2-forest.html`) the
- * same way the desktop field log was (#28).
+ * collapsed). Ported from mockup B the same way the desktop field log was
+ * (#28).
  * ══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
   .addrow,
@@ -1555,11 +1557,11 @@ span.title {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
- * Settings (#30): the Daily target and Labels, ported from mockup B
- * (`docs/mockups/b/b-settings.html`) the same way the chrome and field log
- * were. Two sections mockup B never drew — Time zone and Session — reuse
- * the same `.setsection`/`.sethead`/`.sethelp` vocabulary rather than
- * inventing a second one, per #18's rule for states the mockup didn't draw.
+ * Settings (#30): the Daily target and Labels, ported from mockup B the
+ * same way the chrome and field log were. Two sections mockup B never drew
+ * — Time zone and Session — reuse the same
+ * `.setsection`/`.sethead`/`.sethelp` vocabulary rather than inventing a
+ * second one, per #18's rule for states the mockup didn't draw.
  * ══════════════════════════════════════════════════════════════════════ */
 .setpanel {
   height: 100%;
@@ -1830,8 +1832,7 @@ span.title {
 
 /* ══════════════════════════════════════════════════════════════════════
  * The Pokédex (#30): all 151, unlocked entries in full and locked ones as
- * silhouettes, static sprites only. Ported from mockup B
- * (`docs/mockups/b/b-pokedex.html`).
+ * silhouettes, static sprites only. Ported from mockup B.
  * ══════════════════════════════════════════════════════════════════════ */
 .dexpanel {
   height: 100%;
@@ -1938,7 +1939,7 @@ span.title {
  * The Logbook (#30): every settled day, grouped by month with a count,
  * most recent first — reusing `.grouphead` from the field log's Bucket
  * groups (#28), since a month group and a Bucket group are the same shape.
- * Ported from mockup B (`docs/mockups/b/b-history.html`).
+ * Ported from mockup B.
  * ══════════════════════════════════════════════════════════════════════ */
 .histpanel {
   height: 100%;

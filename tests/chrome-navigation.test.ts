@@ -63,6 +63,12 @@ describe("which destination the nav marks", () => {
       }).destination,
     ).toBe("field-log");
   });
+
+  it("marks the field log on a narrow screen for a task named without the pane parameter, so a hand-built link still lands on a coherent screen", () => {
+    expect(
+      resolveNavigation({ pathname: "/", params: params(`${TASK_PARAM}=task-1`), surface: "narrow" }).destination,
+    ).toBe("field-log");
+  });
 });
 
 describe("whether the home arrow is drawn", () => {
@@ -100,23 +106,47 @@ describe("whether the home arrow is drawn", () => {
   });
 });
 
-describe("which pane the field screen shows", () => {
-  it("shows the encounter view when the address says nothing, so the front door stays undecorated", () => {
-    expect(resolveFieldView({ params: params(""), surface: "narrow", openTasks }).pane).toBe("encounter");
+describe("whether the right pane is visible", () => {
+  it("is false for the plain home address on a narrow screen, where the encounter view fills the screen", () => {
+    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "narrow" }).rightVisible).toBe(false);
   });
 
-  it("shows the field log when the address asks for it", () => {
-    expect(resolveFieldView({ params: params(`${PANE_PARAM}=log`), surface: "narrow", openTasks }).pane).toBe("log");
+  it("is true for the plain home address on a wide screen, which draws both panes", () => {
+    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "wide" }).rightVisible).toBe(true);
   });
 
-  it("falls back to the encounter view on a pane it does not recognise", () => {
-    expect(resolveFieldView({ params: params(`${PANE_PARAM}=jungle`), surface: "narrow", openTasks }).pane).toBe(
-      "encounter",
-    );
+  it("is true on a narrow screen for each of the three destination paths", () => {
+    for (const pathname of ["/pokedex", "/history", "/settings"]) {
+      expect(resolveNavigation({ pathname, params: params(""), surface: "narrow" }).rightVisible).toBe(true);
+    }
   });
 
-  it("shows the field log whenever a task is named, so a stale link lands there rather than on the Pokémon", () => {
-    expect(resolveFieldView({ params: params(`${TASK_PARAM}=gone`), surface: "narrow", openTasks }).pane).toBe("log");
+  it("is true on a narrow screen for the home address carrying the log pane parameter", () => {
+    expect(
+      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=log`), surface: "narrow" }).rightVisible,
+    ).toBe(true);
+  });
+
+  it("is true on a narrow screen for an address naming a task, which implies the log", () => {
+    expect(
+      resolveNavigation({
+        pathname: "/",
+        params: params(`${PANE_PARAM}=log&${TASK_PARAM}=task-1`),
+        surface: "narrow",
+      }).rightVisible,
+    ).toBe(true);
+  });
+
+  it("is true on a narrow screen for a task named without the pane parameter", () => {
+    expect(
+      resolveNavigation({ pathname: "/", params: params(`${TASK_PARAM}=task-1`), surface: "narrow" }).rightVisible,
+    ).toBe(true);
+  });
+
+  it("is true on a wide screen for every address, since a wide screen always draws both", () => {
+    for (const pathname of ["/", "/pokedex", "/history", "/settings"]) {
+      expect(resolveNavigation({ pathname, params: params(""), surface: "wide" }).rightVisible).toBe(true);
+    }
   });
 });
 
@@ -136,7 +166,6 @@ describe("which task the field screen opens", () => {
   it("opens nothing when the task has since been completed or deleted", () => {
     const view = resolveFieldView({ params: params(`${TASK_PARAM}=task-9`), surface: "narrow", openTasks });
     expect(view.detailTaskId).toBeNull();
-    expect(view.pane).toBe("log");
   });
 
   it("refuses a task that is still being created, whose id stops meaning anything on reload", () => {

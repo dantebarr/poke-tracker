@@ -466,18 +466,19 @@ function AddTaskEditor({
 /**
  * The mobile add control's sheet (#29): rises from the bottom with the
  * title focused so a Ranger can start typing immediately — ported from
- * mockup B's `.sheet` (`docs/mockups/b/b2-forest.html`). Same validation
- * rule as the desktop editor, kept as a separate component (rather than one
- * editor styled two ways) because the two forms are never on screen
- * together and each has its own uncommitted draft.
+ * mockup B's `.sheet`. Same validation rule as the desktop editor, kept as a
+ * separate component (rather than one editor styled two ways) because the
+ * two forms are never on screen together and each has its own uncommitted
+ * draft.
  *
  * Rendered by `FieldScreen`, not this panel: it uses `position: fixed` to
  * cover the true viewport, and this panel sits inside `.panes`, which gains
  * a CSS `transform` while a narrow screen is showing the log pane — a
  * `transform` on an ancestor turns `position: fixed` into "fixed to that
- * ancestor" instead of the viewport. `FieldScreen` renders it as a sibling
- * of the two-pane stage, outside any transformed element, same reasoning as
- * why `TaskDetailScreen` replaces the stage rather than living inside it.
+ * ancestor" instead of the viewport. `FieldScreen` portals it into the
+ * chrome layout's overlay slot (#33), a sibling of the stage outside any
+ * transformed element, same reasoning as why `TaskDetailScreen` replaces the
+ * stage rather than living inside it.
  */
 export function AddTaskSheet({
   labels,

@@ -1,8 +1,8 @@
 /**
  * The status strip's nav icons, drawn on a 16×16 grid rather than shipped as
- * image assets — original work, ported from `docs/mockups/b/b-safari-gear.html`'s
- * inline bitmaps (same drawings, rendered as `<rect>`s at request time here
- * instead of injected by a client-side script).
+ * image assets — original work, ported from mockup B's inline bitmaps (same
+ * drawings, rendered as `<rect>`s at request time here instead of injected
+ * by a client-side script).
  */
 const BITMAPS = {
   // a handheld scanner: body, a round lens, a screen line, three lights

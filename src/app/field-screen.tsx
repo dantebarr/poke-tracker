@@ -1,10 +1,11 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { type ReactNode, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 
 import { ADD_FORM_HREF, FIELD_LOG_HREF, resolveFieldView, taskHref } from "@/app/(app)/chrome/navigation";
-import { TwoPaneStage } from "@/app/(app)/chrome/two-pane-stage";
+import { useOverlaySlot } from "@/app/(app)/chrome/overlay-slot";
 import { completeTaskAction, createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions/task";
 import { AddTaskSheet, FieldLogPanel } from "@/app/field-log-panel";
 import { PENDING_ID_PREFIX } from "@/app/pending-task-id";
@@ -36,15 +37,21 @@ function reduceTasks(state: Task[], action: TaskListAction): Task[] {
 }
 
 /**
- * The field screen's client root (#28, split from `FieldLogPanel` by #29):
- * owns the Open task list's optimistic state and every write — completion,
- * edits, deletes, creation — so the same mutations reach both surfaces a
- * task can be viewed from: the desktop field log's inline row and the
- * mobile full-screen detail screen. The two are siblings, not nested,
- * because the mobile detail replaces the *entire* two-pane stage rather
- * than living inside one pane's scroll region (mockup B's own `.detail`
- * sits beside `.stage`, not inside it) — this component is what picks
- * between them.
+ * The field screen's client root (#28, split from `FieldLogPanel` by #29,
+ * shrunk to the right pane's own content by #33): owns the Open task list's
+ * optimistic state and every write — completion, edits, deletes, creation —
+ * so the same mutations reach both surfaces a task can be viewed from: the
+ * desktop field log's inline row and the mobile full-screen detail screen.
+ * The two are siblings, not nested, because the mobile detail replaces the
+ * *entire* two-pane stage rather than living inside one pane's scroll region
+ * (mockup B's own `.detail` sits beside `.stage`, not inside it) — this
+ * component is what picks between them, portalling the one that's showing
+ * into the chrome layout's overlay slot (`useOverlaySlot`) since this
+ * component itself renders only inside the right pane.
+ *
+ * The chrome layout (#21, restructured by #33) owns the stage, the left pane
+ * and which pane a narrow screen is showing — this component no longer does;
+ * see `resolveNavigation`'s `rightVisible` for where that answer moved.
  *
  * Completion is the one non-negotiable (#28's brief): the row moves the
  * instant the circle is clicked, `useOptimistic` reverts it automatically
@@ -53,23 +60,21 @@ function reduceTasks(state: Task[], action: TaskListAction): Task[] {
  * on top of that revert rather than a silent snap-back.
  *
  * *Which* of those surfaces is showing is no longer state here (#32): the
- * pane, the open task and the add form are all search parameters, resolved
- * by `resolveFieldView`, so the device back gesture closes each of them
- * because each is real navigation. They are written with the native history
- * API rather than `useRouter`, which is what Next recommends for exactly
- * this case — these parameters select between content that is already
- * loaded, so a router navigation's refetch of the whole screen would buy
- * nothing and cost a round trip per pane switch.
+ * open task and the add form are both search parameters, resolved by
+ * `resolveFieldView`, so the device back gesture closes each of them because
+ * each is real navigation. They are written with the native history API
+ * rather than `useRouter`, which is what Next recommends for exactly this
+ * case — these parameters select between content that is already loaded, so
+ * a router navigation's refetch of the whole screen would buy nothing and
+ * cost a round trip per pane switch.
  */
 export function FieldScreen({
-  pokemonPane,
   tasks,
   labels,
   timeZone,
   todayKey,
   dailyTarget,
 }: {
-  pokemonPane: ReactNode;
   tasks: Task[];
   labels: Label[];
   timeZone: string;
@@ -199,14 +204,15 @@ export function FieldScreen({
   const openTasks = optimisticTasks.filter((task) => task.status === "open");
   // Until the first effect runs there is no viewport to measure, and a
   // narrow screen is the one with something to hide: it is the surface where
-  // an opened task covers the stage and a chosen pane slides into view, and
-  // both have to be right in the first paint of a link someone shared.
+  // an opened task covers the whole stage rather than expanding in place,
+  // and that has to be right in the first paint of a link someone shared.
   // Getting it wrong the other way costs a wide screen one frame before a
   // row expands, with nothing on screen moving in the meantime.
   const view = resolveFieldView({ params, surface: surface ?? "narrow", openTasks });
   const detailTask = view.detailTaskId
     ? (optimisticTasks.find((task) => task.id === view.detailTaskId) ?? null)
     : null;
+  const overlaySlot = useOverlaySlot();
 
   // True while there is a history entry of our own below this one — set by
   // opening an overlay, spent by leaving one, and cleared whenever no
@@ -246,68 +252,65 @@ export function FieldScreen({
 
   return (
     <>
-      <TwoPaneStage
-        showRight={view.pane === "log"}
-        // Covered, not unmounted, while a task has taken over a narrow
-        // screen: `detailTaskId` is only ever set for a narrow screen, and a
-        // wide one must go on drawing its panes even in the frame before the
-        // viewport has been measured — so the hiding is a class scoped to the
-        // mobile media query rather than a conditional render here.
-        covered={detailTask !== null}
-        left={pokemonPane}
-        right={
-          <FieldLogPanel
-            tasks={optimisticTasks}
-            labels={labels}
-            timeZone={timeZone}
-            todayKey={todayKey}
-            dailyTarget={dailyTarget}
-            erroredId={erroredId}
-            failedDraft={failedDraft}
-            expandedTaskId={view.expandedTaskId}
-            addEditorOpen={view.addEditorOpen}
-            onComplete={handleComplete}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onCreate={handleCreate}
-            onOpenTask={(taskId) => openOverlay(taskHref(taskId))}
-            onOpenAddForm={() => openOverlay(ADD_FORM_HREF)}
-            onLeaveOverlay={leaveOverlay}
-          />
-        }
+      <FieldLogPanel
+        tasks={optimisticTasks}
+        labels={labels}
+        timeZone={timeZone}
+        todayKey={todayKey}
+        dailyTarget={dailyTarget}
+        erroredId={erroredId}
+        failedDraft={failedDraft}
+        expandedTaskId={view.expandedTaskId}
+        addEditorOpen={view.addEditorOpen}
+        onComplete={handleComplete}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onCreate={handleCreate}
+        onOpenTask={(taskId) => openOverlay(taskHref(taskId))}
+        onOpenAddForm={() => openOverlay(ADD_FORM_HREF)}
+        onLeaveOverlay={leaveOverlay}
       />
-      {detailTask && (
-        <TaskDetailScreen
-          key={detailTask.id}
-          task={detailTask}
-          labels={labels}
-          onCancel={leaveOverlay}
-          onSave={(fields) => {
-            leaveOverlay();
-            handleSave(detailTask, fields);
-          }}
-          onDelete={() => {
-            leaveOverlay();
-            handleDelete(detailTask);
-          }}
-        />
-      )}
-      {/* Rendered as a sibling of the stage, not inside `FieldLogPanel`'s
-          pane: the sheet is `position: fixed` to cover the true viewport,
-          and `.panes` (the pane it would otherwise sit inside) gains a CSS
-          `transform` while a narrow screen is showing the log pane —
-          a `transform` on an ancestor turns `position: fixed` into "fixed
-          to that ancestor" instead of the viewport. */}
-      {view.addSheetOpen && (
-        <AddTaskSheet
-          labels={labels}
-          onCancel={leaveOverlay}
-          onSave={(fields) => {
-            leaveOverlay();
-            handleCreate(fields);
-          }}
-        />
-      )}
+      {/* Portalled into the chrome layout's overlay slot, not rendered here
+          in place: the sheet and the task detail are both `position: fixed`
+          to cover the true viewport, and this component renders inside the
+          right pane, which gains a CSS `transform` while a narrow screen is
+          showing it — a `transform` on an ancestor turns `position: fixed`
+          into "fixed to that ancestor" instead of the viewport. The slot is
+          a sibling of the stage, outside any transformed element, and
+          `null` until the layout's ref callback has run — nothing to portal
+          into on the very first render. */}
+      {overlaySlot &&
+        createPortal(
+          <>
+            {detailTask && (
+              <TaskDetailScreen
+                key={detailTask.id}
+                task={detailTask}
+                labels={labels}
+                onCancel={leaveOverlay}
+                onSave={(fields) => {
+                  leaveOverlay();
+                  handleSave(detailTask, fields);
+                }}
+                onDelete={() => {
+                  leaveOverlay();
+                  handleDelete(detailTask);
+                }}
+              />
+            )}
+            {view.addSheetOpen && (
+              <AddTaskSheet
+                labels={labels}
+                onCancel={leaveOverlay}
+                onSave={(fields) => {
+                  leaveOverlay();
+                  handleCreate(fields);
+                }}
+              />
+            )}
+          </>,
+          overlaySlot,
+        )}
     </>
   );
 }

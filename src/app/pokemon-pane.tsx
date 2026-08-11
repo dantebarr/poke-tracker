@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
+import { resolveNavigation } from "@/app/(app)/chrome/navigation";
 import { BaobaTray } from "@/app/baoba-tray";
 import { EncounterView } from "@/app/encounter-view";
 import { EvolvePrompt } from "@/app/evolve-prompt";
@@ -15,12 +17,16 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  * `EncounterView`/`BaobaTray` pair for the one thing that needs to live on
  * the client — the naming prompt's Skip, which is session-scoped and has no
  * server state to hold it (CONTEXT.md's "Naming" entry: a skip costs
- * nothing permanent, and the prompt returns on the next visit, i.e. the next
- * time this component mounts fresh). Both `naming` and `evolve` read
- * `buildEncounterView`'s own `prompt` field rather than re-deriving it from
- * `pokemon`/`evolutionOptions` directly, so which prompt is showing — and
- * the precedence between them — is never this component's call to make;
- * only whether to honour a naming skip is.
+ * nothing permanent, and the prompt returns on the next visit).
+ *
+ * "Next visit" used to mean this component mounting fresh, which happened
+ * every time a Ranger loaded the home page. Since #33 this pane is mounted
+ * once by the chrome layout and never taken down, so there is no remount to
+ * reset `skipped` on a narrow screen's own return to the encounter view —
+ * the one surviving boundary a narrow screen still has, reached by the ←
+ * arrow or a bare `/` — is treated as that next visit instead. A wide
+ * screen has no such boundary (the pane is permanently on screen, which is
+ * the point of #33), so a skip there lasts the rest of the session.
  */
 export function PokemonPane({
   pokemon,
@@ -34,6 +40,22 @@ export function PokemonPane({
   baobaLine: string;
 }) {
   const [skipped, setSkipped] = useState(false);
+
+  // Always resolved as narrow, the same way `AppStage` always does: the
+  // question is only "does this address represent the encounter view",
+  // which `resolveNavigation` answers as `destination: null` regardless of
+  // the screen actually holding it — a wide screen just never leaves.
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const onNarrowEncounterView = resolveNavigation({ pathname, params, surface: "narrow" }).destination === null;
+  const wasOnNarrowEncounterView = useRef(onNarrowEncounterView);
+  useEffect(() => {
+    if (onNarrowEncounterView && !wasOnNarrowEncounterView.current) {
+      setSkipped(false);
+    }
+    wasOnNarrowEncounterView.current = onNarrowEncounterView;
+  }, [onNarrowEncounterView]);
+
   const view = buildEncounterView(pokemon, dailyTarget, evolutionOptions);
 
   const naming =

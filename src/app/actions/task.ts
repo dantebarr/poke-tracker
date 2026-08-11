@@ -25,6 +25,12 @@ import { requireTrainerId } from "@/lib/trainer/session";
  * `FormData` itself, so its writes can be optimistic; kept as `FormData`
  * anyway rather than typed parameters, matching the rest of the app's server
  * actions (see the settings page's label actions).
+ *
+ * Every write here revalidates the root layout, not just `/` (#33): Warden
+ * Baoba's overdue clause, drawn by the chrome layout on every destination,
+ * folds in the open-task count these writes change, so a page-scoped
+ * revalidation would leave it stale on any screen other than the one the
+ * write happened from.
  */
 
 function requiredField(formData: FormData, name: string): string {
@@ -66,7 +72,7 @@ export async function createTaskAction(formData: FormData): Promise<Task> {
     size: requiredSize(formData),
     notes: notesField(formData),
   });
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return task;
 }
 
@@ -82,7 +88,7 @@ export async function updateTaskAction(formData: FormData): Promise<Task> {
     size: requiredSize(formData),
     notes: notesField(formData),
   });
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return task;
 }
 
@@ -96,7 +102,7 @@ export async function completeTaskAction(formData: FormData): Promise<Task> {
 
   const instanceId = await activeInstanceId(client, trainerId);
   const task = await completeTask(client, requiredField(formData, "id"), instanceId);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return task;
 }
 
@@ -106,5 +112,5 @@ export async function deleteTaskAction(formData: FormData): Promise<void> {
   await requireTrainerId(client);
 
   await deleteTask(client, requiredField(formData, "id"));
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }

@@ -30,8 +30,8 @@ export type Surface = "narrow" | "wide";
 /** The four places the nav row can take a Ranger. */
 export type Destination = "field-log" | "pokedex" | "logbook" | "settings";
 
-/** The two halves of the field screen. On a wide screen both are drawn at once. */
-export type Pane = "encounter" | "log";
+/** The two halves of the chrome shell. On a wide screen both are drawn at once. */
+type Pane = "encounter" | "log";
 
 export const PANE_PARAM = "pane";
 export const TASK_PARAM = "task";
@@ -73,6 +73,12 @@ const PATH_DESTINATIONS: Record<string, Destination> = {
 };
 
 function readPane(params: ReadableSearchParams): Pane {
+  // Naming a task implies the log pane regardless of the pane parameter's
+  // own value, the same way `taskHref` always bundles the two — so a link
+  // that names a task but was hand-built (or predates #32's link helper)
+  // without the pane parameter still resolves to the log rather than
+  // stranding a Ranger on the encounter view while a task is actually open.
+  if (params.get(TASK_PARAM) !== null) return "log";
   return params.get(PANE_PARAM) === LOG_PANE_VALUE ? "log" : "encounter";
 }
 
@@ -81,10 +87,19 @@ export type NavigationState = {
   destination: Destination | null;
   /** Whether the home arrow belongs on the nav row. */
   homeVisible: boolean;
+  /**
+   * Whether the right pane — whichever destination the address names — is
+   * showing. Always true on a wide screen, which draws both panes at once;
+   * on a narrow screen it is the one thing that decides whether the chrome
+   * shell is sitting on the encounter view or has slid to a destination
+   * (#33). `AppStage` is the one place that reads it.
+   */
+  rightVisible: boolean;
 };
 
 /**
- * What the status strip's nav row shows from a given address.
+ * What the status strip's nav row shows from a given address, and whether
+ * the chrome shell's right pane is showing (#33).
  *
  * The field log's marking is deliberately surface-dependent: on a wide
  * screen the field log is part of the home screen and is marked the whole
@@ -96,6 +111,13 @@ export type NavigationState = {
  * encounter view, so it is drawn everywhere except where a Ranger is already
  * looking at it, and never on a wide screen, where the field log icon
  * already leads to the one screen holding both panes.
+ *
+ * `rightVisible` follows the same `onEncounterView` reading: a wide screen
+ * draws both panes regardless of the address, and a narrow screen shows the
+ * right pane for exactly the addresses that are not the bare encounter view
+ * — the three destination paths, and the home address once it names the log
+ * pane (which a task's own address always does, since `taskHref` carries the
+ * pane parameter alongside it).
  */
 export function resolveNavigation({
   pathname,
@@ -107,7 +129,7 @@ export function resolveNavigation({
   surface: Surface;
 }): NavigationState {
   if (pathname !== "/") {
-    return { destination: PATH_DESTINATIONS[pathname] ?? null, homeVisible: surface === "narrow" };
+    return { destination: PATH_DESTINATIONS[pathname] ?? null, homeVisible: surface === "narrow", rightVisible: true };
   }
 
   const onEncounterView = surface === "narrow" && readPane(params) === "encounter";
@@ -115,12 +137,11 @@ export function resolveNavigation({
   return {
     destination: onEncounterView ? null : "field-log",
     homeVisible: surface === "narrow" && !onEncounterView,
+    rightVisible: !onEncounterView,
   };
 }
 
 export type FieldView = {
-  /** The pane filling a narrow screen. Inert on a wide screen, which draws both. */
-  pane: Pane;
   /** The task taking over a narrow screen. Always `null` on a wide screen. */
   detailTaskId: string | null;
   /** The field log row expanded in place. Always `null` on a narrow screen. */
@@ -135,11 +156,14 @@ export type FieldView = {
  * What the field screen is showing from a given address.
  *
  * `openTasks` is what an address naming a task is resolved against, so a link
- * to a task that has since been completed or deleted resolves to nothing —
- * and, because naming a task also means naming the field log, lands the
- * Ranger on their field log rather than on their Pokémon. A task still being
- * created is refused outright even though it is in the list: its id is
- * synthetic and stops meaning anything the moment the page reloads.
+ * to a task that has since been completed or deleted resolves to nothing. A
+ * task still being created is refused outright even though it is in the
+ * list: its id is synthetic and stops meaning anything the moment the page
+ * reloads.
+ *
+ * Which pane a narrow screen is showing is no longer this function's answer
+ * (#33) — that moved to `resolveNavigation`'s `rightVisible`, now that the
+ * pane a Ranger is looking at is chrome-level, not field-screen-level.
  */
 export function resolveFieldView({
   params,
@@ -158,7 +182,6 @@ export function resolveFieldView({
   const addOpen = params.get(ADD_PARAM) === ADD_FLAG_VALUE;
 
   return {
-    pane: namedTaskId !== null ? "log" : readPane(params),
     detailTaskId: surface === "narrow" ? openTaskId : null,
     expandedTaskId: surface === "wide" ? openTaskId : null,
     addSheetOpen: surface === "narrow" && addOpen,
