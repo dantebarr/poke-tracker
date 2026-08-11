@@ -324,7 +324,6 @@ body {
 }
 .intro .bar {
   background: linear-gradient(180deg, var(--safari-mid), var(--safari-dark));
-  border-bottom: 4px solid #101010;
   padding: 11px 16px;
   display: flex;
   align-items: center;
@@ -924,7 +923,6 @@ body {
   text-shadow: var(--safari-shadow);
   color: #fff;
   padding: 2px 4px 11px;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
 }
 .logtop .date {
   color: var(--safari-pale);
@@ -973,7 +971,6 @@ body {
 }
 .addeditor {
   padding: 10px 0 14px;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
 }
 .addeditor .rowhead {
   display: flex;
@@ -1578,14 +1575,9 @@ span.title {
   text-transform: uppercase;
   text-shadow: var(--safari-shadow);
   padding: 2px 4px 11px;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
 }
 .setsection {
   padding: 16px 6px 20px;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
-}
-.setsection:last-child {
-  border-bottom: none;
 }
 .sethead {
   font-family: var(--font-pixel), monospace;
@@ -1849,7 +1841,6 @@ span.title {
   text-transform: uppercase;
   text-shadow: var(--safari-shadow);
   padding: 2px 4px 11px;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
 }
 .dextop h1 {
   margin: 0;
@@ -1956,7 +1947,6 @@ span.title {
   text-transform: uppercase;
   text-shadow: var(--safari-shadow);
   padding: 2px 4px 11px;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.28);
 }
 .histscroll {
   flex: 1;
