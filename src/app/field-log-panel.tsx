@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { isPendingTaskId } from "@/app/pending-task-id";
 import { type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
@@ -408,6 +408,17 @@ function useNewTaskDraft(defaults: { todayKey: string; labels: Label[] }) {
  * `AddTaskSheet` (#29): `UI-CONSTRAINTS.md` wants the add control within
  * one-handed thumb reach, which a control pinned above a scrolling list is
  * not.
+ *
+ * Enter saves, which is why the handler sits on the whole editor rather than
+ * on the title alone: with every field but the title now opening on a
+ * default, "type a title and press Enter" is the whole of the common capture,
+ * and a Ranger who tabbed to a chip to change one of them shouldn't have to
+ * go back to the title or reach for the mouse to commit. This is the desktop
+ * surface `UI-CONSTRAINTS.md` asks to optimise for keyboard-driven speed;
+ * the mobile sheet keeps its Save button as the only way through. Notes are
+ * the exception — Enter there is a newline, as it is in any textarea, and
+ * `submit` still refuses an invalid draft, so Enter on a blank title does
+ * nothing rather than saving an untitled task.
  */
 function AddTaskEditor({
   labels,
@@ -428,8 +439,15 @@ function AddTaskEditor({
     onSave(fields());
   }
 
+  function submitOnEnter(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter") return;
+    if (event.target instanceof HTMLTextAreaElement) return;
+    event.preventDefault();
+    submit();
+  }
+
   return (
-    <div className="addeditor">
+    <div className="addeditor" onKeyDown={submitOnEnter}>
       <div className="rowhead">
         <span className="circle ghost" aria-hidden="true" />
         <input
