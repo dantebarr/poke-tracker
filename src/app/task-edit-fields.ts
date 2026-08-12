@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { Label } from "@/lib/label/label";
 import type { Task, TaskSize } from "@/lib/task/task";
 
 export type EditableFields = {
@@ -17,6 +18,38 @@ export function taskToFields(task: Task): EditableFields {
     dueDate: task.dueDate,
     labelId: task.label.id,
     size: task.size,
+  };
+}
+
+/**
+ * What a brand new task's form starts filled in with: due today, the
+ * trainer's first Label, and Small. Capture stays single-step (
+ * `UI-CONSTRAINTS.md`) — the schema's four required fields are all still on
+ * screen and still editable, this only means the common task is one title
+ * and Save rather than three pickers first.
+ *
+ * Today is the trainer's own day key, never the device's date (ADR-0004), so
+ * this comes from the same `todayKey` the field log buckets against. The
+ * label is the *top* one in the trainer's own display order, which is the
+ * order they arranged in Settings — the closest thing to "the one I mostly
+ * work in". A trainer with no labels yet gets a blank one, which leaves Save
+ * disabled rather than inventing a label they never defined. Small is the
+ * cheapest size, so the default under-claims rather than over-claims effort
+ * points.
+ */
+export function newTaskFields({
+  todayKey,
+  labels,
+}: {
+  todayKey: string;
+  labels: Label[];
+}): EditableFields {
+  return {
+    title: "",
+    notes: "",
+    dueDate: todayKey,
+    labelId: labels[0]?.id ?? "",
+    size: "small",
   };
 }
 

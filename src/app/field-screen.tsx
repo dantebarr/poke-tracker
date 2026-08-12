@@ -301,6 +301,7 @@ export function FieldScreen({
             {view.addSheetOpen && (
               <AddTaskSheet
                 labels={labels}
+                todayKey={todayKey}
                 onCancel={leaveOverlay}
                 onSave={(fields) => {
                   leaveOverlay();
