@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { isPendingTaskId } from "@/app/pending-task-id";
-import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
+import { type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
 import { dayKeyInTimeZone, dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
 import { BUCKET_LABELS, BUCKET_ORDER, bucketOpenTasks, todayPoints } from "@/lib/task/dates";
@@ -120,7 +120,7 @@ export function FieldLogPanel({
 
       <div className="addrow">
         {addEditorOpen ? (
-          <AddTaskEditor labels={labels} onCancel={onLeaveOverlay} onSave={submitCreate} />
+          <AddTaskEditor labels={labels} todayKey={todayKey} onCancel={onLeaveOverlay} onSave={submitCreate} />
         ) : (
           <button type="button" className="addbtn" onClick={onOpenAddForm}>
             + Add a task
@@ -373,18 +373,28 @@ function OpenTaskRow({
  * schema's four required fields), kept as a hook rather than one component
  * styled two ways because the two forms are never on screen together and
  * each needs its own draft.
+ *
+ * Only the title starts empty: due date, label and size open on the defaults
+ * `newTaskFields` picks (due today, top label, Small), so the common task is
+ * a title and Save. They are ordinary draft state from there on, editable
+ * like any other field, and the defaults are read once when the form opens —
+ * a Ranger who has already changed the label doesn't have it moved back
+ * under them mid-draft. Validation is unchanged and still guards the three:
+ * the due date can be cleared, and a trainer with no labels yet has no
+ * default label to start from.
  */
-function useNewTaskDraft() {
-  const [title, setTitle] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [labelId, setLabelId] = useState("");
-  const [size, setSize] = useState<TaskSize | "">("");
-  const [notes, setNotes] = useState("");
+function useNewTaskDraft(defaults: { todayKey: string; labels: Label[] }) {
+  const [initial] = useState(() => newTaskFields(defaults));
+  const [title, setTitle] = useState(initial.title);
+  const [dueDate, setDueDate] = useState(initial.dueDate);
+  const [labelId, setLabelId] = useState(initial.labelId);
+  const [size, setSize] = useState<TaskSize>(initial.size);
+  const [notes, setNotes] = useState(initial.notes);
 
-  const valid = title.trim().length > 0 && dueDate !== "" && labelId !== "" && size !== "";
+  const valid = title.trim().length > 0 && dueDate !== "" && labelId !== "";
 
   function fields(): EditableFields {
-    return { title: title.trim(), dueDate, labelId, size: size as TaskSize, notes };
+    return { title: title.trim(), dueDate, labelId, size, notes };
   }
 
   return { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields };
@@ -401,15 +411,17 @@ function useNewTaskDraft() {
  */
 function AddTaskEditor({
   labels,
+  todayKey,
   onCancel,
   onSave,
 }: {
   labels: Label[];
+  todayKey: string;
   onCancel: () => void;
   onSave: (fields: EditableFields) => void;
 }) {
   const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
-    useNewTaskDraft();
+    useNewTaskDraft({ todayKey, labels });
 
   function submit() {
     if (!valid) return;
@@ -444,7 +456,6 @@ function AddTaskEditor({
             labelId={labelId}
             size={size}
             labels={labels}
-            allowBlank
             onDueChange={setDueDate}
             onLabelChange={setLabelId}
             onSizeChange={setSize}
@@ -482,15 +493,17 @@ function AddTaskEditor({
  */
 export function AddTaskSheet({
   labels,
+  todayKey,
   onCancel,
   onSave,
 }: {
   labels: Label[];
+  todayKey: string;
   onCancel: () => void;
   onSave: (fields: EditableFields) => void;
 }) {
   const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
-    useNewTaskDraft();
+    useNewTaskDraft({ todayKey, labels });
   const [visible, setVisible] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -539,7 +552,6 @@ export function AddTaskSheet({
             labelId={labelId}
             size={size}
             labels={labels}
-            allowBlank
             onDueChange={setDueDate}
             onLabelChange={setLabelId}
             onSizeChange={setSize}
@@ -601,26 +613,25 @@ export function DeleteControl({
 /**
  * The due/label/size chip trio, shared between the desktop add editor, the
  * mobile add sheet, an open row's desktop expander, and the mobile task
- * detail screen (#29's `TaskDetailScreen`). `allowBlank` is the one
- * difference the two add forms need over the other two callers: they start
- * with nothing chosen and need a "—" placeholder option to hold that state,
- * while an existing task's fields are never blank.
+ * detail screen (#29's `TaskDetailScreen`). Every caller now arrives with all
+ * three chosen — an existing task's fields are never blank, and the two add
+ * forms open on `newTaskFields`'s defaults — so the "—" placeholder option
+ * the add forms used to ask for is gone, and with it the only way to put a
+ * form back into a state Save refuses.
  */
 export function TaskFieldChips({
   dueDate,
   labelId,
   size,
   labels,
-  allowBlank = false,
   onDueChange,
   onLabelChange,
   onSizeChange,
 }: {
   dueDate: string;
   labelId: string;
-  size: TaskSize | "";
+  size: TaskSize;
   labels: Label[];
-  allowBlank?: boolean;
   onDueChange: (value: string) => void;
   onLabelChange: (value: string) => void;
   onSizeChange: (value: TaskSize) => void;
@@ -634,7 +645,6 @@ export function TaskFieldChips({
       <label className="chip">
         Label
         <select value={labelId} onChange={(event) => onLabelChange(event.target.value)} aria-label="Label">
-          {allowBlank && <option value="">—</option>}
           {labels.map((label) => (
             <option key={label.id} value={label.id}>
               {label.name}
@@ -649,7 +659,6 @@ export function TaskFieldChips({
           onChange={(event) => onSizeChange(event.target.value as TaskSize)}
           aria-label="Size"
         >
-          {allowBlank && <option value="">—</option>}
           {TASK_SIZES.map((sizeOption) => (
             <option key={sizeOption} value={sizeOption}>
               {capitalise(sizeOption)}
