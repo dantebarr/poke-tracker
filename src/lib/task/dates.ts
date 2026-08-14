@@ -16,6 +16,10 @@
  * entirely, rather than patching around it. The day key itself is computed
  * once per request, from the trainer's own stored time zone (Settings), by
  * the caller — never detected from a device (ADR-0004).
+ *
+ * Reading order within a bucket is a second axis, added later: `sortForFieldLog`
+ * orders by the trainer's own label order first, due date second, so a bucket
+ * reads as one area of life at a time rather than an interleave of every label.
  */
 
 import { dayKeyInTimeZone, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
@@ -61,6 +65,28 @@ export function bucketOpenTasks<T extends { dueDate: string }>(
     buckets[getBucket(task.dueDate, todayKey)].push(task);
   }
   return buckets;
+}
+
+/**
+ * The field log's reading order within a Bucket: the trainer's own label
+ * order first (the `position` they set in Settings via `moveLabel`), then due
+ * date. Labels are an area of life, so a Ranger reads one context at a time
+ * rather than scanning the colour of every tag in a bucket.
+ *
+ * Sort *before* bucketing, not after: `bucketOpenTasks` is a single-pass
+ * partition and `Array.prototype.sort` is stable, so a sorted input yields
+ * sorted buckets, and equal (same label, same due date) tasks keep the order
+ * they arrived in — `listTasks`'s `due_date` ordering, or the end of the list
+ * for a task optimistically added this render.
+ */
+export function sortForFieldLog<T extends { dueDate: string; label: { position: number } }>(
+  tasks: T[],
+): T[] {
+  return [...tasks].sort(
+    (a, b) =>
+      a.label.position - b.label.position ||
+      (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0),
+  );
 }
 
 // `neutral` drops the urgency framing ("overdue", "Today") in favor of a

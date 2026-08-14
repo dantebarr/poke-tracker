@@ -96,7 +96,7 @@ describe("reading a trainer's tasks", () => {
       size: "medium",
       status: "open",
       completedAt: null,
-      label: { id: personal.id, name: personal.name, color: personal.color },
+      label: { id: personal.id, name: personal.name, color: personal.color, position: personal.position },
     });
   });
 

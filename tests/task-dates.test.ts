@@ -7,6 +7,7 @@ import {
   getBucket,
   groupDoneByDay,
   humanizeDueDate,
+  sortForFieldLog,
   todayPoints,
 } from "@/lib/task/dates";
 
@@ -62,6 +63,64 @@ describe("bucketOpenTasks", () => {
   it("covers every bucket in BUCKET_ORDER and BUCKET_LABELS", () => {
     expect(BUCKET_ORDER).toEqual(["overdue", "today", "tomorrow", "later"]);
     expect(Object.keys(BUCKET_LABELS).sort()).toEqual([...BUCKET_ORDER].sort());
+  });
+});
+
+describe("sortForFieldLog", () => {
+  it("orders by label position, ignoring arrival order", () => {
+    const tasks = [
+      { id: "a", dueDate: "2024-01-15", label: { position: 2 } },
+      { id: "b", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "c", dueDate: "2024-01-15", label: { position: 1 } },
+    ];
+
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("breaks ties within a label by due date, ascending", () => {
+    const tasks = [
+      { id: "a", dueDate: "2024-01-20", label: { position: 0 } },
+      { id: "b", dueDate: "2024-01-10", label: { position: 0 } },
+      { id: "c", dueDate: "2024-01-15", label: { position: 0 } },
+    ];
+
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("is stable for tasks with the same label and due date", () => {
+    const tasks = [
+      { id: "a", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "b", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "c", dueDate: "2024-01-15", label: { position: 0 } },
+    ];
+
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("does not mutate its input", () => {
+    const tasks = [
+      { id: "a", dueDate: "2024-01-15", label: { position: 1 } },
+      { id: "b", dueDate: "2024-01-15", label: { position: 0 } },
+    ];
+    const original = [...tasks];
+
+    sortForFieldLog(tasks);
+
+    expect(tasks).toEqual(original);
+  });
+
+  it("composes with bucketOpenTasks: each bucket comes out label-ordered on its own", () => {
+    const tasks = [
+      { id: "a", dueDate: "2024-01-15", label: { position: 1 } }, // today
+      { id: "b", dueDate: "2024-01-10", label: { position: 0 } }, // overdue
+      { id: "c", dueDate: "2024-01-15", label: { position: 0 } }, // today
+      { id: "d", dueDate: "2024-01-09", label: { position: 1 } }, // overdue
+    ];
+
+    const buckets = bucketOpenTasks(sortForFieldLog(tasks), TODAY);
+
+    expect(buckets.overdue.map((t) => t.id)).toEqual(["b", "d"]);
+    expect(buckets.today.map((t) => t.id)).toEqual(["c", "a"]);
   });
 });
 
