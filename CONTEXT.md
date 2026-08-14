@@ -209,7 +209,7 @@ returning instance, which keeps the Nickname it already has.
 
 ### Interface
 
-Vocabulary the Safari Zone interface (mockup B) introduces. See ADR-0004 and ADR-0005.
+Vocabulary the Safari Zone interface (mockup B) introduces. See ADR-0008 and ADR-0005.
 
 **Warden Baoba**:
 The Safari Zone's warden, and the only surface in the interface that states **why** a bad day

@@ -24,7 +24,7 @@ Explicit width/height on every sprite to prevent layout shift.
 image-rendering: pixelated for pixel art so it stays crisp on high-DPI displays.
 Data
 Optimistic UI on task completion is non-negotiable. Check-off renders instantly, reconciles with Supabase after, and rolls back visibly on failure. The reward animation never waits on a network round-trip.
-Assume the Fly.io backend may cold-start. Skeletons, not spinners. Never block first paint on the API.
+Assume a slow first response — a Vercel function cold-starting, or a Supabase project waking. Skeletons, not spinners. Never block first paint on a database read.
 Forms
 Correct input type for the mobile keyboard.
 font-size: 16px minimum on inputs to prevent Safari auto-zoom.
