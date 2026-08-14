@@ -1,7 +1,7 @@
 import localFont from "next/font/local";
 
 /**
- * The Safari Zone chrome's type, self-hosted per ADR-0004 — the only assets
+ * The Safari Zone chrome's type, self-hosted per ADR-0008 — the only assets
  * in the mockup set whose licence (Google Fonts OFL) permits redistribution.
  * Scoped to the `.app` chrome wrapper in globals.css, not the global body:
  * sign-in and error keep Geist until they get their own Safari Zone

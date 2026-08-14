@@ -18,11 +18,18 @@ application-side filtering.
 
 ```
 src/
-  app/                 routes: / (home), /settings, /pokedex, /sign-in, /auth/callback
+  app/                 routes: / (home), /history, /settings, /pokedex, /sign-in, /auth/callback
+  app/(app)/chrome/    the Safari Zone shell every signed-in screen is drawn in
   app/actions/         server actions — every write goes through here
   lib/auth/            the allow-list
   lib/supabase/        request-scoped clients and the error seam
   lib/trainer/         the trainer record and its provisioning
+  lib/task/            tasks, their buckets and their day grouping
+  lib/day/             one definition of a day, shared by settlement and display
+  lib/settlement/      what each unsettled day did, and the day ledger it writes
+  lib/pokemon/         the pool, evolution, and the Pokédex
+  lib/label/           a trainer's own set of labels
+  lib/baoba/           Warden Baoba's dialogue
   proxy.ts             session refresh on every request (Next 16's Middleware)
 supabase/migrations/   the schema, replayed from empty on every test run
 tests/                 integration tests against a real local Supabase
