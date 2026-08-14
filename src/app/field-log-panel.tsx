@@ -6,7 +6,7 @@ import { isPendingTaskId } from "@/app/pending-task-id";
 import { type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
 import { dayKeyInTimeZone, dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
-import { BUCKET_LABELS, BUCKET_ORDER, bucketOpenTasks, todayPoints } from "@/lib/task/dates";
+import { BUCKET_LABELS, BUCKET_ORDER, bucketOpenTasks, sortForFieldLog, todayPoints } from "@/lib/task/dates";
 import { TASK_SIZES, type Task, type TaskSize } from "@/lib/task/task";
 import { capitalise } from "@/lib/text";
 
@@ -99,7 +99,7 @@ export function FieldLogPanel({
   // can't count toward today's effort.
   const bucketSource =
     failedDraft && !openTasks.some((task) => task.id === failedDraft.id) ? [...openTasks, failedDraft] : openTasks;
-  const buckets = bucketOpenTasks(bucketSource, todayKey);
+  const buckets = bucketOpenTasks(sortForFieldLog(bucketSource), todayKey);
   const points = todayPoints(tasks, timeZone, todayKey);
   const pct = Math.min(100, Math.round((points / dailyTarget) * 100));
 
