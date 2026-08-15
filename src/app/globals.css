@@ -1245,17 +1245,31 @@ span.title {
 }
 .chips {
   display: flex;
-  align-items: center;
+  /* `stretch`, not `center`: the stacked chips below differ by a pixel or two
+     in intrinsic height (a date input is not a `<select>`), and three pills
+     that don't share a bottom edge read as sloppy. `.editactions` is a
+     sibling flex item here and centres its own buttons, so stretching it
+     costs nothing. */
+  align-items: stretch;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
+/* The field name sits *above* its control rather than inline to its left.
+   `align-items: flex-start` is what buys the horizontal saving: the chip
+   collapses to the width of its widest child — the control — instead of
+   name + gap + control, which cost the row roughly 100px across the trio and
+   is space the desktop field log doesn't have in its 0.9fr column. The
+   `<label>` still wraps the control, so the name stays a touch target and
+   `TaskFieldChips` needs no markup change for any of this. */
 .chip {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   font-family: var(--font-pixel), monospace;
   font-size: 7px;
+  line-height: 1;
   text-transform: uppercase;
   color: var(--safari-pale);
   background: rgba(0, 0, 0, 0.28);
@@ -1265,6 +1279,10 @@ span.title {
 .chip input,
 .chip select {
   font-size: 16px;
+  /* Back to `normal`: the name's `line-height: 1` above is deliberate — it
+     keeps the chip only as much taller as the extra line — but a date input
+     that inherits it clips its own text. */
+  line-height: normal;
   background: transparent;
   color: #fff;
   border: none;
@@ -1391,6 +1409,13 @@ span.title {
   }
   .rowhead {
     padding: 12px 8px;
+  }
+  /* Same 44px rule, on the chips. The `<label>` wraps its control, so the
+     whole pill is the tap target — stacking the name above the control got
+     it to ~42px on its own and this carries it the rest of the way, on both
+     mobile surfaces that render `TaskFieldChips`. */
+  .chip {
+    padding: 8px 10px;
   }
 
   .loggedhead {
