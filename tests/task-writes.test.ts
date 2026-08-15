@@ -29,6 +29,7 @@ const {
   completeTaskAction,
   createTaskAction,
   deleteTaskAction,
+  reopenTaskAction,
   updateTaskAction,
 } = await import("@/app/actions/task");
 const { currentActivePokemon } = await import("@/lib/pokemon/session");
@@ -191,8 +192,8 @@ describe("completing a task", () => {
   });
 });
 
-describe("done is terminal (ADR-0002)", () => {
-  it("refuses to edit, re-complete or delete a done task", async () => {
+describe("reopening a done task (ADR-0002, amended)", () => {
+  it("returns it to open, clearing the completion timestamp and the pokémon it credited", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const [personal] = await labelsFor(trainer.id);
     const task = await createTaskAction(
@@ -200,12 +201,72 @@ describe("done is terminal (ADR-0002)", () => {
     );
     await completeTaskAction(formData({ id: task.id }));
 
-    await expect(
-      updateTaskAction(
-        formData({ id: task.id, title: "Nope", dueDate: "2024-01-20", labelId: personal.id, size: "small" }),
-      ),
-    ).rejects.toThrow();
-    await expect(completeTaskAction(formData({ id: task.id }))).rejects.toThrow();
+    const reopened = await reopenTaskAction(formData({ id: task.id }));
+
+    expect(reopened.status).toBe("open");
+    expect(reopened.completedAt).toBeNull();
+
+    const { data } = await adminClient()
+      .from("tasks")
+      .select("completed_instance_id")
+      .eq("id", task.id)
+      .single();
+    expect(data?.completed_instance_id).toBeNull();
+  });
+
+  it("makes it editable and deletable again — both of which the old rules refused", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal, babylon] = await labelsFor(trainer.id);
+    const task = await createTaskAction(
+      formData({ title: "Do it", dueDate: "2024-01-20", labelId: personal.id, size: "small" }),
+    );
+    await completeTaskAction(formData({ id: task.id }));
+    await reopenTaskAction(formData({ id: task.id }));
+
+    const edited = await updateTaskAction(
+      formData({ id: task.id, title: "Do it properly", dueDate: "2024-01-25", labelId: babylon.id, size: "large" }),
+    );
+    expect(edited.title).toBe("Do it properly");
+    expect(edited.label.id).toBe(babylon.id);
+
+    await deleteTaskAction(formData({ id: task.id }));
+    expect(await currentTasks(trainer.id)).toHaveLength(0);
+  });
+
+  it("can be completed again, stamping the pokémon active at that moment", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+    const activePokemon = await currentActivePokemon();
+    const task = await createTaskAction(
+      formData({ title: "Do it", dueDate: "2024-01-20", labelId: personal.id, size: "small" }),
+    );
+    await completeTaskAction(formData({ id: task.id }));
+    await reopenTaskAction(formData({ id: task.id }));
+
+    const recompleted = await completeTaskAction(formData({ id: task.id }));
+
+    expect(recompleted.status).toBe("done");
+    expect(recompleted.completedAt).not.toBeNull();
+
+    const { data } = await adminClient()
+      .from("tasks")
+      .select("completed_instance_id")
+      .eq("id", task.id)
+      .single();
+    expect(data?.completed_instance_id).toBe(activePokemon?.instanceId);
+
+    const [stored] = await currentTasks(trainer.id);
+    expect(stored.status).toBe("done");
+  });
+
+  it("still refuses to delete a task that is done", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+    const task = await createTaskAction(
+      formData({ title: "Do it", dueDate: "2024-01-20", labelId: personal.id, size: "small" }),
+    );
+    await completeTaskAction(formData({ id: task.id }));
+
     await expect(deleteTaskAction(formData({ id: task.id }))).rejects.toThrow();
 
     const [stillThere] = await currentTasks(trainer.id);
@@ -255,6 +316,27 @@ describe("row-level security, not the application, isolates one trainer's task w
     const [stillAsh] = await currentTasks(ash.id);
     expect(stillAsh.title).toBe("Ash's task");
     expect(stillAsh.status).toBe("open");
+  });
+
+  it("refuses another trainer's reopen", async () => {
+    const ash = await signedInTrainer(ALLOW_LISTED);
+    const [ashLabel] = await labelsFor(ash.id);
+    const task = await createTaskAction(
+      formData({ title: "Ash's task", dueDate: "2024-01-20", labelId: ashLabel.id, size: "small" }),
+    );
+    await completeTaskAction(formData({ id: task.id }));
+
+    const rivalJar = createCookieJar();
+    const rivalAccount = await createAccount(ALSO_ALLOW_LISTED);
+    created.push(rivalAccount.id);
+    await signIn(rivalJar, rivalAccount);
+    await as(rivalJar, ensureTrainer);
+
+    await as(rivalJar, () => expect(reopenTaskAction(formData({ id: task.id }))).rejects.toThrow());
+
+    const [stillAsh] = await currentTasks(ash.id);
+    expect(stillAsh.status).toBe("done");
+    expect(stillAsh.completedAt).not.toBeNull();
   });
 
   it("refuses a completion that stamps another trainer's instance", async () => {

@@ -4,9 +4,16 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { isPendingTaskId } from "@/app/pending-task-id";
 import { type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
-import { dayKeyInTimeZone, dayKeyToUtcDate } from "@/lib/day/day";
+import { dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
-import { BUCKET_LABELS, BUCKET_ORDER, bucketOpenTasks, sortForFieldLog, todayPoints } from "@/lib/task/dates";
+import {
+  BUCKET_LABELS,
+  BUCKET_ORDER,
+  bucketOpenTasks,
+  completedToday,
+  sortForFieldLog,
+  todayPoints,
+} from "@/lib/task/dates";
 import { TASK_SIZES, type Task, type TaskSize } from "@/lib/task/task";
 import { capitalise } from "@/lib/text";
 
@@ -48,6 +55,7 @@ export function FieldLogPanel({
   expandedTaskId,
   addEditorOpen,
   onComplete,
+  onReopen,
   onSave,
   onDelete,
   onCreate,
@@ -65,6 +73,7 @@ export function FieldLogPanel({
   expandedTaskId: string | null;
   addEditorOpen: boolean;
   onComplete: (task: Task) => void;
+  onReopen: (task: Task) => void;
   onSave: (task: Task, fields: EditableFields) => void;
   onDelete: (task: Task) => void;
   onCreate: (fields: EditableFields) => void;
@@ -83,17 +92,11 @@ export function FieldLogPanel({
   }
 
   const openTasks = tasks.filter((task) => task.status === "open");
-  // Only today's completions — a day already settled has its own record in
-  // the Logbook (the day ledger), an aggregate, not a raw task list, and
-  // settlement runs up through yesterday on every visit (`settle-on-entry`),
-  // so nothing completed before today is still waiting to be accounted for
-  // here by the time this renders.
-  const doneToday = tasks.filter(
-    (task): task is Task & { completedAt: string } =>
-      task.status === "done" &&
-      task.completedAt !== null &&
-      dayKeyInTimeZone(new Date(task.completedAt), timeZone) === todayKey,
-  );
+  // The logged rows and the reopen controls on them come from the same named
+  // set the points readout below is summed from — see `completedToday` for
+  // why the set stops at today, and for why that limit lives there rather
+  // than being written out again here.
+  const doneToday = completedToday(tasks, timeZone, todayKey);
   // A still-flashing failed draft is folded back into the bucketed list —
   // purely for that one visible flash, never into the real task list, so it
   // can't count toward today's effort.
@@ -183,7 +186,12 @@ export function FieldLogPanel({
             </button>
             <div className={`loggedrows${loggedExpanded ? " expanded" : ""}`}>
               {doneToday.map((task) => (
-                <DoneTaskRow key={task.id} task={task} errored={erroredId === task.id} />
+                <DoneTaskRow
+                  key={task.id}
+                  task={task}
+                  errored={erroredId === task.id}
+                  onReopen={() => onReopen(task)}
+                />
               ))}
             </div>
           </div>
@@ -214,11 +222,26 @@ function FailedDraftRow({ task }: { task: Task }) {
   );
 }
 
-function DoneTaskRow({ task, errored }: { task: Task; errored: boolean }) {
+/**
+ * A task logged today. Its circle is the reopen control (#36): the same
+ * circle that completed the task sends it back to Open, which extends the
+ * invariant `TaskDetailScreen` already documents — the row's circle is the
+ * only place a task's doneness changes — rather than competing with it. No
+ * confirmation: reopen is itself the recovery from a mis-tick, and a
+ * mis-reopen costs one tap to complete again. The row stays untappable
+ * otherwise; a done task still has no detail screen.
+ */
+function DoneTaskRow({ task, errored, onReopen }: { task: Task; errored: boolean; onReopen: () => void }) {
   return (
     <div className={`taskrow done${errored ? " errored" : ""}`}>
       <div className="rowhead">
-        <span className="circle check" aria-hidden="true" />
+        <button
+          type="button"
+          className="circle check"
+          aria-label={`Reopen "${task.title}"`}
+          title="Reopen"
+          onClick={onReopen}
+        />
         <LabelTag label={task.label} muted />
         <span className="title">{task.title}</span>
         <span className="sz">{SIZE_ABBR[task.size]}</span>

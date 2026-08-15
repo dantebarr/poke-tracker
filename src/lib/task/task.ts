@@ -112,10 +112,11 @@ export async function createTask(
 }
 
 /**
- * Edits an open task's title, due date, label, size and notes. Row-level
- * security refuses this once the task is done (ADR-0002) or if it belongs to
- * another trainer — either way this throws rather than silently touching
- * nothing.
+ * Edits a task's title, due date, label, size and notes. Row-level security
+ * refuses this if the task belongs to another trainer — this throws rather
+ * than silently touching nothing. Only the app's own reach is narrower than
+ * the policy's: the interface offers no way to edit a task while it is done,
+ * only after reopening it.
  */
 export async function updateTask(
   client: SupabaseClient,
@@ -141,9 +142,9 @@ export async function updateTask(
 }
 
 /**
- * Completes a task: one click, terminal (ADR-0002). Stamps the instance
- * active at this moment — `activeInstanceId` may be null, when the trainer
- * currently has no Pokémon.
+ * Completes a task: one click, and one click back (see `reopenTask`). Stamps
+ * the instance active at this moment — `activeInstanceId` may be null, when
+ * the trainer currently has no Pokémon.
  */
 export async function completeTask(
   client: SupabaseClient,
@@ -167,9 +168,34 @@ export async function completeTask(
 }
 
 /**
- * Deletes an open task. Row-level security refuses this once the task is
- * done (ADR-0002) or if it belongs to another trainer; either way this
- * throws rather than silently deleting nothing.
+ * Sends a done task back to Open — the exact inverse of `completeTask`,
+ * clearing both the completion timestamp and the Pokémon that completion
+ * credited, so nothing is left crediting work that is no longer finished. A
+ * reopened task is byte-identical to one never completed: there is no third
+ * state for a reader to learn.
+ *
+ * Nothing here knows about "today". Which completions a trainer can reach is
+ * the interface's business (`completedToday` in `@/lib/task/dates`); the
+ * database's only rule is that the task is the caller's own.
+ */
+export async function reopenTask(client: SupabaseClient, id: string): Promise<Task> {
+  const row = unwrap(
+    "Reopening task",
+    await client
+      .from("tasks")
+      .update({ status: "open", completed_at: null, completed_instance_id: null })
+      .eq("id", id)
+      .select(COLUMNS)
+      .single<TaskRow>(),
+  );
+  return toTask(row);
+}
+
+/**
+ * Deletes an open task. Row-level security refuses this while the task is
+ * done (ADR-0002 — the one rule of it that survives reopen) or if it belongs
+ * to another trainer; either way this throws rather than silently deleting
+ * nothing. A trainer who wants a done task gone reopens it first.
  */
 export async function deleteTask(client: SupabaseClient, id: string): Promise<void> {
   const { data, error } = await client
