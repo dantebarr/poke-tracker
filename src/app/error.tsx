@@ -3,9 +3,10 @@
 /**
  * The app's error boundary (#30, restyled to the Safari Zone chrome so a
  * failure doesn't throw a Ranger out of the world). A rejected write — most
- * often row-level security refusing an update or delete on a task that's
- * already done (ADR-0002) — throws rather than failing silently; this is
- * where that surfaces. `retry` re-fetches and re-renders the segment, so
+ * often row-level security refusing a write on a task that isn't the
+ * Ranger's own, or a delete on one that is still done (ADR-0002) — throws
+ * rather than failing silently; this is where that surfaces. `retry`
+ * re-fetches and re-renders the segment, so
  * trying again resyncs the view with whatever the database actually holds,
  * rather than a stale client guess.
  */

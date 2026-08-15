@@ -6,7 +6,13 @@ import { createPortal } from "react-dom";
 
 import { ADD_FORM_HREF, FIELD_LOG_HREF, resolveFieldView, taskHref } from "@/app/(app)/chrome/navigation";
 import { useOverlaySlot } from "@/app/(app)/chrome/overlay-slot";
-import { completeTaskAction, createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions/task";
+import {
+  completeTaskAction,
+  createTaskAction,
+  deleteTaskAction,
+  reopenTaskAction,
+  updateTaskAction,
+} from "@/app/actions/task";
 import { AddTaskSheet, FieldLogPanel } from "@/app/field-log-panel";
 import { PENDING_ID_PREFIX } from "@/app/pending-task-id";
 import { useSurface } from "@/app/responsive";
@@ -15,10 +21,19 @@ import { type EditableFields, normalizeNotes } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
 import type { Task } from "@/lib/task/task";
 
+/**
+ * `reopen` is paired with `complete` rather than folded into `update` (#36).
+ * `update` means "the Ranger changed the fields" and is handled by the save
+ * path, which resolves a label to patch in; a status transition through it
+ * would make one action mean two things. The patch is the inverse of
+ * `complete`'s — the completing Pokémon is not part of the client-side Task
+ * shape and is cleared server-side only.
+ */
 type TaskListAction =
   | { type: "add"; task: Task }
   | { type: "update"; id: string; patch: Partial<Task> }
   | { type: "complete"; id: string; completedAt: string }
+  | { type: "reopen"; id: string }
   | { type: "delete"; id: string };
 
 function reduceTasks(state: Task[], action: TaskListAction): Task[] {
@@ -30,6 +45,10 @@ function reduceTasks(state: Task[], action: TaskListAction): Task[] {
     case "complete":
       return state.map((task) =>
         task.id === action.id ? { ...task, status: "done" as const, completedAt: action.completedAt } : task,
+      );
+    case "reopen":
+      return state.map((task) =>
+        task.id === action.id ? { ...task, status: "open" as const, completedAt: null } : task,
       );
     case "delete":
       return state.filter((task) => task.id !== action.id);
@@ -123,6 +142,23 @@ export function FieldScreen({
         const formData = new FormData();
         formData.set("id", task.id);
         await completeTaskAction(formData);
+      } catch {
+        flashError(task.id);
+      }
+    });
+  }
+
+  // The mirror of `handleComplete`, and it needs no new failure machinery:
+  // `useOptimistic` puts the row back in "Logged today" the moment the
+  // transition settles, and `flashError` marks it, exactly as a failed
+  // completion is handled.
+  function handleReopen(task: Task) {
+    startTransition(async () => {
+      dispatch({ type: "reopen", id: task.id });
+      try {
+        const formData = new FormData();
+        formData.set("id", task.id);
+        await reopenTaskAction(formData);
       } catch {
         flashError(task.id);
       }
@@ -263,6 +299,7 @@ export function FieldScreen({
         expandedTaskId={view.expandedTaskId}
         addEditorOpen={view.addEditorOpen}
         onComplete={handleComplete}
+        onReopen={handleReopen}
         onSave={handleSave}
         onDelete={handleDelete}
         onCreate={handleCreate}

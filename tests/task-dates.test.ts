@@ -4,6 +4,7 @@ import {
   BUCKET_LABELS,
   BUCKET_ORDER,
   bucketOpenTasks,
+  completedToday,
   getBucket,
   groupDoneByDay,
   humanizeDueDate,
@@ -174,6 +175,42 @@ describe("groupDoneByDay", () => {
     const groups = groupDoneByDay(tasks, "Pacific/Auckland", TODAY);
 
     expect(groups.map((g) => g.label)).toEqual(["Today"]);
+  });
+});
+
+describe("completedToday", () => {
+  it("selects only the tasks completed on the given day key", () => {
+    const tasks = [
+      { id: "a", status: "done" as const, completedAt: "2024-01-15T09:00:00.000Z" },
+      { id: "b", status: "done" as const, completedAt: "2024-01-14T09:00:00.000Z" },
+      { id: "c", status: "done" as const, completedAt: "2024-01-15T18:00:00.000Z" },
+      { id: "d", status: "done" as const, completedAt: "2024-01-16T09:00:00.000Z" },
+    ];
+
+    expect(completedToday(tasks, ZONE, TODAY).map((t) => t.id)).toEqual(["a", "c"]);
+  });
+
+  it("excludes open tasks, and done tasks with no completion timestamp", () => {
+    const tasks = [
+      { id: "a", status: "open" as const, completedAt: null },
+      { id: "b", status: "done" as const, completedAt: null },
+      { id: "c", status: "done" as const, completedAt: "2024-01-15T09:00:00.000Z" },
+    ];
+
+    expect(completedToday(tasks, ZONE, TODAY).map((t) => t.id)).toEqual(["c"]);
+  });
+
+  it("resolves the day in the supplied zone, not the machine's", () => {
+    // 23:30 UTC on the 14th is already 15:30 on the 15th in Auckland, and
+    // still the 14th in UTC.
+    const tasks = [{ id: "a", status: "done" as const, completedAt: "2024-01-14T23:30:00.000Z" }];
+
+    expect(completedToday(tasks, "Pacific/Auckland", TODAY).map((t) => t.id)).toEqual(["a"]);
+    expect(completedToday(tasks, ZONE, TODAY)).toEqual([]);
+  });
+
+  it("is empty when nothing was completed today", () => {
+    expect(completedToday([], ZONE, TODAY)).toEqual([]);
   });
 });
 

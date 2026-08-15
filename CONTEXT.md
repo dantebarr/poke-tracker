@@ -51,11 +51,19 @@ panels that were never built.
 Not finished. The default state of a task and the primary thing the app shows.
 
 **Done**:
-Finished, and **terminal** — a task cannot be un-completed, and cannot be
-deleted either. Done tasks are
-history, not content: kept, grouped by the day they were completed, and
-collapsed out of the primary view. Terminality is what keeps a task's record
-and the day ledger from ever disagreeing.
+Finished. A done task cannot be **deleted** — it is the only record that the
+work happened. It can be **reopened**. Done tasks are history, not content:
+kept, grouped by the day they were completed, and collapsed out of the primary
+view.
+
+**Reopen**:
+Sending a done task back to **Open**. Its completion is erased — the timestamp,
+and the Pokémon that completion credited — so a reopened task is
+indistinguishable from one never completed; there is no third state. The day it
+was completed on loses its points, if that day is still in progress; a day
+already settled is unaffected, because its ledger row is a snapshot (see **Day
+ledger**). See ADR-0002.
+_Avoid_: Un-complete, un-tick, undo
 
 **In progress**:
 Removed. Jarvis HUD carried a third status between Open and Done on the theory
@@ -143,8 +151,10 @@ yet.
 **Day ledger**:
 The append-only record of what every settled day did — points earned, the target
 at the time, the resulting delta, and which Pokémon was active. A settled day is
-**immutable**: re-opening a task completed last Tuesday does not change what
-Tuesday was worth.
+**immutable**: its row is a **snapshot**, authoritative for that day, and is
+never recomputed from the tasks behind it. Reopening a task completed last
+Tuesday therefore does not change what Tuesday was worth — not because the task
+is beyond reach, but because Tuesday's row no longer reads from it.
 
 ### Pokémon
 

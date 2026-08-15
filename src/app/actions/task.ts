@@ -7,6 +7,7 @@ import {
   completeTask,
   createTask,
   deleteTask,
+  reopenTask,
   updateTask,
   type Task,
   type TaskSize,
@@ -76,7 +77,7 @@ export async function createTaskAction(formData: FormData): Promise<Task> {
   return task;
 }
 
-/** Edits an open task's title, due date, label, size and notes. */
+/** Edits a task's title, due date, label, size and notes. */
 export async function updateTaskAction(formData: FormData): Promise<Task> {
   const client = await createSupabaseServerClient();
   await requireTrainerId(client);
@@ -93,8 +94,8 @@ export async function updateTaskAction(formData: FormData): Promise<Task> {
 }
 
 /**
- * Completes a task: one click, terminal. Stamps whichever instance is active
- * for the caller right now — null if they currently have none.
+ * Completes a task: one click. Stamps whichever instance is active for the
+ * caller right now — null if they currently have none.
  */
 export async function completeTaskAction(formData: FormData): Promise<Task> {
   const client = await createSupabaseServerClient();
@@ -102,6 +103,21 @@ export async function completeTaskAction(formData: FormData): Promise<Task> {
 
   const instanceId = await activeInstanceId(client, trainerId);
   const task = await completeTask(client, requiredField(formData, "id"), instanceId);
+  revalidatePath("/", "layout");
+  return task;
+}
+
+/**
+ * Sends a done task back to Open — one click, no confirmation, since reopen
+ * is itself the recovery from a mis-tick and a mis-reopen costs one tap to
+ * complete again. The caller decides which completions are offered this; the
+ * action takes any task of theirs.
+ */
+export async function reopenTaskAction(formData: FormData): Promise<Task> {
+  const client = await createSupabaseServerClient();
+  await requireTrainerId(client);
+
+  const task = await reopenTask(client, requiredField(formData, "id"));
   revalidatePath("/", "layout");
   return task;
 }

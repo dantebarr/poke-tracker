@@ -1064,11 +1064,12 @@ body {
   background: none;
 }
 
-/* Circle to complete — a one-way door. No hover affordance that reads as a
-   toggle: it only ever darkens slightly, never fills, so it can't be
-   mistaken for a checkbox that comes back. The fill-in on completion is
-   opacity/transform only (UI-CONSTRAINTS.md); the global reduced-motion
-   rule collapses it to an instant state change. */
+/* Circle to complete, and — since #36 — to reopen: the same control in both
+   directions, on the open row and on the logged one. Hover only ever darkens
+   slightly, never fills, so the empty circle still can't be mistaken for a
+   filled one at a glance. The fill-in on completion is opacity/transform only
+   (UI-CONSTRAINTS.md); the global reduced-motion rule collapses it to an
+   instant state change. */
 .circle {
   flex: none;
   width: 22px;
@@ -1096,6 +1097,22 @@ body {
   opacity: 0;
   transform: scale(0.7);
   animation: circle-check-in 0.18s ease forwards;
+}
+/* The filled circle is a control now, so it answers the pointer the way the
+   empty one does — a shade lighter rather than the plain `.circle:hover`,
+   which sits under this circle's own resting fill and so reads as nothing. */
+.circle.check:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+/* A *failed* reopen reverts the row back into Logged today, which mounts this
+   circle afresh and would otherwise replay the tick-in — the row would flash
+   as an error and animate as though newly completed at the same time. Hold it
+   at the animation's end state instead, so the only thing moving is the
+   flash. */
+.taskrow.errored .circle.check {
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
 .circle.check::after {
   content: "✓";
@@ -1363,7 +1380,8 @@ span.title {
   /* Touch targets ≥44px, with extra care on the control that mutates state
      (UI-CONSTRAINTS.md) — bigger than mockup B's own 26px circle, a
      deliberate departure from porting it verbatim so the complete control
-     is reliably hittable rather than merely visually present. */
+     is reliably hittable rather than merely visually present. Reopen (#36)
+     rides on the same rule: it is the same circle, on a logged row. */
   .circle {
     width: 44px;
     height: 44px;

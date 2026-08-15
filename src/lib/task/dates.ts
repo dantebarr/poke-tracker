@@ -148,24 +148,54 @@ export function groupDoneByDay<T extends { completedAt: string }>(
 }
 
 /**
+ * The tasks completed on the day still in progress — the trainer's own day
+ * key, with a completion's day derived through the same shared primitive
+ * settlement uses, so this can never disagree about which day a completion
+ * belongs to.
+ *
+ * This one set answers two questions that must never drift apart: what today
+ * is worth (`todayPoints`, below) and which completions the field log shows
+ * and offers a reopen on (#36). It exists as a named function precisely so
+ * that "only today's completions can be reopened" is a stated intention
+ * rather than an accident of the display code.
+ *
+ * *Why* today: a day already settled has its own record in the Logbook (the
+ * day ledger), an aggregate rather than a raw task list, and settlement runs
+ * up through yesterday on every visit (`settle-on-entry`), so nothing
+ * completed before today is still waiting to be accounted for here.
+ *
+ * This is an interface affordance, not a rule of the domain or the database
+ * — neither knows what "today" means for reopening, and a reopen cannot
+ * disturb a settled day regardless, because a ledger row is a snapshot that
+ * is never recomputed (ADR-0007). A future surface for browsing older
+ * completions therefore has to decide for itself whether it offers reopen;
+ * it does not inherit the answer by reaching past this function.
+ */
+export function completedToday<T extends { status: "open" | "done"; completedAt: string | null }>(
+  tasks: T[],
+  timeZone: string,
+  todayKey: string,
+): (T & { completedAt: string })[] {
+  return tasks.filter(
+    (task): task is T & { completedAt: string } =>
+      task.status === "done" &&
+      task.completedAt !== null &&
+      dayKeyInTimeZone(new Date(task.completedAt), timeZone) === todayKey,
+  );
+}
+
+/**
  * Effort points earned today, derived by summing today's completions —
  * never a stored counter (CONTEXT.md), so this is the only place "today's
- * total" is computed. "Today" is the trainer's own day key, and a
- * completion's day is derived through the same shared primitive settlement
- * uses, so this can never disagree with what settlement will eventually
- * write to the ledger for the day still in progress.
+ * total" is computed. Expressed in terms of `completedToday` because today's
+ * score and today's reopenable set are the same set of tasks; summing a
+ * second, separately written filter is what would let the readout and the
+ * list disagree.
  */
 export function todayPoints(
   tasks: { status: "open" | "done"; completedAt: string | null; size: TaskSize }[],
   timeZone: string,
   todayKey: string,
 ): number {
-  return tasks
-    .filter(
-      (task): task is { status: "done"; completedAt: string; size: TaskSize } =>
-        task.status === "done" &&
-        task.completedAt !== null &&
-        dayKeyInTimeZone(new Date(task.completedAt), timeZone) === todayKey,
-    )
-    .reduce((sum, task) => sum + effortPoints(task.size), 0);
+  return completedToday(tasks, timeZone, todayKey).reduce((sum, task) => sum + effortPoints(task.size), 0);
 }

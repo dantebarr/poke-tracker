@@ -147,8 +147,8 @@ describe("row-level security, not the application, isolates one trainer's tasks 
 // held no insert, update or delete grant at all. #8 supersedes that
 // invariant deliberately — see tests/task-writes.test.ts for the write
 // suite, including the row-level security tests that replace this one
-// (a trainer can now write their own open tasks, but never another
-// trainer's, and never a done one — ADR-0002).
+// (a trainer can now write their own tasks, but never another trainer's;
+// deleting one that is still done stays refused — ADR-0002).
 
 describe("the task invariant lives in the database (ADR-0001)", () => {
   it("refuses a null due date, label or size", async () => {
