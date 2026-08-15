@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code — settings.json is shared; these two are per-machine
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
