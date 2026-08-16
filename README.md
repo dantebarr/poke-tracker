@@ -77,20 +77,22 @@ proved.
 
 ## Deploying
 
-Vercel's GitLab integration already deploys on every push to `main`. Full production readiness
+Vercel's GitHub integration already deploys on every push to `main`. Full production readiness
 is still its own piece of work: Vercel needs `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `POKE_TRACKER_ALLOWED_EMAILS`; the hosted Supabase project
 needs the Google provider enabled and `https://<domain>/auth/callback` added to its redirect
 allow-list. The Google OAuth client needs `https://<supabase-project>.supabase.co/auth/v1/callback`
 as an authorised redirect URI.
 
-Migrations no longer need a manual `supabase db push` — `.gitlab-ci.yml` pushes pending
-`supabase/migrations/` files to the linked remote project on every push to `main`, using
-`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, and `SUPABASE_PROJECT_ID` CI/CD variables. See
+Migrations no longer need a manual `supabase db push` — `.github/workflows/migrate.yml` pushes
+pending `supabase/migrations/` files to the linked remote project on every push to `main`, using
+`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, and `SUPABASE_PROJECT_ID`. Those three are
+secrets on the `production` environment rather than the repository, so only a run on `main` can
+read them. See
 [ADR-0006](./docs/adr/0006-ci-migrations-are-not-ordered-before-deploy.md) for how this relates
 to the (separately triggered) Vercel deploy.
 
 ## Issues
 
-Issues live in [GitLab](https://gitlab.com/Infernite/poke-tracker/-/issues), driven by
-`glab`. See [`docs/agents/issue-tracker.md`](./docs/agents/issue-tracker.md).
+Issues live in [GitHub](https://github.com/dantebarr/poke-tracker/issues), driven by
+`gh`. See [`docs/agents/issue-tracker.md`](./docs/agents/issue-tracker.md).

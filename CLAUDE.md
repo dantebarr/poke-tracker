@@ -27,7 +27,7 @@ derives (happiness, the day ledger) is read-only to a trainer's own JWT by defau
 
 ### Issue tracker
 
-Issues live in this repo's GitLab Issues (`gitlab.com:Infernite/poke-tracker`), driven by the `glab` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in this repo's GitHub Issues (`github.com:dantebarr/poke-tracker`), driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
