@@ -2,12 +2,13 @@
 
 **Status:** accepted
 
-The GitLab CI job that pushes pending `supabase/migrations/` files to the remote database
-(`.gitlab-ci.yml`) runs on the same trigger as the Vercel deploy — a push to `main` — but the two
-are not sequenced against each other. Whichever finishes first, finishes first.
+The GitHub Actions job that pushes pending `supabase/migrations/` files to the remote database
+(`.github/workflows/migrate.yml`) runs on the same trigger as the Vercel deploy — a push to
+`main` — but the two are not sequenced against each other. Whichever finishes first, finishes
+first.
 
-This is a gap, not an oversight: the Vercel deploy is wired through the GitLab↔Vercel
-integration, which reacts to the push itself, not to GitLab CI's pipeline result. Making the
+This is a gap, not an oversight: the Vercel deploy is wired through the GitHub↔Vercel
+integration, which reacts to the push itself, not to the workflow's result. Making the
 migration a true precondition of the deploy would mean disconnecting that integration and
 triggering Vercel from CI instead (via its API or CLI) once the migration job succeeds — a second
 piece of infrastructure, and a slower deploy on every push, including the far more common case of

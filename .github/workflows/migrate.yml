@@ -3,9 +3,9 @@
 # deploys the app on. See docs/adr/0006-ci-migrations-are-not-ordered-before-deploy.md for why
 # this job and the Vercel deploy are not sequenced against each other.
 #
-# The three secrets below live on the `production` environment, not the repository, so they are
-# only exposed to runs on main — the equivalent of GitLab's protected CI/CD variables. Note that
-# SUPABASE_DB_PASSWORD is never referenced by name: the Supabase CLI reads it from the
+# The three secrets below live on the `production` environment, not the repository, so a run on
+# any other branch cannot read them: a repository secret would be readable from every branch.
+# Note that SUPABASE_DB_PASSWORD is never referenced by name: the Supabase CLI reads it from the
 # environment, so removing it from `env:` breaks `db push` with no mention of the password.
 #   SUPABASE_ACCESS_TOKEN  personal/service access token, from supabase.com/dashboard/account/tokens
 #   SUPABASE_DB_PASSWORD   the linked project's Postgres password

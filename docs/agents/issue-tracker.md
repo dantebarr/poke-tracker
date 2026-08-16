@@ -1,75 +1,79 @@
-# Issue tracker: GitLab
+# Issue tracker: GitHub
 
-Issues and specs for this repo live as GitLab issues. Use the [`glab`](https://gitlab.com/gitlab-org/cli) CLI for all operations.
+Issues and specs for this repo live as GitHub issues. Use the [`gh`](https://cli.github.com) CLI
+for all operations.
 
 ## Conventions
 
-- **Create an issue**: `glab issue create --title "..." --description "..."`. Use a heredoc for multi-line descriptions. Pass `--description -` to open an editor.
-- **Read an issue**: `glab issue view <number> --comments`. Use `-F json` for machine-readable output.
-- **List issues**: `glab issue list --output json` with appropriate `--label` filters. **Not `-F json`** — `glab issue list` ignores `-F` and prints its human table anyway (checked on glab 1.112.0), so a script piping it into a JSON parser fails on the `Showing N open issues…` header. `glab issue view` accepts either flag.
-- **Comment on an issue**: `glab issue note <number> --message "..."`. GitLab calls comments "notes".
-- **Apply / remove labels**: `glab issue update <number> --label "..."` / `--unlabel "..."`. Multiple labels can be comma-separated or by repeating the flag.
-- **Close**: `glab issue close <number>`. `glab issue close` does not accept a closing comment, so post the explanation first with `glab issue note <number> --message "..."`, then close.
-- **Merge requests**: GitLab calls PRs "merge requests". Use `glab mr create`, `glab mr view`, `glab mr note`, etc. — the same shape as `gh pr ...` with `mr` in place of `pr` and `note`/`--message` in place of `comment`/`--body`.
+- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Read an issue**: `gh issue view <number> --comments`. Add `--json` for machine-readable output.
+- **List issues**: `gh issue list --state open --json number,title,body,labels --jq '[.[] | {number, title, labels: [.labels[].name]}]'` with appropriate `--label` and `--state` filters. `--json` requires the field list to be named explicitly; there is no bare form that returns everything, and `gh issue list --json` with no fields errors out rather than defaulting.
+- **Comment on an issue**: `gh issue comment <number> --body "..."`
+- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
+- **Close**: `gh issue close <number> --comment "..."` — one call, the comment lands before the close.
 
-Infer the repo from `git remote -v` — `glab` does this automatically when run inside a clone.
+Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
-## Merge requests as a triage surface
+## Pull requests as a triage surface
 
-**MRs as a request surface: no.** _(Set to `yes` if this repo treats external merge requests as feature requests; `/triage` reads this flag.)_
+**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
 
-When set to `yes`, MRs run through the same labels and states as issues, using the `glab mr` equivalents:
+When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr` equivalents:
 
-- **Read an MR**: `glab mr view <number> --comments` and `glab mr diff <number>` for the diff.
-- **List external MRs for triage**: `glab mr list -F json`, then keep only MRs whose author is not a project member/owner (a contributor's MR, not a maintainer's in-flight work).
-- **Comment / label / close**: `glab mr note`, `glab mr update --label`/`--unlabel`, `glab mr close`.
+- **Read a PR**: `gh pr view <number> --comments` and `gh pr diff <number>` for the diff.
+- **List external PRs for triage**: `gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments`, then keep only `authorAssociation` of `CONTRIBUTOR`, `FIRST_TIME_CONTRIBUTOR`, or `NONE` (drop `OWNER`/`MEMBER`/`COLLABORATOR`).
+- **Comment / label / close**: `gh pr comment`, `gh pr edit --add-label`/`--remove-label`, `gh pr close`.
 
-Unlike GitHub, GitLab numbers issues and MRs separately, so `#42` is unambiguous once you know which surface the maintainer means.
-
-## When a skill says "publish to the issue tracker"
-
-Create a GitLab issue.
-
-## When a skill says "fetch the relevant ticket"
-
-Run `glab issue view <number> --comments`.
+GitHub shares one number space across issues and PRs, so a bare `#42` may be either — resolve with
+`gh pr view 42` and fall back to `gh issue view 42`.
 
 ## Blocking edges
 
-**This project is on a GitLab tier without native blocking links.** Verified 2026-08-06: posting
-the `/blocked_by #<n>` quick action as a note is silently consumed — the note vanishes, no link is
-created, and `glab api projects/:id/issues/:iid/links` stays empty. Nothing errors, so an agent
-that fires the quick action and moves on will believe it recorded an edge it did not record.
-**Do not rely on it. Check the `links` endpoint before trusting a native link.**
+GitHub's **native issue dependencies** are the canonical, UI-visible representation. A blocked
+issue shows a "Blocked" marker in the issue list and on project boards.
 
-The fallback in use is a **`Blocked by` section in the issue description**, listing one blocking
-issue per line as `- #<n> — <title>`, or the single line `None — can start immediately`:
-
-```markdown
-## Blocked by
-
-- #7 — Task table migration and the read-only task list
+```sh
+gh issue edit <blocked> --add-blocked-by <blocker>    # by issue number
+gh issue edit <blocked> --remove-blocked-by <blocker>
+gh issue create --blocked-by <n>,<n> --blocking <n>   # at creation time
 ```
 
-A ticket is unblocked when every issue referenced there is closed. To find a ticket's blockers,
-read its description — there is nowhere else to look. To find what a ticket blocks, search
-descriptions for its number (`glab issue list --search "#<n>"`, then confirm the hit is under the
-`Blocked by` heading rather than elsewhere in the body).
+Reading them back, with two traps worth knowing:
 
-Anything reading these edges should tolerate both shapes: the `## Blocked by` section above, and
-the `Blocked by: #<n>, #<n>` line some skills place at the top of the description. Both mean the
-same thing.
+```sh
+# `blockedBy` is an object, NOT a flat array — `[.blockedBy[].number]` fails.
+gh issue view <n> --json number,blockedBy --jq '.blockedBy.nodes[] | "\(.number) \(.state)"'
+gh issue view <n> --json blockedBy --jq '.blockedBy.totalCount'
 
-If this project later moves to a Premium/Ultimate tier, native links become the canonical
-representation and these sections should be migrated into them.
+# The REST summary counts open blockers only, which makes it the live gate.
+gh api repos/:owner/:repo/issues/<n> --jq '.issue_dependencies_summary.blocked_by'
+```
+
+**Writes are not immediately readable.** Verified 2026-08-16: `issue_dependencies_summary`
+reported `blocked_by: 0` immediately after a successful `--add-blocked-by`, then `1` a moment
+later. An agent that writes an edge and instantly reads it back can conclude the write failed and
+"fix" a link that was never broken. Re-read before acting on a zero.
+
+Limits: up to 50 links per relationship type, and triage permission or above to set one.
+
+The older fallback — a `Blocked by: #<n>, #<n>` line at the top of the body — is still understood
+by some skills. Treat it as equivalent when it appears, but write native dependencies.
+
+## When a skill says "publish to the issue tracker"
+
+Create a GitHub issue.
+
+## When a skill says "fetch the relevant ticket"
+
+Run `gh issue view <number> --comments`.
 
 ## Wayfinding operations
 
 Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
 
-- **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `glab issue create --label wayfinder:map`. (On GitLab tiers with native epics, an epic may hold the map instead; a labelled issue works everywhere.)
-- **Child ticket**: an issue carrying `Part of #<map>` at the top of its description and labels `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
-- **Blocking**: see [Blocking edges](#blocking-edges) above. Native links are unavailable on this project's tier, so the `Blocked by` description section is the representation. A ticket is unblocked when every blocker is closed.
-- **Frontier query**: `glab issue list --output json` scoped to the map's children, drop any with an open blocker — read each candidate's description and check every issue in its `Blocked by` section is closed — or an assignee; first in map order wins.
-- **Claim**: `glab issue update <n> --assignee @me` — the session's first write.
-- **Resolve**: `glab issue note <n> --message "<answer>"`, then `glab issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+- **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map`.
+- **Child ticket**: an issue linked to the map as a GitHub sub-issue (`gh api` on the sub-issues endpoint). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
+- **Blocking**: see [Blocking edges](#blocking-edges) above. A ticket is unblocked when every blocker is closed.
+- **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`) or an assignee; first in map order wins.
+- **Claim**: `gh issue edit <n> --add-assignee @me` — the session's first write.
+- **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
