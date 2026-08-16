@@ -16,7 +16,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const API = "https://pokeapi.co/api/v2";
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 const ANIMATED_SPRITE_BASE = `${SPRITE_BASE}/versions/generation-v/black-white/animated`;
-const USER_AGENT = "poke-tracker-species-generator (gitlab.com/Infernite/poke-tracker)";
+const USER_AGENT = "poke-tracker-species-generator (github.com/dantebarr/poke-tracker)";
 const ORIGINAL_GAME_VERSION_GROUP = "red-blue";
 
 // The Safari Zone interface's six real areas (#22), matching the six habitat
