@@ -1,0 +1,43 @@
+# Applies pending supabase/migrations/ files to the linked remote Supabase project. Runs on every
+# push to main so the schema lands on the same trigger the Vercel↔GitHub integration already
+# deploys the app on. See docs/adr/0006-ci-migrations-are-not-ordered-before-deploy.md for why
+# this job and the Vercel deploy are not sequenced against each other.
+#
+# The three secrets below live on the `production` environment, not the repository, so they are
+# only exposed to runs on main — the equivalent of GitLab's protected CI/CD variables. Note that
+# SUPABASE_DB_PASSWORD is never referenced by name: the Supabase CLI reads it from the
+# environment, so removing it from `env:` breaks `db push` with no mention of the password.
+#   SUPABASE_ACCESS_TOKEN  personal/service access token, from supabase.com/dashboard/account/tokens
+#   SUPABASE_DB_PASSWORD   the linked project's Postgres password
+#   SUPABASE_PROJECT_ID    the project ref (not the vanity project_id in supabase/config.toml)
+name: migrate
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate-database:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install the pinned Supabase CLI
+        run: |
+          SUPABASE_CLI_VERSION=$(node -p "require('./package.json').devDependencies.supabase")
+          npm install --no-save --no-audit --no-fund "supabase@$SUPABASE_CLI_VERSION"
+
+      - name: Push pending migrations
+        run: |
+          npx supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          npx supabase db push --yes
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
