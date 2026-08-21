@@ -86,7 +86,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           left={
             <PokemonPane
               pokemon={activePokemon}
-              dailyTarget={trainer.dailyTarget}
               evolutionOptions={evolutionOptions}
               baobaLine={baobaLine}
             />

@@ -118,19 +118,31 @@ describe("special states, ahead of the mood fallback", () => {
 });
 
 describe("the mood fallback", () => {
+  // The boundary table, moved here from encounter-view.test.ts along with
+  // the bands themselves: happiness has no surface of its own any more, so
+  // these lines are the only place it is ever felt and the only place the
+  // cuts can be pinned. The cut is in slack — happiness over the daily
+  // target — so each row names both, and the edges matter as much as the
+  // middles.
   it.each([
-    ["sad", "gone for good"],
-    ["worried", "restless"],
-    ["neutral", "settled in fine"],
-    ["happy", "content"],
-    ["beaming", "thriving"],
-  ] as const)("narrates the %s tier by nickname", (tier, phrase) => {
-    const happinessByTier = { sad: -1, worried: 0, neutral: 3, happy: 6, beaming: 12 } as const;
-    const line = buildBaobaLine(
-      facts({ pokemon: pokemon({ nickname: "Sickle", happiness: happinessByTier[tier] }), dailyTarget: 3 }),
-    );
+    [-1, 3, "gone for good"], // -1/3 < 0
+    [0, 3, "restless"], // 0/3 = 0, in [0, 1)
+    [2, 3, "restless"], // 2/3 ≈ 0.67, in [0, 1)
+    [3, 3, "settled in fine"], // 3/3 = 1, in [1, 2)
+    [6, 3, "content"], // 6/3 = 2, in [2, 4)
+    [11, 3, "content"], // 11/3 ≈ 3.67, in [2, 4)
+    [12, 3, "thriving"], // 12/3 = 4, in [4, ∞)
+  ] as const)("happiness %i against target %i narrates %s", (happiness, dailyTarget, phrase) => {
+    const line = buildBaobaLine(facts({ pokemon: pokemon({ nickname: "Sickle", happiness }), dailyTarget }));
     expect(line).toContain("Sickle");
     expect(line.toLowerCase()).toContain(phrase);
+  });
+
+  it("cuts by slack, not raw happiness — the same value reads differently on a bigger target", () => {
+    const generous = buildBaobaLine(facts({ pokemon: pokemon({ happiness: 6 }), dailyTarget: 3 }));
+    const demanding = buildBaobaLine(facts({ pokemon: pokemon({ happiness: 6 }), dailyTarget: 12 }));
+    expect(generous.toLowerCase()).toContain("content");
+    expect(demanding.toLowerCase()).toContain("restless");
   });
 
   it("never fires on a day with no event but no other reason not to fall back", () => {

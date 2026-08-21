@@ -1,17 +1,25 @@
 import type { ReactNode } from "react";
 
-import Image from "next/image";
-
 import { buildEncounterView } from "@/lib/pokemon/encounter-view";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 
 /**
  * The field pane's centrepiece (#22): the Ranger's Active Pokémon standing
  * animated in its own habitat, under a battle-style status box carrying its
- * Nickname, Species, a face for Happiness and a bar for Bond level. Renders
- * `buildEncounterView`'s output and derives nothing of its own — later
- * tickets (#23's dialogue tray, #24's naming prompt, #25's evolve prompt)
- * extend this pane rather than replace it.
+ * Nickname, Species and a bar for Bond level. Renders `buildEncounterView`'s
+ * output and derives nothing of its own — later tickets (#23's dialogue
+ * tray, #24's naming prompt, #25's evolve prompt) extend this pane rather
+ * than replace it.
+ *
+ * Happiness has no place in this box, by design: it is a background number,
+ * and Warden Baoba's tray below is the only thing that ever hints at it. The
+ * face that used to sit opposite the Nickname is gone, and the space it held
+ * is left empty on purpose.
+ *
+ * Bond shows the bare level, never `level / requirement`: bond rises forever
+ * and never falls, so a denominator would name a ceiling that doesn't exist.
+ * The bar is what carries distance — to the next evolution, to the Pokédex
+ * entry — and stays full once a line has nothing further to unlock.
  *
  * `prompt` is the pane's prompt-box slot (#24, #25): whoever calls this
  * decides *whether* to pass one using `buildEncounterView`'s own `prompt`
@@ -21,14 +29,12 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  */
 export function EncounterView({
   pokemon,
-  dailyTarget,
   prompt,
 }: {
   pokemon: ActivePokemon | null;
-  dailyTarget: number;
   prompt?: ReactNode;
 }) {
-  const view = buildEncounterView(pokemon, dailyTarget);
+  const view = buildEncounterView(pokemon);
 
   if (!view.hasPokemon) {
     return <div className="scene" data-zone="plains" />;
@@ -46,12 +52,6 @@ export function EncounterView({
       <div className="statusbox textbox">
         <div className="line1">
           <span className="nick">{view.nickname}</span>
-          <span
-            className={`mood${view.mood.warn ? " warn" : ""}`}
-            title={`${view.mood.label} — happiness in daily targets`}
-          >
-            <Image src={`/mood/${view.mood.tier}.svg`} alt={view.mood.label} width={34} height={34} unoptimized />
-          </span>
         </div>
         <div className="species">
           {view.speciesName} · No.{view.speciesNumber}
@@ -62,10 +62,7 @@ export function EncounterView({
           <span className="track">
             <i style={{ width: `${view.bond.percent}%` }} />
           </span>
-          <span className="num">
-            {view.bond.level}
-            <span className="sign">/{view.bond.requirement}</span>
-          </span>
+          <span className="num">{view.bond.level}</span>
         </div>
       </div>
 

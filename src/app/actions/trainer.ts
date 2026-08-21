@@ -75,9 +75,10 @@ export async function ensureTrainer(): Promise<Trainer> {
  * `<form action>` — see the settings page.
  *
  * Layout-scoped, not page-scoped (#33): the daily target also feeds the
- * chrome layout's persistent left pane (the encounter view's mood tier), so
- * a page-scoped revalidation would leave that pane stale on every
- * destination other than Settings itself.
+ * chrome layout's persistent left pane (Warden Baoba's line, whose mood
+ * bands are cut in days of banked slack), so a page-scoped revalidation
+ * would leave that pane stale on every destination other than Settings
+ * itself.
  */
 export async function updateDailyTargetAction(formData: FormData): Promise<Trainer> {
   const client = await createSupabaseServerClient();

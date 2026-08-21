@@ -30,12 +30,10 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  */
 export function PokemonPane({
   pokemon,
-  dailyTarget,
   evolutionOptions,
   baobaLine,
 }: {
   pokemon: ActivePokemon | null;
-  dailyTarget: number;
   evolutionOptions: EvolutionOption[];
   baobaLine: string;
 }) {
@@ -56,7 +54,7 @@ export function PokemonPane({
     wasOnNarrowEncounterView.current = onNarrowEncounterView;
   }, [onNarrowEncounterView]);
 
-  const view = buildEncounterView(pokemon, dailyTarget, evolutionOptions);
+  const view = buildEncounterView(pokemon, evolutionOptions);
 
   const naming =
     pokemon && view.hasPokemon && view.prompt === "naming" && !skipped
@@ -95,11 +93,7 @@ export function PokemonPane({
 
   return (
     <>
-      <EncounterView
-        pokemon={pokemon}
-        dailyTarget={dailyTarget}
-        prompt={namingPrompt("box") ?? evolvePrompt("box")}
-      />
+      <EncounterView pokemon={pokemon} prompt={namingPrompt("box") ?? evolvePrompt("box")} />
       <BaobaTray line={baobaLine} naming={namingPrompt("fold")} evolve={evolvePrompt("fold")} />
     </>
   );
