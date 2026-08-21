@@ -32,46 +32,35 @@ function pokemon(overrides: Partial<ActivePokemon> = {}): ActivePokemon {
 
 describe("a Ranger with no Active Pokémon", () => {
   it("gets a scene without a Pokémon in it", () => {
-    expect(buildEncounterView(null, 3)).toEqual({ hasPokemon: false });
+    expect(buildEncounterView(null)).toEqual({ hasPokemon: false });
   });
 });
 
-describe("the mood tier", () => {
-  it.each([
-    [-1, 3, "sad", "Gone", true], // -1/3 < 0
-    [0, 3, "worried", "Restless", true], // 0/3 = 0, in [0, 1)
-    [2, 3, "worried", "Restless", true], // 2/3 ≈ 0.67, in [0, 1)
-    [3, 3, "neutral", "Settled", false], // 3/3 = 1, in [1, 2)
-    [6, 3, "happy", "Content", false], // 6/3 = 2, in [2, 4)
-    [11, 3, "happy", "Content", false], // 11/3 ≈ 3.67, in [2, 4)
-    [12, 3, "beaming", "Thriving", false], // 12/3 = 4, in [4, ∞)
-  ] as const)("happiness %i against target %i is %s (warn: %s)", (happiness, dailyTarget, tier, label, warn) => {
-    const view = buildEncounterView(pokemon({ happiness }), dailyTarget);
-    if (!view.hasPokemon) throw new Error("expected a Pokémon");
-    expect(view.mood).toEqual({ tier, label, warn });
-  });
-
+describe("happiness", () => {
+  // The guard on the whole point of this view model: happiness is a
+  // background number with no surface. The bands that pick Warden Baoba's
+  // line live in baoba/dialogue.ts and are tested there.
   it("never carries a numeric happiness value anywhere in the view", () => {
-    const view = buildEncounterView(pokemon({ happiness: 42 }), 3);
+    const view = buildEncounterView(pokemon({ happiness: 42 }));
     expect(JSON.stringify(view)).not.toContain("42");
   });
 });
 
 describe("the bond bar", () => {
   it("reads level against requirement below the requirement", () => {
-    const view = buildEncounterView(pokemon({ bondLevel: 5, bondRequirement: 7 }), 3);
+    const view = buildEncounterView(pokemon({ bondLevel: 5, bondRequirement: 7 }));
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
-    expect(view.bond).toEqual({ level: 5, requirement: 7, percent: 71 });
+    expect(view.bond).toEqual({ level: 5, percent: 71 });
   });
 
   it("stays full past the requirement while the number keeps rising", () => {
-    const view = buildEncounterView(pokemon({ bondLevel: 9, bondRequirement: 7 }), 3);
+    const view = buildEncounterView(pokemon({ bondLevel: 9, bondRequirement: 7 }));
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
-    expect(view.bond).toEqual({ level: 9, requirement: 7, percent: 100 });
+    expect(view.bond).toEqual({ level: 9, percent: 100 });
   });
 
   it("reads exactly full right at the requirement", () => {
-    const view = buildEncounterView(pokemon({ bondLevel: 7, bondRequirement: 7 }), 3);
+    const view = buildEncounterView(pokemon({ bondLevel: 7, bondRequirement: 7 }));
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.bond.percent).toBe(100);
   });
@@ -84,7 +73,6 @@ describe("the rest of the view", () => {
         nickname: "Sickle",
         species: { id: 123, name: "scyther", spritePath: "/species/123.png", zone: "forest", animatedSpritePath: "/species/animated/123.gif" },
       }),
-      3,
     );
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.nickname).toBe("Sickle");
@@ -95,7 +83,7 @@ describe("the rest of the view", () => {
   });
 
   it("falls back to the species name when there is no nickname yet", () => {
-    const view = buildEncounterView(pokemon({ nickname: null }), 3);
+    const view = buildEncounterView(pokemon({ nickname: null }));
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.nickname).toBe("Scyther");
   });
@@ -103,13 +91,13 @@ describe("the rest of the view", () => {
 
 describe("the naming prompt (#24)", () => {
   it("is offered when the Instance has no Nickname", () => {
-    const view = buildEncounterView(pokemon({ nickname: null }), 3);
+    const view = buildEncounterView(pokemon({ nickname: null }));
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBe("naming");
   });
 
   it("is never offered to a returning Instance that already has a Nickname", () => {
-    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3);
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }));
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBeNull();
   });
@@ -123,19 +111,19 @@ const EVOLUTION_OPTIONS: EvolutionOption[] = [
 
 describe("the evolve prompt (#25)", () => {
   it("is offered to a named Instance with somewhere to evolve to", () => {
-    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, EVOLUTION_OPTIONS);
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), EVOLUTION_OPTIONS);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBe("evolve");
   });
 
   it("is never offered when there are no evolution options", () => {
-    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, []);
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), []);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBeNull();
   });
 
   it("is offered for a single-target line exactly the same way as a branch", () => {
-    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, [EVOLUTION_OPTIONS[0]]);
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), [EVOLUTION_OPTIONS[0]]);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBe("evolve");
   });
@@ -146,13 +134,13 @@ describe("precedence between the naming and evolve prompts (#25)", () => {
     // Reachable when an Instance sat at its bond requirement, left un-named
     // and un-evolved, and has now returned to the pool still meeting it —
     // CONTEXT.md's "Naming" and "Evolving" entries both allow this.
-    const view = buildEncounterView(pokemon({ nickname: null }), 3, EVOLUTION_OPTIONS);
+    const view = buildEncounterView(pokemon({ nickname: null }), EVOLUTION_OPTIONS);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBe("naming");
   });
 
   it("falls through to evolve once the Instance is named", () => {
-    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), 3, EVOLUTION_OPTIONS);
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), EVOLUTION_OPTIONS);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBe("evolve");
   });
