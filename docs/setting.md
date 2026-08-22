@@ -19,6 +19,14 @@ Having chosen to stay, they stay — a Pokémon never leaves on a schedule or by
 mechanic-with-no-fiction. It leaves only when the relationship stops being worth
 it to them, which in game terms is happiness falling below zero.
 
+The Ranger can still end a pairing, but the fiction stays the same in both
+directions: the Pokémon never goes anywhere. The **Ranger** is the one who moves,
+on to a new area of the reserve, and the Pokémon stays behind in the area it
+belongs to — which is why the interface's word for it is "MOVE ON" and never
+release, rehome, or send away. Nothing is ever given up: the reserve's Pokémon
+are not the Ranger's to release, and meeting one again later is meeting the same
+individual you left. See `CONTEXT.md`'s **Parting** and **Zone** entries.
+
 ## Cast
 
 ### Warden Baoba
