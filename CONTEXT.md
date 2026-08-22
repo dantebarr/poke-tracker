@@ -120,27 +120,58 @@ decides what a day did: a day at or above target is good, below is bad.
 **Happiness**:
 How well the **active** Pokémon is being cared for. Starts at zero, moves by the
 delta every day — a big surplus banks real slack, a big shortfall burns it — and
-is not capped. It belongs to the **trainer**, not to any Pokémon: only one
-Pokémon is ever active, and happiness resets to zero the moment one leaves.
+is not capped. It belongs to the **trainer**, not to any Pokémon, and it is
+never reset: the only thing that ever pulls it back is a **clamp at zero**, when
+a day's delta would take it negative. That clamp *is* a departure — a Pokémon
+**leaves** at exactly the moment happiness would have gone below zero, so the
+two are one event, not two rules. Nothing else touches it. Happiness therefore
+survives a **parting**, and survives the pokemon-less days that follow one,
+where it sits still (a bad day with nobody there costs nothing) until an
+**arrival** picks it back up. See ADR-0009.
 
 **Bond level**:
 How far a specific Pokémon has come with its trainer. Rises on good days,
-**never falls** — not on bad days, and not when the Pokémon leaves. It belongs
-to the **instance**, is that Pokémon's permanent record, and is what evolution
-and Pokédex entries are gated on.
+**never falls** — not on bad days, not when the Pokémon **leaves**, and not when
+the trainer **parts** with it. A good day still earns its level even when it is
+the last day the two spend together: the level is earned by the work, not by
+what happens at the boundary afterwards. It belongs to the **instance**, is
+that Pokémon's permanent record, and is what evolution and Pokédex entries are
+gated on.
 
 **Leaves**:
-What a Pokémon does when its happiness falls below zero. It happens at
+What a Pokémon does when its happiness would fall below zero — the Pokémon's own
+act, driven by neglect, and never the trainer's choice. It happens at
 **settlement**, after the day that caused it: the day's ledger row still names
 the Pokémon, because it was there for all of it. It returns to the pool in its
-current form, keeping its bond level; happiness resets to zero.
+current form, keeping its bond level; happiness is clamped to zero, which is the
+same event (see **Happiness**). Contrast **Parting**, the other way a Pokémon
+stops being active — and the one that keeps the happiness.
+
+**Parting**:
+The trainer's deliberate end to their time with the **active** Pokémon, chosen
+during a day and taking effect at that day's **settlement**, exactly where a
+departure by neglect would. Everything after the boundary is identical: the
+Pokémon returns to the **pool** in its current form, keeping its bond level and
+its nickname, and the trainer spends the next day alone. The one difference is
+what the trainer keeps — happiness is not clamped, because it never went
+negative, so it carries to whoever arrives next.
+
+A parting is a choice, not a failure, and the two never both happen: if the
+parting day's own delta would take happiness below zero, the Pokémon **leaves**
+and the day is recorded that way. The trainer missed the target, the row's delta
+says so, and calling that a parting would let the app flatter a day that was
+lost.
+_Avoid_: Release (the **pool** is fixed for life — nothing is ever released),
+abandon, remove.
 
 **Arrival**:
 The Pokémon a trainer earns by hitting their daily target on a day they had
 none. Drawn from the **pool** at **settlement**, it is active from the *next*
 day — never the qualifying day, which the trainer spent alone — and starts with
-that day's delta as its happiness. It gains no bond level for a day it wasn't
-there for.
+whatever happiness the trainer was already carrying plus that day's delta. That
+carried figure is zero after a departure by neglect and non-zero after a
+**parting**, which is the whole of the difference between them. It gains no
+bond level for a day it wasn't there for.
 _Avoid_: Attracted, encounter (the interface's **encounter view** is unrelated).
 
 **Approaching**:
@@ -168,6 +199,8 @@ The habitat a Species stands in on the Safari Zone interface's encounter view, o
 Belongs to the **Species**, not the **Instance**: the Pool is fixed for life, so an Instance-held
 Zone would be decided once at signup and never carry meaning again. Every Instance of a given
 Species is met in the same Zone.
+_Note_: where interface copy talks about moving to a new **area** — the **field menu**'s
+"MOVE ON" — it is the **Ranger** who moves, never the Species. A Species cannot change Zone.
 
 **Instance**:
 One specific Pokémon belonging to one trainer, carrying its own bond level, its
@@ -234,3 +267,10 @@ The interface's name for a trainer's **task** list.
 
 **Logbook**:
 The interface's name for the **day ledger**.
+
+**Field menu**:
+The collapsed menu in the corner of the **encounter view**, holding the actions a Ranger takes
+on their **Active Pokémon** rather than ones the app offers them. Today it holds one, "MOVE ON"
+— the interface's word for a **Parting**, framed as the Ranger moving on to a new area of the
+Safari Zone while the Pokémon stays in its own **Zone**. Absent entirely when there is no Active
+Pokémon.
