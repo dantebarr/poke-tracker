@@ -59,16 +59,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // `currentMoment()` the home page's own todayKey resolves from — Baoba's
   // Overdue clause can never drift from the Overdue group a Ranger sees on
   // the field log, wherever they're standing when he says it.
+  const todayKey = dayKeyInTimeZone(currentMoment(), trainer.timeZone);
   const overdueCount = bucketOpenTasks(
     tasks.filter((task) => task.status === "open"),
-    dayKeyInTimeZone(currentMoment(), trainer.timeZone),
+    todayKey,
   ).overdue.length;
+
+  // Compared against today's key rather than merely being non-null (#5): a
+  // parting_on left over from a day settlement hasn't consumed yet — the
+  // first paint of a visit, before `settleOnEntry` has finished — is a
+  // decision already spent, not one still open to cancel, and the marker and
+  // the menu must not offer to undo it.
+  const parting = trainer.partingOn === todayKey;
 
   const baobaLine = buildBaobaLine({
     pokemon: activePokemon,
     dailyTarget: trainer.dailyTarget,
     latestDay,
     readyToEvolve: evolutionOptions.length > 0,
+    parting,
     overdueCount,
   });
 
@@ -87,6 +96,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <PokemonPane
               pokemon={activePokemon}
               evolutionOptions={evolutionOptions}
+              parting={parting}
               baobaLine={baobaLine}
             />
           }

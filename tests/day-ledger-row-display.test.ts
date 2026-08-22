@@ -53,3 +53,43 @@ describe("describing how a Logbook row displays", () => {
     expect(display.rowVariant).toBe(" left");
   });
 });
+
+describe("a Parting row (#5)", () => {
+  it("reads as its own variant, not as a departure by neglect", () => {
+    const display = describeLedgerRowDisplay(
+      entry({ event: "parted", pokemon: { name: "Growlithe", spritePath: "growlithe.png" }, delta: 2 }),
+    );
+
+    expect(display.rowVariant).toBe(" parted");
+  });
+
+  it("still shows the points earned on the parting day", () => {
+    const display = describeLedgerRowDisplay(
+      entry({
+        event: "parted",
+        pokemon: { name: "Growlithe", spritePath: "growlithe.png" },
+        pointsEarned: 7,
+        target: 4,
+        delta: 3,
+      }),
+    );
+
+    expect(display.pointsDisplay).toBe(7);
+    expect(display.ptsVariant).toBe("");
+  });
+
+  it("still reads a parting day that missed its target as a miss", () => {
+    const display = describeLedgerRowDisplay(
+      entry({
+        event: "parted",
+        pokemon: { name: "Growlithe", spritePath: "growlithe.png" },
+        pointsEarned: 2,
+        target: 4,
+        delta: -2,
+      }),
+    );
+
+    expect(display.rowVariant).toBe(" parted");
+    expect(display.ptsVariant).toBe(" bad");
+  });
+});

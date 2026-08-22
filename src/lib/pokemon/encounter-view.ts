@@ -22,8 +22,17 @@ export type EncounterBond = {
  */
 export type EncounterPrompt = "naming" | "evolve" | null;
 
+/**
+ * What the field menu (#5) offers. A list rather than a single value so a
+ * second action is copy rather than restructuring — today the two entries
+ * are the two directions of one decision, and exactly one of them is ever
+ * offered at a time. The `CLOSE` row that returns the menu to its icon is
+ * chrome, not an item: it costs nothing and is always there.
+ */
+export type FieldMenuItem = "move-on" | "cancel-move";
+
 export type EncounterView =
-  | { hasPokemon: false }
+  | { hasPokemon: false; fieldMenu: null }
   | {
       hasPokemon: true;
       nickname: string;
@@ -33,6 +42,9 @@ export type EncounterView =
       spritePath: string;
       bond: EncounterBond;
       prompt: EncounterPrompt;
+      /** A Parting is set for today — the status box's `MOVING ON` marker (#5). */
+      parting: boolean;
+      fieldMenu: FieldMenuItem[];
     };
 
 /**
@@ -62,6 +74,12 @@ function bondFor(level: number, requirement: number): EncounterBond {
  * reintroduce it here; the mood bands and the copy they pick live together
  * next to the one surface that speaks them.
  *
+ * `parting` decides both the `MOVING ON` marker and what the field menu
+ * offers — the components keep deriving nothing of their own. The menu is
+ * `null`, not empty, when there is no Active Pokémon: an empty menu is worse
+ * than no menu, and there is nothing a Ranger can do to a Pokémon they
+ * haven't got (CONTEXT.md's "Field menu" entry).
+ *
  * `evolutionOptions` decides `"evolve"` outright — pass an empty list when
  * there's nothing to evolve into, whether that's because the bond
  * requirement isn't met yet or the instance's line has no further target.
@@ -72,9 +90,10 @@ function bondFor(level: number, requirement: number): EncounterBond {
 export function buildEncounterView(
   pokemon: ActivePokemon | null,
   evolutionOptions: EvolutionOption[] = [],
+  parting: boolean = false,
 ): EncounterView {
   if (!pokemon) {
-    return { hasPokemon: false };
+    return { hasPokemon: false, fieldMenu: null };
   }
 
   const speciesName = capitalise(pokemon.species.name);
@@ -91,5 +110,7 @@ export function buildEncounterView(
     spritePath: pokemon.species.animatedSpritePath,
     bond: bondFor(pokemon.bondLevel, pokemon.bondRequirement),
     prompt,
+    parting,
+    fieldMenu: [parting ? "cancel-move" : "move-on"],
   };
 }

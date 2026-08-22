@@ -20,6 +20,8 @@ export type BaobaLineFacts = {
   latestDay: LatestDayLedgerEvent;
   /** Met its species' bond requirement and has somewhere to evolve to — the same gate the evolve prompt (#25) sits behind. */
   readyToEvolve: boolean;
+  /** A Parting is set for today (#5) — the same fact the `MOVING ON` marker and the field menu's `CANCEL MOVE` are drawn from. */
+  parting: boolean;
   overdueCount: number;
 };
 
@@ -56,8 +58,9 @@ function overdueClause(overdueCount: number): string {
 
 /**
  * Warden Baoba's line (#23): an ordered rule list over already-loaded facts,
- * issuing no query of its own. Special states — an arrival, a departure,
- * readiness to evolve, having no Active Pokémon at all — are checked before
+ * issuing no query of its own. Special states — an arrival, either kind of
+ * departure, a Parting the Ranger has set for today, readiness to evolve,
+ * having no Active Pokémon at all — are checked before
  * falling back to the mood band, and an Overdue clause is appended wherever
  * there's a job late, regardless of which line fired. The copy lives here,
  * next to the rules it belongs to, so adding a line never means touching a
@@ -80,6 +83,31 @@ export function buildBaobaLine(facts: BaobaLineFacts): string {
   if (!view.hasPokemon && facts.latestDay?.event === "left") {
     const name = capitalise(facts.latestDay.pokemonName ?? "Your Pokémon");
     return `${name} couldn't wait any longer and slipped off — missed the target by ${-facts.latestDay.delta} yesterday. Hit it again and another will come find you.${overdue}`;
+  }
+
+  // The morning after a Parting (#5). The wording is issue #5's own, quoted
+  // verbatim from its Implementation Decisions — "the old range" is that
+  // line's phrasing, not a stray synonym for **Zone**; the interface's word
+  // for somewhere a Ranger moves *to* is "area" (CONTEXT.md's Zone note),
+  // which is what the field menu and its confirmation say.
+  //
+  // Guarded on `!view.hasPokemon` for
+  // exactly the reason the `left` branch above is. He must not accuse a
+  // Ranger of neglect they didn't commit: they chose this, and the Pokémon
+  // stayed in its own Zone rather than being taken anywhere (CONTEXT.md's
+  // "Zone" note — the Ranger is the one who moved).
+  if (!view.hasPokemon && facts.latestDay?.event === "parted") {
+    const name = capitalise(facts.latestDay.pokemonName ?? "Your Pokémon");
+    return `You left ${name} behind in the old range, Ranger. Hit your target and something out here will find you.${overdue}`;
+  }
+
+  // Above ready-to-evolve, deliberately (#29): the evolve box has its own
+  // corner and is already blinking, so Baoba would only be duplicating the
+  // loudest thing on screen when he has more urgent news. It cannot collide
+  // with either departure line above — both of those need `!hasPokemon`, and
+  // a Parting is only ever set on a Pokémon still standing in the scene.
+  if (view.hasPokemon && facts.parting) {
+    return `You're moving on tomorrow, Ranger. ${view.nickname} stays here where it belongs — make the most of the day you've got left.${overdue}`;
   }
 
   // `view.prompt` here can only ever be `"naming"` or `null` — this call

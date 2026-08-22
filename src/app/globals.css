@@ -522,9 +522,26 @@ body {
   text-align: right;
   line-height: 1;
 }
+/* The MOVING ON marker (#5): the one thing that ever sits opposite the
+   Nickname, and only while a Parting is set — a state marker, not a reading.
+   Deliberately quiet: a Parting is a choice the Ranger made, so it is
+   labelled rather than alarmed about, unlike the evolve box's blink. */
+.statusbox .movingon {
+  margin-left: auto;
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  color: #585858;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  padding: 3px 5px;
+}
+
 /* Happiness has no surface at all — no face, no number, no bar, no label.
    Warden Baoba's tray is the only place it is ever felt; see
-   baoba/dialogue.ts's mood bands. Nothing belongs on the right of .line1. */
+   baoba/dialogue.ts's mood bands. Nothing that *reads* the Pokémon belongs on
+   the right of .line1 — the MOVING ON marker above is a state the Ranger set,
+   not a measurement of anything, which is why it is the one thing there. */
 
 /* Bond is the bar, because it only ever climbs, toward a known threshold —
    and stays full past it while the number beside it keeps counting, with no
@@ -664,7 +681,11 @@ body {
 .namingactions .skip {
   flex: 1;
 }
-.namingactions .skip {
+/* Shared with the parting confirmation's own decline button (#5) — the same
+   quiet secondary next to a `.primary`, so it is one rule in two scopes
+   rather than the same declarations written twice. */
+.namingactions .skip,
+.partconfirmactions .skip {
   font-family: var(--font-pixel), monospace;
   font-size: 9px;
   text-transform: uppercase;
@@ -740,6 +761,126 @@ body {
    mobile breakpoint, so `.normalsay` is what desktop always sees. */
 .dialogue .lines.evolvesay {
   display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The field menu (#5): the actions a Ranger takes *on* their Active
+ * Pokémon, in the bottom-right of the scene — the one corner nothing else
+ * claims, with the status box top-left and both prompt boxes top-right.
+ *
+ * Unlike `.naming`/`.evolve`, this has no `…say` fold-in twin and no entry
+ * in the MOBILE query below: those are prompts the app offers, and a narrow
+ * screen has no room for a second box beside the status box, so they move
+ * into Baoba's tray. This is Ranger-initiated and collapsed to a single
+ * icon in empty space, so it behaves the same at every width (#31).
+ * ══════════════════════════════════════════════════════════════════════ */
+.fieldmenutoggle {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 5;
+  /* 44px touch target (UI-CONSTRAINTS.md) — a mis-tap here opens a menu,
+     never commits anything, but it is still a control on a photo. */
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--safari-boxink);
+  background: var(--safari-box);
+  border: 4px solid #101010;
+  border-radius: 9px;
+  box-shadow:
+    inset 0 0 0 2px #c8c8c8,
+    0 5px 0 rgba(0, 0, 0, 0.35);
+}
+/* A list, not a single button, so a second item later is copy rather than
+   restructuring — see `FieldMenuItem`. */
+.fieldmenu {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 5;
+  min-width: 180px;
+  max-width: calc(100% - 32px);
+  padding: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fieldmenu button {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  text-align: left;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  color: var(--safari-boxink);
+  border-radius: 6px;
+}
+.fieldmenu button:hover {
+  background: rgba(16, 16, 16, 0.08);
+}
+.fieldmenu .fieldmenuclose {
+  border-top: 2px solid #c8c8c8;
+  border-radius: 0 0 6px 6px;
+  opacity: 0.55;
+}
+
+/* Covers the scene and stops at its edge (#11): Warden Baoba's tray below
+   stays visible, because the one voice that explains consequences shouldn't
+   go quiet at the moment one is being weighed. Absolute within `.scene`
+   rather than fixed — the narrow layout gives the right pane a `transform`,
+   which would reparent a fixed element anyway. */
+.partconfirm {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(4, 18, 9, 0.82);
+}
+.partconfirmbox {
+  max-width: 380px;
+  width: 100%;
+  padding: 13px 15px 15px;
+  text-align: center;
+}
+.partconfirmbox .head {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  color: var(--safari-boxink);
+  opacity: 0.6;
+}
+/* No numbers anywhere in this copy — happiness is a background number and is
+   not acquiring its first on-screen surface here (#12). */
+.partconfirmbox p {
+  margin: 9px 0 0;
+  font-size: 17px;
+  line-height: 1.25;
+}
+.partconfirmactions {
+  display: flex;
+  gap: 8px;
+  margin-top: 13px;
+}
+.partconfirmactions form,
+.partconfirmactions .skip {
+  flex: 1;
+}
+/* Both given the full 44px (UI-CONSTRAINTS.md), unlike the naming prompt's
+   pair this otherwise mirrors: these are the two controls that actually
+   commit the decision, and a mis-tap on `Move on` mutates state. */
+.partconfirmactions .primary,
+.partconfirmactions .skip {
+  min-height: 44px;
+}
+.partconfirmactions .primary {
+  width: 100%;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -2025,6 +2166,12 @@ span.title {
 .ledgerrow.none .ledgerdesc {
   color: rgba(255, 255, 255, 0.5);
   font-style: italic;
+}
+/* A Parting is a choice, not a failure, so it never wears `left`'s alarm
+   colour — muted, like the pokemon-less rows, while the points half beside
+   it stays honest about the work (#24, #25). */
+.ledgerrow.parted .ledgerdesc {
+  color: rgba(255, 255, 255, 0.72);
 }
 .ledgerrow.left .ledgerdesc {
   color: #ffd0c8;

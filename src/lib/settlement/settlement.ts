@@ -13,6 +13,7 @@ type TrainerSettlementRow = {
   last_settled_day: string;
   daily_target: number;
   time_zone: string;
+  parting_on: string | null;
 };
 
 /**
@@ -29,7 +30,7 @@ type TrainerSettlementRow = {
 export async function settle(client: SupabaseClient, trainerId: string): Promise<boolean> {
   const { data: trainerRow, error: trainerError } = await client
     .from("trainer")
-    .select("happiness, active_instance_id, last_settled_day, daily_target, time_zone")
+    .select("happiness, active_instance_id, last_settled_day, daily_target, time_zone, parting_on")
     .eq("id", trainerId)
     .single<TrainerSettlementRow>();
 
@@ -88,6 +89,12 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
     tasksByDay,
     trainerRow.daily_target,
     () => pool[Math.floor(Math.random() * pool.length)].id,
+    // A day key, not a flag (#5): the reducer replays `days` in order and
+    // fires the parting on the matching one, so a trainer who sets one and
+    // comes back a week later still parts on the day they chose, and a
+    // parting matching no day in this run simply never fires.
+    // `apply_settlement` clears it once the day it names has been settled.
+    trainerRow.parting_on,
   );
 
   const { error: applyError } = await createSupabaseServiceRoleClient().rpc("apply_settlement", {
