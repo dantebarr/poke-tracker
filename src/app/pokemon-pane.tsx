@@ -7,6 +7,7 @@ import { resolveNavigation } from "@/app/(app)/chrome/navigation";
 import { BaobaTray } from "@/app/baoba-tray";
 import { EncounterView } from "@/app/encounter-view";
 import { EvolvePrompt } from "@/app/evolve-prompt";
+import { FieldMenu } from "@/app/field-menu";
 import { NamingPrompt } from "@/app/naming-prompt";
 import { buildEncounterView } from "@/lib/pokemon/encounter-view";
 import type { EvolutionOption } from "@/lib/pokemon/evolution";
@@ -31,10 +32,13 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 export function PokemonPane({
   pokemon,
   evolutionOptions,
+  parting,
   baobaLine,
 }: {
   pokemon: ActivePokemon | null;
   evolutionOptions: EvolutionOption[];
+  /** A Parting is set for today (#5) — decided by the chrome layout against the Ranger's own day key. */
+  parting: boolean;
   baobaLine: string;
 }) {
   const [skipped, setSkipped] = useState(false);
@@ -54,7 +58,7 @@ export function PokemonPane({
     wasOnNarrowEncounterView.current = onNarrowEncounterView;
   }, [onNarrowEncounterView]);
 
-  const view = buildEncounterView(pokemon, evolutionOptions);
+  const view = buildEncounterView(pokemon, evolutionOptions, parting);
 
   const naming =
     pokemon && view.hasPokemon && view.prompt === "naming" && !skipped
@@ -91,9 +95,26 @@ export function PokemonPane({
     );
   }
 
+  // Null, not empty, when there is no Active Pokémon — the menu is absent
+  // entirely rather than offered with nothing in it (#30).
+  //
+  // Keyed on `parting` so a decision that actually commits remounts the menu
+  // back to its collapsed icon, with no client-side reset to keep in step
+  // with the server state it mirrors — the same reason the naming prompt's
+  // Skip is the *only* thing this pane holds on the client.
+  const fieldMenu =
+    view.hasPokemon && view.fieldMenu !== null ? (
+      <FieldMenu key={String(parting)} items={view.fieldMenu} nickname={view.nickname} />
+    ) : undefined;
+
   return (
     <>
-      <EncounterView pokemon={pokemon} prompt={namingPrompt("box") ?? evolvePrompt("box")} />
+      <EncounterView
+        pokemon={pokemon}
+        parting={parting}
+        prompt={namingPrompt("box") ?? evolvePrompt("box")}
+        fieldMenu={fieldMenu}
+      />
       <BaobaTray line={baobaLine} naming={namingPrompt("fold")} evolve={evolvePrompt("fold")} />
     </>
   );

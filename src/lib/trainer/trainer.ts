@@ -15,6 +15,13 @@ export type Trainer = {
   createdAt: Date;
   /** When the trainer dismissed Warden Baoba's first-day briefing, or null if they haven't yet. */
   introSeenAt: Date | null;
+  /**
+   * The day the trainer chose to part with their Active Pokémon (#5), as a
+   * `'YYYY-MM-DD'` key, or null when no Parting is set. A day rather than a
+   * flag, so settlement lands it on the day it names however long the
+   * trainer takes to come back — see the reducer's `partingOn`.
+   */
+  partingOn: string | null;
 };
 
 /**
@@ -38,9 +45,10 @@ type TrainerRow = {
   time_zone: string;
   created_at: string;
   intro_seen_at: string | null;
+  parting_on: string | null;
 };
 
-const COLUMNS = "id, email, display_name, daily_target, time_zone, created_at, intro_seen_at";
+const COLUMNS = "id, email, display_name, daily_target, time_zone, created_at, intro_seen_at, parting_on";
 
 function toTrainer(row: TrainerRow): Trainer {
   return {
@@ -51,6 +59,7 @@ function toTrainer(row: TrainerRow): Trainer {
     timeZone: row.time_zone,
     createdAt: new Date(row.created_at),
     introSeenAt: row.intro_seen_at ? new Date(row.intro_seen_at) : null,
+    partingOn: row.parting_on,
   };
 }
 
@@ -175,6 +184,34 @@ export async function markIntroSeen(client: SupabaseClient, trainerId: string): 
     await client
       .from("trainer")
       .update({ intro_seen_at: new Date().toISOString() })
+      .eq("id", trainerId)
+      .select(COLUMNS)
+      .single<TrainerRow>(),
+  );
+  return toTrainer(row);
+}
+
+/**
+ * Sets or clears the trainer's Parting (#5). `day` is the trainer's own day
+ * key, resolved server-side from their stored time zone (ADR-0004) by the
+ * action that calls this — never taken from the browser; `null` cancels,
+ * leaving no trace anywhere, which is the whole point of the decision being
+ * reversible for the day it was made on.
+ *
+ * Row-level security scopes this to the caller's own row, and `parting_on`
+ * is the one column in this feature with a column-level update grant, so a
+ * trainer's own JWT can reach this one and nothing else settlement owns.
+ */
+export async function setPartingOn(
+  client: SupabaseClient,
+  trainerId: string,
+  day: string | null,
+): Promise<Trainer> {
+  const row = unwrap(
+    "Setting the parting day",
+    await client
+      .from("trainer")
+      .update({ parting_on: day })
       .eq("id", trainerId)
       .select(COLUMNS)
       .single<TrainerRow>(),

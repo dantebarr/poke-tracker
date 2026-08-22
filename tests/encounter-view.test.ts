@@ -32,7 +32,7 @@ function pokemon(overrides: Partial<ActivePokemon> = {}): ActivePokemon {
 
 describe("a Ranger with no Active Pokémon", () => {
   it("gets a scene without a Pokémon in it", () => {
-    expect(buildEncounterView(null)).toEqual({ hasPokemon: false });
+    expect(buildEncounterView(null)).toEqual({ hasPokemon: false, fieldMenu: null });
   });
 });
 
@@ -143,5 +143,64 @@ describe("precedence between the naming and evolve prompts (#25)", () => {
     const view = buildEncounterView(pokemon({ nickname: "Sickle" }), EVOLUTION_OPTIONS);
     if (!view.hasPokemon) throw new Error("expected a Pokémon");
     expect(view.prompt).toBe("evolve");
+  });
+});
+
+describe("the field menu (#5)", () => {
+  it("is absent entirely for a Ranger with no Active Pokémon", () => {
+    expect(buildEncounterView(null).fieldMenu).toBeNull();
+  });
+
+  it("offers moving on to a Ranger who has one", () => {
+    const view = buildEncounterView(pokemon());
+    expect(view.fieldMenu).toEqual(["move-on"]);
+  });
+
+  it("offers cancelling instead once a Parting is set", () => {
+    const view = buildEncounterView(pokemon(), [], true);
+    expect(view.fieldMenu).toEqual(["cancel-move"]);
+  });
+
+  it("is offered whatever prompt the scene is also showing", () => {
+    const view = buildEncounterView(pokemon({ nickname: null }), EVOLUTION_OPTIONS);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("naming");
+    expect(view.fieldMenu).toEqual(["move-on"]);
+  });
+
+  it("still offers naming to a Pokémon the Ranger has decided to part with (#27)", () => {
+    const view = buildEncounterView(pokemon({ nickname: null }), [], true);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("naming");
+    expect(view.fieldMenu).toEqual(["cancel-move"]);
+  });
+
+  it("still offers evolving to a Pokémon the Ranger has decided to part with (#28)", () => {
+    // Nothing about the decision is a hidden penalty: a bond requirement
+    // already met can still be spent before the instance returns to the pool
+    // in that form.
+    const view = buildEncounterView(pokemon({ nickname: "Sickle" }), EVOLUTION_OPTIONS, true);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.prompt).toBe("evolve");
+    expect(view.parting).toBe(true);
+  });
+});
+
+describe("the MOVING ON marker (#5)", () => {
+  it("is off by default", () => {
+    const view = buildEncounterView(pokemon());
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.parting).toBe(false);
+  });
+
+  it("is on while a Parting is set", () => {
+    const view = buildEncounterView(pokemon(), [], true);
+    if (!view.hasPokemon) throw new Error("expected a Pokémon");
+    expect(view.parting).toBe(true);
+  });
+
+  it("still carries no happiness number, parting or not", () => {
+    const view = buildEncounterView(pokemon({ happiness: 42 }), [], true);
+    expect(JSON.stringify(view)).not.toContain("42");
   });
 });

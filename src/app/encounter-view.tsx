@@ -26,15 +26,26 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  * field, never by re-deriving the same rule here — this component only
  * places whatever it's handed inside `.scene`, over the artwork, the same
  * corner the mockup's `.evolve` box claims.
+ *
+ * `fieldMenu` (#5) is a second slot, in the opposite corner: bottom-right,
+ * where nothing else sits. The same rule applies — the caller decides
+ * whether there is one from `buildEncounterView`'s `fieldMenu` field. The
+ * `MOVING ON` marker beside the Nickname comes from the same function's
+ * `parting`, which is why `parting` is a prop here rather than something
+ * this component works out.
  */
 export function EncounterView({
   pokemon,
+  parting = false,
   prompt,
+  fieldMenu,
 }: {
   pokemon: ActivePokemon | null;
+  parting?: boolean;
   prompt?: ReactNode;
+  fieldMenu?: ReactNode;
 }) {
-  const view = buildEncounterView(pokemon);
+  const view = buildEncounterView(pokemon, [], parting);
 
   if (!view.hasPokemon) {
     return <div className="scene" data-zone="plains" />;
@@ -52,6 +63,7 @@ export function EncounterView({
       <div className="statusbox textbox">
         <div className="line1">
           <span className="nick">{view.nickname}</span>
+          {view.parting && <span className="movingon">MOVING ON</span>}
         </div>
         <div className="species">
           {view.speciesName} · No.{view.speciesNumber}
@@ -67,6 +79,7 @@ export function EncounterView({
       </div>
 
       {prompt}
+      {fieldMenu}
     </div>
   );
 }

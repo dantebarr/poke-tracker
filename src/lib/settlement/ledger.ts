@@ -74,9 +74,9 @@ export async function listDayLedger(client: SupabaseClient, trainerId: string): 
  * What the most recently settled day did, for Warden Baoba's dialogue tray
  * (#23) to narrate — see CONTEXT.md's "Warden Baoba" entry: he states facts
  * the loop already computed, never a second source of truth for them.
- * `pokemonName` only matters for `event: "left"`, the one case where the
- * Pokémon concerned is no longer the trainer's active one. Null when the
- * trainer has no settled days yet.
+ * `pokemonName` matters for the two events where the Pokémon concerned is no
+ * longer the trainer's active one — `left` and, since #5, `parted`. Null
+ * when the trainer has no settled days yet.
  */
 export type LatestDayLedgerEvent = {
   event: LedgerOutcome;

@@ -38,6 +38,7 @@ vi.mock("next/cache", () => ({
 }));
 
 const { ensureTrainer } = await import("@/app/actions/trainer");
+const { setPartingAction } = await import("@/app/actions/pokemon");
 const { settleOnEntry } = await import("@/app/actions/settlement");
 const { dayKeyInTimeZone } = await import("@/lib/day/day");
 const { NotSignedInError } = await import("@/lib/trainer/errors");
@@ -104,12 +105,13 @@ type TrainerSettlementRow = {
   happiness: number;
   active_instance_id: string | null;
   last_settled_day: string;
+  parting_on: string | null;
 };
 
 async function trainerRow(trainerId: string): Promise<TrainerSettlementRow> {
   const { data, error } = await adminClient()
     .from("trainer")
-    .select("happiness, active_instance_id, last_settled_day")
+    .select("happiness, active_instance_id, last_settled_day, parting_on")
     .eq("id", trainerId)
     .single<TrainerSettlementRow>();
   if (error) throw new Error(`Reading trainer failed: ${JSON.stringify(error)}`);
@@ -333,7 +335,10 @@ describe("what a day does to the active Pokémon", () => {
 
     const ledger = await ledgerFor(trainer.id);
     const approachingRow = ledger.find((row) => row.day === dayKey(2));
-    expect(approachingRow).toMatchObject({ outcome: "approaching", active_instance_id: null, happiness_after: 0 });
+    // `happiness_after` is what this day left the trainer with, and an
+    // Approaching day banks its own delta on top of whatever was carried
+    // (ADR-0009) — no longer hardcoded to 0 on a pokemon-less row.
+    expect(approachingRow).toMatchObject({ outcome: "approaching", active_instance_id: null, happiness_after: 3 });
 
     const arrivalRow = ledger.find((row) => row.day === dayKey(1));
     expect(arrivalRow).toMatchObject({
@@ -473,5 +478,231 @@ describe("row-level security", () => {
     expect(error).not.toBeNull();
     expect(error?.code).toBe("42501");
     expect(await trainerRow(rival.id)).toEqual(rivalBefore);
+  });
+});
+
+/**
+ * Parting (#5). The day-by-day decision logic is proved with no database at
+ * all in settlement-reducer.test.ts; what only the real schema can show is
+ * here — the column's own grant, that a Ranger cannot reach another's, and
+ * that a parting survives a multi-day catch-up to land on the day it names
+ * and is consumed there.
+ */
+async function setPartingOnDay(trainerId: string, day: string | null) {
+  const { error } = await adminClient().from("trainer").update({ parting_on: day }).eq("id", trainerId);
+  if (error) throw new Error(`Forcing parting_on failed: ${JSON.stringify(error)}`);
+}
+
+async function completeLargeTaskOn(trainerId: string, labelId: string, day: string) {
+  await insertTask({ trainerId, labelId, size: "large", status: "done", completedAt: noonOf(day) });
+}
+
+describe("setting a parting", () => {
+  it("refuses without a session", async () => {
+    const formData = new FormData();
+    formData.set("parting", "set");
+    await expect(setPartingAction(formData)).rejects.toBeInstanceOf(NotSignedInError);
+  });
+
+  it("writes the Ranger's own today, never a day the browser named", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+
+    const formData = new FormData();
+    formData.set("parting", "set");
+    // A day the caller would love to choose, and cannot: the action resolves
+    // "today" server-side from the trainer's stored zone (ADR-0004).
+    formData.set("day", dayKey(90));
+    await setPartingAction(formData);
+
+    expect((await trainerRow(trainer.id)).parting_on).toBe(dayKey(0));
+  });
+
+  it("refuses a request that names no direction, rather than silently cancelling", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    await setPartingOnDay(trainer.id, dayKey(0));
+
+    await expect(setPartingAction(new FormData())).rejects.toThrow();
+
+    // The parting the Ranger meant to keep is still theirs.
+    expect((await trainerRow(trainer.id)).parting_on).toBe(dayKey(0));
+  });
+
+  it("cancels back to nothing, leaving no trace", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    await setPartingOnDay(trainer.id, dayKey(0));
+
+    const formData = new FormData();
+    formData.set("parting", "cancel");
+    await setPartingAction(formData);
+
+    expect((await trainerRow(trainer.id)).parting_on).toBeNull();
+    expect(await ledgerFor(trainer.id)).toEqual([]);
+  });
+
+  it("is private to the Ranger who set it — no other trainer can set or clear it", async () => {
+    const ash = await signedInTrainer(ALLOW_LISTED);
+    await setPartingOnDay(ash.id, dayKey(0));
+
+    const rivalJar = createCookieJar();
+    const rivalAccount = await createAccount(RIVAL);
+    created.push(rivalAccount.id);
+    await signIn(rivalJar, rivalAccount);
+
+    // The row-level security `using` clause hides ash's row from gary's
+    // update reach entirely, so it matches nothing rather than erroring.
+    const { data } = await clientForJar(rivalJar)
+      .from("trainer")
+      .update({ parting_on: null })
+      .eq("id", ash.id)
+      .select("id");
+
+    expect(data).toEqual([]);
+    expect((await trainerRow(ash.id)).parting_on).toBe(dayKey(0));
+  });
+
+  it("is the only column of settlement's state a Ranger's own JWT may write", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+
+    const own = clientForJar(jar);
+    const allowed = await own.from("trainer").update({ parting_on: dayKey(0) }).eq("id", trainer.id).select("id");
+    expect(allowed.error).toBeNull();
+
+    for (const column of ["happiness", "active_instance_id", "last_settled_day"] as const) {
+      const { error } = await own
+        .from("trainer")
+        .update({ [column]: column === "active_instance_id" ? null : 0 })
+        .eq("id", trainer.id);
+      // 42501 is insufficient_privilege — no column-level update grant.
+      expect(error?.code, `expected ${column} to refuse the trainer's own JWT`).toBe("42501");
+    }
+  });
+});
+
+describe("settling a parting", () => {
+  it("writes a parted row, credits the bond the day earned, and carries the happiness", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [label] = await labelsFor(trainer.id);
+    const activeId = (await trainerRow(trainer.id)).active_instance_id!;
+    const bondBefore = await bondLevelOf(activeId);
+
+    await setLastSettledDay(trainer.id, dayKey(2));
+    await setPartingOnDay(trainer.id, dayKey(1));
+    // Two large tasks: 6 points against the default target of 3, so the
+    // parting day is also a day the Ranger hit their target.
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(1));
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(1));
+
+    await settleOnEntry();
+
+    const after = await trainerRow(trainer.id);
+    expect(after.active_instance_id).toBeNull();
+    // Not clamped to zero the way a departure by neglect would be (ADR-0009).
+    expect(after.happiness).toBe(3);
+    expect(after.parting_on).toBeNull();
+    expect(await bondLevelOf(activeId)).toBe(bondBefore + 1);
+
+    const ledger = await ledgerFor(trainer.id);
+    expect(ledger).toMatchObject([
+      { day: dayKey(1), outcome: "parted", active_instance_id: activeId, delta: 3, happiness_after: 3 },
+    ]);
+  });
+
+  it("lands on the day it names across a multi-day catch-up, and the days after settle alone", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [label] = await labelsFor(trainer.id);
+    const activeId = (await trainerRow(trainer.id)).active_instance_id!;
+
+    await setLastSettledDay(trainer.id, dayKey(4));
+    await setPartingOnDay(trainer.id, dayKey(3));
+    // The parting day is a good one; the two after it are empty, and cost
+    // nothing because there is nobody there to neglect (ADR-0009).
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(3));
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(3));
+
+    await settleOnEntry();
+
+    const ledger = await ledgerFor(trainer.id);
+    expect(ledger.map((row) => [row.day, row.outcome])).toEqual([
+      [dayKey(3), "parted"],
+      [dayKey(2), "none"],
+      [dayKey(1), "none"],
+    ]);
+    expect(ledger[0].active_instance_id).toBe(activeId);
+    expect(ledger.slice(1).every((row) => row.active_instance_id === null)).toBe(true);
+    // The happiness the parting banked sits still through both empty days.
+    expect(ledger.map((row) => row.happiness_after)).toEqual([3, 3, 3]);
+
+    const after = await trainerRow(trainer.id);
+    expect(after).toMatchObject({ active_instance_id: null, happiness: 3, parting_on: null });
+  });
+
+  it("hands the carried happiness to the Pokémon that arrives next", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [label] = await labelsFor(trainer.id);
+    const partedId = (await trainerRow(trainer.id)).active_instance_id!;
+
+    await setLastSettledDay(trainer.id, dayKey(3));
+    await setPartingOnDay(trainer.id, dayKey(2));
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(2));
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(2));
+    // The day alone, hitting target: the Approaching day (ADR-0007).
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(1));
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(1));
+
+    await settleOnEntry();
+
+    const after = await trainerRow(trainer.id);
+    expect(after.active_instance_id).not.toBeNull();
+    // 3 banked on the parting day plus 3 more on the Approaching one — the
+    // whole point of a Parting: the slack earned honestly survives it.
+    expect(after.happiness).toBe(6);
+
+    const ledger = await ledgerFor(trainer.id);
+    expect(ledger.map((row) => row.outcome)).toEqual(["parted", "approaching"]);
+    expect(ledger[0].active_instance_id).toBe(partedId);
+  });
+
+  it("records a neglect departure, not a parting, when the same day loses the Pokémon", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const activeId = (await trainerRow(trainer.id)).active_instance_id!;
+
+    await setLastSettledDay(trainer.id, dayKey(2));
+    await setPartingOnDay(trainer.id, dayKey(1));
+    // No completions at all: happiness 0 - 3 goes negative on the very day
+    // the Ranger chose to part on, and the app must not flatter it (#23).
+
+    await settleOnEntry();
+
+    const ledger = await ledgerFor(trainer.id);
+    expect(ledger).toMatchObject([{ day: dayKey(1), outcome: "left", active_instance_id: activeId, happiness_after: 0 }]);
+    expect(await trainerRow(trainer.id)).toMatchObject({ happiness: 0, active_instance_id: null, parting_on: null });
+  });
+
+  it("changes no day, and is cleaned up, when the day it names is already behind the watermark", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [label] = await labelsFor(trainer.id);
+    const activeId = (await trainerRow(trainer.id)).active_instance_id!;
+
+    await setLastSettledDay(trainer.id, dayKey(2));
+    // A day this run cannot reach — settlement starts *after*
+    // last_settled_day — so nothing can ever fire it again.
+    await setPartingOnDay(trainer.id, dayKey(30));
+    await completeLargeTaskOn(trainer.id, label.id, dayKey(1));
+
+    await settleOnEntry();
+
+    const ledger = await ledgerFor(trainer.id);
+    expect(ledger).toMatchObject([{ day: dayKey(1), outcome: "bond", active_instance_id: activeId }]);
+    expect((await trainerRow(trainer.id)).parting_on).toBeNull();
+  });
+
+  it("survives a run that settles up to yesterday, so today's parting is still there to cancel", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    await setLastSettledDay(trainer.id, dayKey(2));
+    await setPartingOnDay(trainer.id, dayKey(0));
+
+    await settleOnEntry();
+
+    expect((await trainerRow(trainer.id)).parting_on).toBe(dayKey(0));
   });
 });

@@ -38,6 +38,7 @@ function facts(overrides: Partial<BaobaLineFacts> = {}): BaobaLineFacts {
     dailyTarget: 3,
     latestDay: NO_EVENT,
     readyToEvolve: false,
+    parting: false,
     overdueCount: 0,
     ...overrides,
   };
@@ -170,5 +171,52 @@ describe("the Overdue clause", () => {
   it("is appended to the no-Pokémon line too", () => {
     const line = buildBaobaLine(facts({ pokemon: null, overdueCount: 2 }));
     expect(line).toContain("2 jobs already late.");
+  });
+});
+
+describe("a Parting (#5)", () => {
+  it("is acknowledged for the rest of the day it was set on", () => {
+    const line = buildBaobaLine(facts({ pokemon: pokemon({ nickname: "Sickle" }), parting: true }));
+
+    expect(line).toBe(
+      "You're moving on tomorrow, Ranger. Sickle stays here where it belongs — make the most of the day you've got left.",
+    );
+  });
+
+  it("outranks readiness to evolve, so he isn't duplicating the blinking box (#29)", () => {
+    const line = buildBaobaLine(
+      facts({ pokemon: pokemon({ nickname: "Sickle" }), parting: true, readyToEvolve: true }),
+    );
+
+    expect(line).toContain("moving on tomorrow");
+    expect(line).not.toContain("next step");
+  });
+
+  it("takes the Overdue clause like every other line", () => {
+    const line = buildBaobaLine(facts({ parting: true, overdueCount: 2 }));
+
+    expect(line.endsWith(" 2 jobs already late.")).toBe(true);
+  });
+
+  it("gets its own morning-after line, naming no neglect (#26)", () => {
+    const line = buildBaobaLine(
+      facts({ pokemon: null, latestDay: { event: "parted", pokemonName: "sickle", delta: 3 } }),
+    );
+
+    expect(line).toBe(
+      "You left Sickle behind in the old range, Ranger. Hit your target and something out here will find you.",
+    );
+  });
+
+  it("says nothing about a parting while the scene still shows the Pokémon", () => {
+    // `pokemon` and `latestDay` come from two independent reads, so a
+    // settlement landing between them must not have him narrate a departure
+    // the scene hasn't caught up to — the same guard the `left` line has.
+    const line = buildBaobaLine(
+      facts({ pokemon: pokemon({ nickname: "Sickle" }), latestDay: { event: "parted", pokemonName: "sickle", delta: 3 } }),
+    );
+
+    expect(line).not.toContain("left behind");
+    expect(line).not.toContain("old range");
   });
 });
