@@ -286,6 +286,15 @@ body {
 .pane {
   position: relative;
   min-height: 0;
+  /* `min-width` for the same reason `.stage` above has one: `1.1fr 0.9fr` is
+     `minmax(auto, …)`, so without this a pane's track is floored at its
+     content's min-content width. A done row's title is a nowrap `<span>` (an
+     open row's is an `<input>`, whose width never tracks its value), so one
+     long logged task would widen the whole log pane — squeezing the encounter
+     pane — instead of ellipsising like every other row. Down in the mobile
+     query the panes are flex items on a 200%-wide slide track, where
+     `min-width: auto` would blow the track out the same way. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   /* Spaces the encounter view from Baoba's dialogue tray beneath it (#23);
