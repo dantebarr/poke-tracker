@@ -18,8 +18,9 @@
  * the caller — never detected from a device (ADR-0004).
  *
  * Reading order within a bucket is a second axis, added later: `sortForFieldLog`
- * orders by the trainer's own label order first, due date second, so a bucket
- * reads as one area of life at a time rather than an interleave of every label.
+ * orders by the trainer's own label order first, due date second, title third,
+ * so a bucket reads as one area of life at a time rather than an interleave of
+ * every label.
  */
 
 import { dayKeyInTimeZone, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
@@ -38,6 +39,31 @@ export const BUCKET_LABELS: Record<Bucket, string> = {
 
 const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
 const MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+// Hoisted like the formatters above — one collator for the process, not one
+// per `sortForFieldLog` call — and pinned to a locale for the same reason
+// they are. #7 called for leaving the locale undefined, on the grounds that
+// two Rangers in different locales disagreeing about where "Á" sits breaks
+// nothing. That holds between Rangers but not within one: `sortForFieldLog`
+// is called from a client component, so an undefined locale is resolved
+// twice for the same list — once by the server at render, once by the
+// browser at hydration — and a browser whose default disagrees with the
+// server's reorders the bucket after first paint. Collations really do
+// disagree: `sv` sorts "Ärger" after "Battle", `en` before it. A list that
+// reshuffles under the Ranger is the whole of what this order exists to
+// stop, so the locale is fixed here rather than discovered.
+//
+// This is not ADR-0004: a time zone is a domain fact that must agree with
+// settlement, whereas sort locale only decides what a list looks like. It is
+// pinned to keep one list from ordering itself two ways, not to make it
+// authoritative. Making it a Ranger-facing setting stays rejected.
+//
+// `numeric` is what makes "Chapter 2" precede "Chapter 10". Case and accents
+// are handled by the default `variant` sensitivity, which does not fold them
+// away — it ranks them below the base-letter difference, so "email Ash" and
+// "Email Ash" land next to each other instead of every capitalised title
+// sitting above every lowercase one.
+const TITLE_COLLATOR = new Intl.Collator("en-US", { numeric: true });
 
 // A plain `date` column ('YYYY-MM-DD'); parsing it with `new Date(string)`
 // reads it as UTC midnight and can land on the wrong local day. Build the
@@ -70,22 +96,41 @@ export function bucketOpenTasks<T extends { dueDate: string }>(
 /**
  * The field log's reading order within a Bucket: the trainer's own label
  * order first (the `position` they set in Settings via `moveLabel`), then due
- * date. Labels are an area of life, so a Ranger reads one context at a time
- * rather than scanning the colour of every tag in a bucket.
+ * date, then title alphabetically. Labels are an area of life, so a Ranger
+ * reads one context at a time rather than scanning the colour of every tag in
+ * a bucket.
+ *
+ * Those three keys are the whole of the order, and every one of them is
+ * visible on the row — a Ranger can predict where a task will sit from what
+ * the field log already shows them. That is why title beats arrival order:
+ * arrival order is `listTasks`'s `order by due_date`, which says nothing
+ * about tasks sharing a due date, so their order came from wherever Postgres
+ * happened to hold the rows and shuffled whenever one was written. A stable
+ * sort preserves an order it is given; it cannot create one.
+ *
+ * Alphabetical, not creation order, for the same reason: creation order is
+ * invisible on screen and unrecoverable from it. Comparison is `Intl.Collator`
+ * rather than `<`/`>` (which the due-date key uses correctly, `'YYYY-MM-DD'`
+ * being code-point-ordered by construction) so that case and accents don't
+ * segregate a bucket.
+ *
+ * Two tasks sharing a label, a due date *and* a title stay tied, on purpose:
+ * they are near-indistinguishable on the screen already, so there is nothing
+ * for a Ranger to relearn if they swap. No hidden key — an `id` in particular
+ * — closes that gap, since a key the row does not display would be exactly the
+ * unpredictability this order exists to remove.
  *
  * Sort *before* bucketing, not after: `bucketOpenTasks` is a single-pass
- * partition and `Array.prototype.sort` is stable, so a sorted input yields
- * sorted buckets, and equal (same label, same due date) tasks keep the order
- * they arrived in — `listTasks`'s `due_date` ordering, or the end of the list
- * for a task optimistically added this render.
+ * partition, so a sorted input yields sorted buckets.
  */
-export function sortForFieldLog<T extends { dueDate: string; label: { position: number } }>(
+export function sortForFieldLog<T extends { title: string; dueDate: string; label: { position: number } }>(
   tasks: T[],
 ): T[] {
   return [...tasks].sort(
     (a, b) =>
       a.label.position - b.label.position ||
-      (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0),
+      (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0) ||
+      TITLE_COLLATOR.compare(a.title, b.title),
   );
 }
 
