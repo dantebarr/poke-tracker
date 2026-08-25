@@ -68,40 +68,74 @@ describe("bucketOpenTasks", () => {
 });
 
 describe("sortForFieldLog", () => {
-  it("orders by label position, ignoring arrival order", () => {
+  it("orders by label position, ahead of title and arrival order", () => {
     const tasks = [
-      { id: "a", dueDate: "2024-01-15", label: { position: 2 } },
-      { id: "b", dueDate: "2024-01-15", label: { position: 0 } },
-      { id: "c", dueDate: "2024-01-15", label: { position: 1 } },
+      { id: "a", title: "Apricorn run", dueDate: "2024-01-15", label: { position: 2 } },
+      { id: "b", title: "Catch a Rattata", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "c", title: "Buy potions", dueDate: "2024-01-15", label: { position: 1 } },
     ];
 
     expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "c", "a"]);
   });
 
-  it("breaks ties within a label by due date, ascending", () => {
+  it("breaks ties within a label by due date, ahead of title", () => {
     const tasks = [
-      { id: "a", dueDate: "2024-01-20", label: { position: 0 } },
-      { id: "b", dueDate: "2024-01-10", label: { position: 0 } },
-      { id: "c", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "a", title: "Apricorn run", dueDate: "2024-01-20", label: { position: 0 } },
+      { id: "b", title: "Catch a Rattata", dueDate: "2024-01-10", label: { position: 0 } },
+      { id: "c", title: "Buy potions", dueDate: "2024-01-15", label: { position: 0 } },
     ];
 
     expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "c", "a"]);
   });
 
-  it("is stable for tasks with the same label and due date", () => {
+  it("breaks ties within a label and due date by title, alphabetically", () => {
     const tasks = [
-      { id: "a", dueDate: "2024-01-15", label: { position: 0 } },
-      { id: "b", dueDate: "2024-01-15", label: { position: 0 } },
-      { id: "c", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "a", title: "Water the berries", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "b", title: "Catch a Rattata", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "c", title: "Heal at the Centre", dueDate: "2024-01-15", label: { position: 0 } },
     ];
 
-    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["a", "b", "c"]);
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("keeps titles differing only by case together rather than segregating by case", () => {
+    const tasks = [
+      { id: "a", title: "email Ash", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "b", title: "Fly to Pewter", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "c", title: "Email Ash", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "d", title: "catch a Rattata", dueDate: "2024-01-15", label: { position: 0 } },
+    ];
+
+    // The case-only pair lands adjacent, between its neighbours; a
+    // code-point comparison would instead put every capitalised title above
+    // every lowercase one — "Email Ash", "Fly to Pewter", then the two
+    // lowercase titles.
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["d", "a", "c", "b"]);
+  });
+
+  it("compares a run of digits inside a title as a number", () => {
+    const tasks = [
+      { id: "a", title: "Chapter 10", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "b", title: "Chapter 2", dueDate: "2024-01-15", label: { position: 0 } },
+    ];
+
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "a"]);
+  });
+
+  it("sorts an accented initial with its base letter", () => {
+    const tasks = [
+      { id: "a", title: "Battle Brock", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "b", title: "Ápricorn run", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "c", title: "Catch a Rattata", dueDate: "2024-01-15", label: { position: 0 } },
+    ];
+
+    expect(sortForFieldLog(tasks).map((t) => t.id)).toEqual(["b", "a", "c"]);
   });
 
   it("does not mutate its input", () => {
     const tasks = [
-      { id: "a", dueDate: "2024-01-15", label: { position: 1 } },
-      { id: "b", dueDate: "2024-01-15", label: { position: 0 } },
+      { id: "a", title: "Apricorn run", dueDate: "2024-01-15", label: { position: 1 } },
+      { id: "b", title: "Water the berries", dueDate: "2024-01-15", label: { position: 0 } },
     ];
     const original = [...tasks];
 
@@ -110,18 +144,26 @@ describe("sortForFieldLog", () => {
     expect(tasks).toEqual(original);
   });
 
-  it("composes with bucketOpenTasks: each bucket comes out label-ordered on its own", () => {
+  it("composes with bucketOpenTasks: every bucket comes out ordered on its own", () => {
     const tasks = [
-      { id: "a", dueDate: "2024-01-15", label: { position: 1 } }, // today
-      { id: "b", dueDate: "2024-01-10", label: { position: 0 } }, // overdue
-      { id: "c", dueDate: "2024-01-15", label: { position: 0 } }, // today
-      { id: "d", dueDate: "2024-01-09", label: { position: 1 } }, // overdue
+      { id: "a", title: "Zubat patrol", dueDate: "2024-01-15", label: { position: 1 } }, // today
+      { id: "b", title: "Buy potions", dueDate: "2024-01-10", label: { position: 0 } }, // overdue
+      { id: "c", title: "Water the berries", dueDate: "2024-01-15", label: { position: 0 } }, // today
+      { id: "d", title: "Heal at the Centre", dueDate: "2024-01-09", label: { position: 1 } }, // overdue
+      { id: "e", title: "Apricorn run", dueDate: "2024-01-15", label: { position: 0 } }, // today
+      { id: "f", title: "Catch a Rattata", dueDate: "2024-01-10", label: { position: 0 } }, // overdue
+      { id: "g", title: "Weed the patch", dueDate: "2024-01-16", label: { position: 0 } }, // tomorrow
+      { id: "h", title: "Battle Brock", dueDate: "2024-01-16", label: { position: 0 } }, // tomorrow
+      { id: "i", title: "Restock repels", dueDate: "2024-02-01", label: { position: 0 } }, // later
+      { id: "j", title: "Cycle to Cerulean", dueDate: "2024-02-01", label: { position: 0 } }, // later
     ];
 
     const buckets = bucketOpenTasks(sortForFieldLog(tasks), TODAY);
 
-    expect(buckets.overdue.map((t) => t.id)).toEqual(["b", "d"]);
-    expect(buckets.today.map((t) => t.id)).toEqual(["c", "a"]);
+    expect(buckets.overdue.map((t) => t.id)).toEqual(["b", "f", "d"]);
+    expect(buckets.today.map((t) => t.id)).toEqual(["e", "c", "a"]);
+    expect(buckets.tomorrow.map((t) => t.id)).toEqual(["h", "g"]);
+    expect(buckets.later.map((t) => t.id)).toEqual(["j", "i"]);
   });
 });
 
