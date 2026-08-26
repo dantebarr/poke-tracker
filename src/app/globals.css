@@ -1288,6 +1288,16 @@ body {
   flex: none;
 }
 
+/* Fixed-width, like `.sz` below: every row's title then starts at the same x
+   instead of stepping in and out with the abbreviation's length. The pixel
+   font is monospace and the schema caps an abbreviation at 4 characters
+   (label_abbreviation_length), so four characters plus the horizontal padding
+   is both the floor and the ceiling here. */
+.rowhead .tag {
+  min-width: calc(4ch + 10px);
+  text-align: center;
+}
+
 .rowhead .title {
   flex: 1;
   min-width: 0;
