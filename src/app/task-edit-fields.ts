@@ -53,6 +53,25 @@ export function newTaskFields({
   };
 }
 
+/**
+ * What becomes of a new task's draft when the Ranger leaves the add form
+ * without using either button — Escape, or a pointer landing outside it
+ * (#34). A titled draft is *kept*: walking away means attention moved on, not
+ * that the draft was rejected, and the form has been one-title-and-commit
+ * since `newTaskFields` started filling the rest in. The Cancel button is the
+ * explicit rejection and still discards, which is the whole reason these two
+ * exits differ.
+ *
+ * `valid` and not just `titleTyped` because a title alone is not always
+ * savable: a trainer who has deleted every label in Settings has no default
+ * label to start from, so the draft cannot be written at all. Discarding is
+ * the only other thing to do — refusing to close would leave a form there is
+ * no implicit way out of.
+ */
+export function dismissedDraftOutcome({ titleTyped, valid }: { titleTyped: boolean; valid: boolean }): "save" | "discard" {
+  return titleTyped && valid ? "save" : "discard";
+}
+
 // Matches the server's own `notesField` (actions/task.ts): blank or
 // whitespace-only notes are `null`, not an empty string, so the optimistic
 // patch never disagrees with what the server is about to store.

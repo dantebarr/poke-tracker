@@ -262,7 +262,25 @@ export function FieldScreen({
     if (!overlayShowing) pushedOverlay.current = false;
   }, [overlayShowing]);
 
+  /**
+   * Going from one overlay straight to another — clicking a task's row while
+   * a different one is expanded, or while the add editor is open — *replaces*
+   * rather than pushes: it is a swap, not a stack. Pushing would put two of
+   * our own entries under the Ranger, so the one back press that ought to
+   * return them to the plain log would land them on the overlay they just
+   * left. `pushedOverlay` is deliberately untouched, since replacing changes
+   * nothing about what sits underneath.
+   *
+   * This also keeps `leaveOverlay`'s `history.back()` from racing the push
+   * when a pointer landing on another row dismisses the open overlay on its
+   * way through (#34) — though the dismissal hands off rather than leaving in
+   * that case, so neither side depends on the other being right.
+   */
   function openOverlay(href: string) {
+    if (overlayShowing) {
+      window.history.replaceState(null, "", href);
+      return;
+    }
     pushedOverlay.current = true;
     window.history.pushState(null, "", href);
   }
