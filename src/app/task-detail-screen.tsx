@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { DeleteControl, TaskFieldChips } from "@/app/field-log-panel";
+import { useOverlayDismiss } from "@/app/overlay-dismiss";
 import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
 import type { Task } from "@/lib/task/task";
@@ -50,6 +51,30 @@ export function TaskDetailScreen({
 }) {
   const { fields, edit } = useTaskFields(task);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  /**
+   * Escape leaves, and leaves the way Cancel does — discarding, per the
+   * commit model in this component's own doc comment above (#34). No outside
+   * pointer: this screen covers the whole viewport, so it has no outside.
+   * Mostly it earns its keep on a tablet with a keyboard attached, where the
+   * narrow surface and a real Escape key coexist.
+   *
+   * A pending delete is disarmed first and the screen closes only on a second
+   * press, the same one-step-back the desktop row's expander does — a loaded
+   * destructive control should not disappear alongside the thing it was
+   * pointed at.
+   */
+  useOverlayDismiss({
+    active: true,
+    outsidePointer: false,
+    onDismiss: () => {
+      if (confirmingDelete) {
+        setConfirmingDelete(false);
+        return;
+      }
+      onCancel();
+    },
+  });
 
   return (
     // The root class is load-bearing beyond styling: globals.css's mobile

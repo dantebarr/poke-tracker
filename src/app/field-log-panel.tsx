@@ -2,8 +2,9 @@
 
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import { OVERLAY_OPENER_PROPS, useOverlayDismiss } from "@/app/overlay-dismiss";
 import { isPendingTaskId } from "@/app/pending-task-id";
-import { type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
+import { dismissedDraftOutcome, type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
 import { dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
 import {
@@ -86,11 +87,6 @@ export function FieldLogPanel({
   // `.loggedrows` behind it only exists inside the mobile media query.
   const [loggedExpanded, setLoggedExpanded] = useState(false);
 
-  function submitCreate(fields: EditableFields) {
-    onLeaveOverlay();
-    onCreate(fields);
-  }
-
   const openTasks = tasks.filter((task) => task.status === "open");
   // The logged rows and the reopen controls on them come from the same named
   // set the points readout below is summed from — see `completedToday` for
@@ -123,9 +119,14 @@ export function FieldLogPanel({
 
       <div className="addrow">
         {addEditorOpen ? (
-          <AddTaskEditor labels={labels} todayKey={todayKey} onCancel={onLeaveOverlay} onSave={submitCreate} />
+          <AddTaskEditor
+            labels={labels}
+            todayKey={todayKey}
+            onCreate={onCreate}
+            onLeaveOverlay={onLeaveOverlay}
+          />
         ) : (
-          <button type="button" className="addbtn" onClick={onOpenAddForm}>
+          <button type="button" className="addbtn" onClick={onOpenAddForm} {...OVERLAY_OPENER_PROPS}>
             + Add a task
           </button>
         )}
@@ -198,7 +199,7 @@ export function FieldLogPanel({
         )}
       </div>
 
-      <button type="button" className="fab" aria-label="Add a task" onClick={onOpenAddForm}>
+      <button type="button" className="fab" aria-label="Add a task" onClick={onOpenAddForm} {...OVERLAY_OPENER_PROPS}>
         +
       </button>
     </section>
@@ -285,8 +286,36 @@ function OpenTaskRow({
 }) {
   const { fields, edit, reset, flush } = useTaskFields(task, onSave);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const wasExpanded = useRef(expanded);
+
+  /**
+   * Escape, or a pointer landing outside the row, closes it (#34) — with no
+   * `onHandOff`, because there is nothing here to commit on the way out that
+   * is not already committed: every keystroke is on `useTaskFields`'s 600ms
+   * debounce, and the flush-on-collapse effect below catches whatever that
+   * debounce still owes. It is the same reason this row says Close where the
+   * add editor says Cancel.
+   *
+   * Escape disarms a pending delete first and closes only on the second press.
+   * The confirm pair is a loaded destructive control, and collapsing the row
+   * out from under it reads as "did that just delete it?" even though it
+   * didn't. An outside pointer skips that step and closes outright — clicking
+   * elsewhere is not ambiguous the way a keypress is — and the reset effect
+   * below disarms it on the next open regardless.
+   */
+  useOverlayDismiss({
+    active: expanded,
+    ref: rowRef,
+    onDismiss: () => {
+      if (confirmingDelete) {
+        setConfirmingDelete(false);
+        return;
+      }
+      onCollapse();
+    },
+  });
 
   // Local edit state only resets when the row *opens* (guarded on the
   // collapsed→expanded transition) — never while it's already expanded, so
@@ -310,8 +339,16 @@ function OpenTaskRow({
   }, [expanded, flush]);
 
   return (
-    <div className={`taskrow${expanded ? " expanded" : ""}${errored ? " errored" : ""}`}>
-      <div className="rowhead" onClick={!expanded && !pending ? onExpand : undefined}>
+    <div ref={rowRef} className={`taskrow${expanded ? " expanded" : ""}${errored ? " errored" : ""}`}>
+      {/* Marked as an opener only where it actually is one: a collapsed head
+          is what takes a Ranger into a task, so an open overlay elsewhere
+          hands its draft off to it rather than trying to leave at the same
+          moment this row is trying to arrive. */}
+      <div
+        className="rowhead"
+        onClick={!expanded && !pending ? onExpand : undefined}
+        {...(!expanded && !pending ? OVERLAY_OPENER_PROPS : {})}
+      >
         <button
           type="button"
           className="circle"
@@ -442,25 +479,71 @@ function useNewTaskDraft(defaults: { todayKey: string; labels: Label[] }) {
  * the exception — Enter there is a newline, as it is in any textarea, and
  * `submit` still refuses an invalid draft, so Enter on a blank title does
  * nothing rather than saving an untitled task.
+ *
+ * Escape and a pointer landing outside leave too (#34), and — unlike Cancel —
+ * they *keep* a titled draft rather than throwing it away. The two exits are
+ * meant to differ: pressing Cancel is a Ranger saying they reject this task,
+ * while drifting away is a Ranger whose attention moved on, and only the
+ * first of those is a reason to destroy what they typed. `dismissedDraftOutcome`
+ * holds the rule. Landing on something that navigates on its own hands off
+ * instead: the draft is still committed, but leaving is left to whatever was
+ * clicked, so the address is only changed once.
  */
 function AddTaskEditor({
   labels,
   todayKey,
-  onCancel,
-  onSave,
+  onCreate,
+  onLeaveOverlay,
 }: {
   labels: Label[];
   todayKey: string;
-  onCancel: () => void;
-  onSave: (fields: EditableFields) => void;
+  onCreate: (fields: EditableFields) => void;
+  onLeaveOverlay: () => void;
 }) {
   const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
     useNewTaskDraft({ todayKey, labels });
+  const editorRef = useRef<HTMLDivElement>(null);
 
+  // One resolution per mount. `onLeaveOverlay` pops history asynchronously,
+  // so this form is still mounted and still listening for a frame or two
+  // after Save — long enough for a stray Escape in that window to commit the
+  // same draft a second time. Every exit below goes through here, so whichever
+  // one the Ranger reached first is the only one that counts.
+  const resolved = useRef(false);
+
+  function resolve(exit: () => void) {
+    if (resolved.current) return;
+    resolved.current = true;
+    exit();
+  }
+
+  // Leaving before writing, the ordering every other commit path here uses:
+  // the address is what unmounts this form, and the optimistic row wants to
+  // land in a list that is already showing.
   function submit() {
     if (!valid) return;
-    onSave(fields());
+    resolve(() => {
+      onLeaveOverlay();
+      onCreate(fields());
+    });
   }
+
+  function commitDraft() {
+    if (dismissedDraftOutcome({ titleTyped: title.trim().length > 0, valid }) === "save") {
+      onCreate(fields());
+    }
+  }
+
+  useOverlayDismiss({
+    active: true,
+    ref: editorRef,
+    onDismiss: () =>
+      resolve(() => {
+        onLeaveOverlay();
+        commitDraft();
+      }),
+    onHandOff: () => resolve(commitDraft),
+  });
 
   function submitOnEnter(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter") return;
@@ -470,7 +553,7 @@ function AddTaskEditor({
   }
 
   return (
-    <div className="addeditor" onKeyDown={submitOnEnter}>
+    <div ref={editorRef} className="addeditor" onKeyDown={submitOnEnter}>
       <div className="rowhead">
         <span className="circle ghost" aria-hidden="true" />
         <input
@@ -502,7 +585,7 @@ function AddTaskEditor({
             onSizeChange={setSize}
           />
           <div className="editactions">
-            <button type="button" className="ghostbtn" onClick={onCancel}>
+            <button type="button" className="ghostbtn" onClick={() => resolve(onLeaveOverlay)}>
               Cancel
             </button>
             <button type="button" className="primary" disabled={!valid} onClick={submit}>
@@ -547,6 +630,13 @@ export function AddTaskSheet({
     useNewTaskDraft({ todayKey, labels });
   const [visible, setVisible] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+
+  // Escape only (#34), for the tablet-with-a-keyboard case. No outside
+  // pointer: the backdrop below already is one, and a second listener would
+  // fire `leaveOverlay` twice for a single tap. Escape here means what the
+  // backdrop means — discard — because this form, like the detail screen it
+  // shares a footer with, has always committed only through Save.
+  useOverlayDismiss({ active: true, outsidePointer: false, onDismiss: onCancel });
 
   // Mounted closed, then flipped open a frame later — a plain CSS
   // transition doesn't fire on a property's very first paint, so this is
@@ -652,6 +742,27 @@ export function DeleteControl({
 }
 
 /**
+ * Escape inside a chip belongs to the chip (#34). A native `<select>` and a
+ * date `<input>` both use it to shut their own picker, and letting it reach
+ * `useOverlayDismiss`'s document listener would close the whole overlay out
+ * from under an open dropdown — an editor vanishing mid-pick.
+ *
+ * React 19 attaches at the root container, which is inside `document`, so
+ * this synthetic `stopPropagation` really does halt the native event before
+ * the document listener runs — which is why that listener is in the bubble
+ * phase and not capture.
+ *
+ * The cost is that Escape while a chip merely holds focus, with no picker
+ * open, does nothing at all: there is no way to tell those two states apart
+ * from here. That is the right side to be wrong on — an inert keypress is a
+ * smaller failure than an editor closing itself mid-pick, and Tab or a click
+ * puts a Ranger somewhere Escape works again.
+ */
+function keepEscapeInChip(event: KeyboardEvent<HTMLElement>) {
+  if (event.key === "Escape") event.stopPropagation();
+}
+
+/**
  * The due/label/size chip trio, shared between the desktop add editor, the
  * mobile add sheet, an open row's desktop expander, and the mobile task
  * detail screen (#29's `TaskDetailScreen`). Every caller now arrives with all
@@ -681,11 +792,22 @@ export function TaskFieldChips({
     <>
       <label className="chip">
         Due
-        <input type="date" value={dueDate} onChange={(event) => onDueChange(event.target.value)} aria-label="Due date" />
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(event) => onDueChange(event.target.value)}
+          onKeyDown={keepEscapeInChip}
+          aria-label="Due date"
+        />
       </label>
       <label className="chip">
         Label
-        <select value={labelId} onChange={(event) => onLabelChange(event.target.value)} aria-label="Label">
+        <select
+          value={labelId}
+          onChange={(event) => onLabelChange(event.target.value)}
+          onKeyDown={keepEscapeInChip}
+          aria-label="Label"
+        >
           {labels.map((label) => (
             <option key={label.id} value={label.id}>
               {label.name}
@@ -698,6 +820,7 @@ export function TaskFieldChips({
         <select
           value={size}
           onChange={(event) => onSizeChange(event.target.value as TaskSize)}
+          onKeyDown={keepEscapeInChip}
           aria-label="Size"
         >
           {TASK_SIZES.map((sizeOption) => (
