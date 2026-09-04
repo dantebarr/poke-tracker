@@ -481,6 +481,7 @@ body {
    shadow still reads as ground under the feet at any size */
 .mon .platform {
   position: absolute;
+  z-index: -1;
   left: 50%;
   bottom: -11%;
   transform: translateX(-50%);
