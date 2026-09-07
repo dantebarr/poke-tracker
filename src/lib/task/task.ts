@@ -76,13 +76,19 @@ export async function listTasks(client: SupabaseClient, trainerId: string): Prom
   return data.map(toTask);
 }
 
-export type TaskFields = {
+/**
+ * Everything a task carries but the date it is due — which is also exactly
+ * what a **Recurrence** stamps onto each task it generates, the due date being
+ * the one field the rule works out for itself.
+ */
+export type TaskContent = {
   title: string;
-  dueDate: string;
   labelId: string;
   size: TaskSize;
   notes: string | null;
 };
+
+export type TaskFields = TaskContent & { dueDate: string };
 
 /**
  * Creates a task, open by construction — the database refuses anything else
@@ -109,6 +115,73 @@ export async function createTask(
       .single<TaskRow>(),
   );
   return toTask(row);
+}
+
+/**
+ * The tasks a recurrence has already generated, one due date per row. What
+ * makes generation's insert a set of *missing* dates rather than a blind
+ * replay — the partial unique index on `(recurrence_id, due_date)` is the
+ * safety net behind this, not a substitute for it.
+ */
+export async function dueDatesForRecurrence(
+  client: SupabaseClient,
+  recurrenceId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("tasks")
+    .select("due_date")
+    .eq("recurrence_id", recurrenceId)
+    .returns<{ due_date: string }[]>();
+
+  if (error) {
+    throw new DatabaseError("Reading a recurrence's generated tasks", error);
+  }
+  return data.map((row) => row.due_date);
+}
+
+/**
+ * Writes the tasks a recurrence owes — one per due date, open like any other
+ * new task, carrying the title, label, size and notes the rule stamps and a
+ * reference back to it.
+ *
+ * One statement for the whole batch: a fortnight's backfill is one insert,
+ * and if a concurrent run has already written any of these dates the unique
+ * index refuses the lot rather than writing half of them. Generation's caller
+ * leaves the watermark where it is on failure, so the retry sees the rows the
+ * other run wrote and asks only for what is still missing.
+ */
+export async function createGeneratedTasks(
+  client: SupabaseClient,
+  trainerId: string,
+  recurrenceId: string,
+  fields: TaskContent,
+  dueDates: string[],
+): Promise<Task[]> {
+  if (dueDates.length === 0) return [];
+
+  const { data, error } = await client
+    .from("tasks")
+    .insert(
+      dueDates.map((dueDate) => ({
+        trainer_id: trainerId,
+        recurrence_id: recurrenceId,
+        task: fields.title,
+        due_date: dueDate,
+        label_id: fields.labelId,
+        size: fields.size,
+        notes: fields.notes,
+      })),
+    )
+    .select(COLUMNS)
+    .returns<TaskRow[]>();
+
+  if (error) {
+    throw new DatabaseError("Generating tasks", error);
+  }
+  // Oldest date first. Postgres returns an insert's rows in whatever order it
+  // wrote them, which is not the order they were given, and a backfill reads
+  // as a series or it reads as nothing.
+  return data.map(toTask).sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
 }
 
 /**

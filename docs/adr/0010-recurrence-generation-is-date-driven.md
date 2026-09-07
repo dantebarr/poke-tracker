@@ -1,10 +1,17 @@
 # Recurrence generation is driven by dates, never by completion
 
-**Status:** accepted
+**Status:** accepted; amended by #13, which names rule creation as generation's second trigger
 
 A **Recurrence** generates its tasks from dates alone — the rule's start date, its frequency, and
 the day keys **settlement** already walks in the trainer's own time zone (ADR-0004). Completing a
-generated task generates nothing, and generation runs nowhere but **settlement**.
+generated task generates nothing.
+
+Generation has two triggers, and neither of them is a completion: **settlement**, which is where
+it runs from then on, and the moment the rule is created, which runs it once so the rule's first
+task exists immediately rather than at next app entry. The second was written here as "nowhere but
+settlement" when this was recorded; #13 corrects it. The distinction the decision actually turns on
+is date-driven versus completion-driven, and creating a rule is neither a completion nor a second
+way to earn one — it produces the one task the rule's own first date calls for, and no more.
 
 ## Considered Options
 
