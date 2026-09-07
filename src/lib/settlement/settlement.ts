@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { addDays, dayKeyInTimeZone } from "@/lib/day/day";
+import { generationHorizon } from "@/lib/recurrence/dates";
+import { generateTasks } from "@/lib/recurrence/generation";
+import { listRecurrences } from "@/lib/recurrence/recurrence";
 import { settleDays, type SettlementState } from "@/lib/settlement/reducer";
 import { daysToSettle, groupTasksByDay } from "@/lib/settlement/timezone";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service";
@@ -17,10 +20,44 @@ type TrainerSettlementRow = {
 };
 
 /**
+ * The tasks every one of the trainer's **Recurrences** owes, written before
+ * the day they belong to is settled. Each rule is asked for its own horizon —
+ * today plus one interval — so a daily rule always has tomorrow's task visible
+ * and a weekly one next week's, and a trainer returning to a stale watermark
+ * gets the backfill of every date they were away for out of the same loop,
+ * uncapped, with no special case (ADR-0010).
+ *
+ * Reads the rules under the trainer's own JWT and writes through service-role,
+ * which is the only client that can move a rule's watermark — `recurrence` has
+ * no update grant at all. `generateTasks` re-checks label ownership itself,
+ * since that is exactly the guarantee service-role switches off.
+ *
+ * One rule at a time rather than all at once: a rule that fails takes only
+ * itself down, leaving the watermarks of the rules already generated where the
+ * work they did put them.
+ */
+async function generateRecurringTasks(
+  client: SupabaseClient,
+  serviceRole: SupabaseClient,
+  trainerId: string,
+  today: string,
+): Promise<void> {
+  for (const recurrence of await listRecurrences(client, trainerId)) {
+    await generateTasks(serviceRole, recurrence, generationHorizon(recurrence, today));
+  }
+}
+
+/**
  * Settles every day the trainer owes, up to yesterday, in the trainer's own
  * stored time zone — the database access the pure reducer deliberately has
  * none of. Safe to call on every app entry: a trainer already caught up has
  * no days to settle and this makes no write at all.
+ *
+ * That same "no days owed, no work" gate is what paces generation: the first
+ * entry of each of the trainer's own days runs it, and every entry after that
+ * one finds nothing owed and returns. A rule's horizon moves with the day
+ * rather than with the entry, so there is nothing for a second entry to do —
+ * and the rule's watermark, not this gate, is what actually makes it so.
  *
  * Reads run under `client` — the trainer's own JWT, scoped by row-level
  * security like every other read in this app. Only the commit switches to a
@@ -44,6 +81,17 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
   if (days.length === 0) {
     return false;
   }
+
+  const serviceRole = createSupabaseServiceRoleClient();
+
+  // Before the commit, deliberately (#14). A crash in generation leaves the
+  // day unsettled and the whole operation retries on next entry; generating
+  // after the RPC would leave a settled day with its tasks missing and no
+  // second chance at them, since settlement never revisits a settled day.
+  //
+  // It cannot change what the day settles to, either: generation only adds
+  // open tasks, and the reads below count `done` ones.
+  await generateRecurringTasks(client, serviceRole, trainerId, today);
 
   // A generous lower bound, not an exact one: local midnight on the earliest
   // day owed can fall up to a day either side of its UTC date, depending on
@@ -97,7 +145,7 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
     trainerRow.parting_on,
   );
 
-  const { error: applyError } = await createSupabaseServiceRoleClient().rpc("apply_settlement", {
+  const { error: applyError } = await serviceRole.rpc("apply_settlement", {
     p_trainer_id: trainerId,
     p_expected_last_settled_day: trainerRow.last_settled_day,
     p_rows: result.ledgerRows,
