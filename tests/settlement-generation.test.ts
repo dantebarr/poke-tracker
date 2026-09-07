@@ -255,6 +255,23 @@ describe("opening the app again", () => {
     expect(await dueDatesFor(trainer.id)).toEqual(afterFirst);
   });
 
+  it("leaves a rule created after the day's first entry on its one creation task until tomorrow", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+
+    // The day's entry has already happened and settled what it owed, so a rule
+    // created now finds no owed day left to carry it — the gate that keeps
+    // generation to once a day is also what defers its lead by one. Creation
+    // gives it exactly one task (#13) and tomorrow's entry gives it the rest.
+    await setLastSettledDay(trainer.id, dayKey(2));
+    await settleOnEntry();
+    await dailyRule(personal.id, 0);
+
+    await settleOnEntry();
+
+    expect(await dueDatesFor(trainer.id)).toEqual([dayKey(0)]);
+  });
+
   it("produces nothing new when the pending task has already been completed early", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const [personal] = await labelsFor(trainer.id);
