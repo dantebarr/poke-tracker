@@ -53,6 +53,31 @@ export async function listLabels(client: SupabaseClient, trainerId: string): Pro
 }
 
 /**
+ * Whether a label is a given trainer's own. Row-level security answers this
+ * for every read and write that carries a trainer's JWT, so the only caller is
+ * the one write that does not: recurrence generation runs as service-role, and
+ * a task written there against a foreign label would read back with a null
+ * label and crash `LabelChip`'s render rather than merely hiding data.
+ */
+export async function labelBelongsToTrainer(
+  client: SupabaseClient,
+  labelId: string,
+  trainerId: string,
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("label")
+    .select("id")
+    .eq("id", labelId)
+    .eq("trainer_id", trainerId)
+    .maybeSingle();
+
+  if (error) {
+    throw new DatabaseError("Checking label ownership", error);
+  }
+  return data !== null;
+}
+
+/**
  * Adds a new label at the end of the trainer's order. Name uniqueness and
  * colour format are the database's guarantee (ADR-0001), not checked here.
  */

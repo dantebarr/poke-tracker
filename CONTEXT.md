@@ -44,7 +44,8 @@ _Avoid_: Project, category, tag
 A rule owned by a trainer that generates **tasks** at a fixed interval — every
 day, every week on a chosen day of the week, or every month on a chosen day of
 the month. It is deliberately **not** a Task: it is never due, is never completed,
-and is worth nothing on its own; it only produces tasks, at **settlement**. What
+and is worth nothing on its own; it only produces tasks — at **settlement**, and
+once at the moment it is created, so its first task is waiting immediately. What
 it produces has no second name — a generated task is a **Task** like any other,
 in a **bucket**, with a **label**, a **size** and its **effort points**.
 Generation is driven by dates alone and never by a task being completed (see

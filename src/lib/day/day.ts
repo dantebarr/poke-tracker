@@ -18,16 +18,33 @@ export function dayKeyInTimeZone(date: Date, timeZone: string): string {
 
 /** `dayKey` shifted by `count` days (negative moves earlier). */
 export function addDays(dayKey: string, count: number): string {
-  const [year, month, day] = dayKey.split("-").map(Number);
+  const { year, month, day } = dayKeyParts(dayKey);
   const next = new Date(Date.UTC(year, month - 1, day + count));
   return dayKeyOfUtcDate(next);
 }
 
+/**
+ * A day key's calendar components, `month` 1-12. For callers doing calendar
+ * arithmetic a day at a time cannot express — a recurrence resolving "the
+ * 31st" against the month it lands in, say.
+ */
+export function dayKeyParts(dayKey: string): { year: number; month: number; day: number } {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return { year, month, day };
+}
+
+/**
+ * The inverse of `dayKeyParts`, `month` 1-12. Every component must already be
+ * a real one — this pads and joins, it does not normalise, so a 31st of
+ * February would come back as written rather than rolling into March. Callers
+ * that can overflow a month go through `addDays` instead.
+ */
+export function dayKeyOf(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function dayKeyOfUtcDate(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return dayKeyOf(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
 }
 
 /**

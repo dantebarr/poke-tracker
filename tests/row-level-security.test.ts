@@ -96,7 +96,7 @@ describe("every table in the schema", () => {
 describe("a signed-out request", () => {
   it("is refused on every table, not just tasks", async () => {
     const anonymous = clientForJar(createCookieJar());
-    const tables = ["trainer", "label", "instance", "tasks", "species", "pool_template"];
+    const tables = ["trainer", "label", "instance", "tasks", "species", "pool_template", "recurrence"];
 
     for (const table of tables) {
       const { error } = await anonymous.from(table).select("*").limit(1);
