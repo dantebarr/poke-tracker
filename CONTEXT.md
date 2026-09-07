@@ -40,6 +40,17 @@ available labels is **defined by each trainer** in their settings — a closed s
 per trainer, not a closed set for the app.
 _Avoid_: Project, category, tag
 
+**Recurrence**:
+A rule owned by a trainer that generates **tasks** at a fixed interval — every
+day, every week on a chosen day of the week, or every month on a chosen day of
+the month. It is deliberately **not** a Task: it is never due, is never completed,
+and is worth nothing on its own; it only produces tasks, at **settlement**. What
+it produces has no second name — a generated task is a **Task** like any other,
+in a **bucket**, with a **label**, a **size** and its **effort points**.
+Generation is driven by dates alone and never by a task being completed (see
+ADR-0010).
+_Avoid_: Schedule, series, repeat, occurrence
+
 **Panel**:
 A region of the home screen devoted to one thing — stats, the Pokémon, the task
 list. Inherited from Jarvis HUD, where it anticipated email and calendar

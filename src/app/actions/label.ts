@@ -99,9 +99,8 @@ export async function moveLabelAction(formData: FormData): Promise<Label[]> {
 }
 
 /**
- * Deletes a label. Refused by the database while a task still references it
- * — see `@/lib/label/label`'s `deleteLabel` for why that guard isn't in
- * force yet.
+ * Deletes a label. Refused by the database while a task still references it —
+ * see `@/lib/label/label`'s `deleteLabel` for where that guard lives.
  */
 export async function deleteLabelAction(formData: FormData): Promise<void> {
   const client = await createSupabaseServerClient();
