@@ -173,9 +173,10 @@ export async function moveLabel(
 }
 
 /**
- * Deletes a label. Refused by the database while a task still references it
- * — the foreign key that enforces this arrives with the task table in #7, so
- * nothing here can refuse it yet.
+ * Deletes a label. Refused by the database while a task still references it —
+ * `tasks.label_id` takes the default `no action` on delete, so the guard is the
+ * foreign key itself and there is nothing to check here — `tests/task-list.test.ts`
+ * asserts the refusal through `deleteLabelAction`.
  */
 export async function deleteLabel(client: SupabaseClient, id: string): Promise<void> {
   const { error } = await client.from("label").delete().eq("id", id);
