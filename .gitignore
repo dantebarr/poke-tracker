@@ -44,3 +44,7 @@ next-env.d.ts
 # claude code — settings.json is shared; these two are per-machine
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# supabase — the migrations are the schema and are committed; snippets are
+# whatever was typed into a local Studio's SQL editor, which is nobody else's
+supabase/snippets/

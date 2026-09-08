@@ -1399,10 +1399,19 @@ span.title {
    is space the desktop field log doesn't have in its 0.9fr column. The
    `<label>` still wraps the control, so the name stays a touch target and
    `TaskFieldChips` needs no markup change for any of this. */
+/* `align-items: stretch` on `.chips` only agrees the heights *within a flex
+   line*, so once the recurring row opened, its two pickers agreed with each
+   other and not with the date, label and size above them — a `<select>` chip
+   is a couple of pixels shorter than a date one, and nothing was making the
+   two rows meet. A floor every chip shares is what makes them one set of
+   boxes rather than two, whichever line they land on. It sits at the 44px
+   `UI-CONSTRAINTS.md` asks of a touch target, which the chips were already
+   within a hair of. */
 .chip {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  min-height: 44px;
   gap: 3px;
   font-family: var(--font-pixel), monospace;
   font-size: 7px;
@@ -1434,6 +1443,60 @@ span.title {
 .chip select option {
   color: #202020;
 }
+/* The recurring toggle (#15): an icon on its own, last on the chip row. It
+   stretches to whatever height the chips settled on rather than setting one,
+   so it stays square-ish with them, and `min-width` is what carries the 44px
+   touch target `UI-CONSTRAINTS.md` asks for — there is no text here to widen
+   it the way a chip's name widens a chip. */
+.recurbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--safari-pale);
+  cursor: pointer;
+}
+/* On, and unmistakably so: the row it opens is the only other sign, and that
+   row is below the fold of the eye's path across the chips. */
+.recurbtn[aria-pressed="true"] {
+  background: var(--safari-light);
+  color: var(--safari-edge);
+}
+/* The second row's rule (#15), and the thing that starts the row: full width
+   so nothing can share its line, zero height so it costs one border, and
+   `flex-start` so `.chips`' own `stretch` doesn't blow it up to the height of
+   the line. Everything after it wraps below — which is how the recurring
+   pickers get a line apart from the fields every task has while Cancel and
+   Save, later in the same container, still land beside them. */
+.recurrule {
+  flex-basis: 100%;
+  align-self: flex-start;
+  height: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+/* What the rule about to be created will actually do. Full width again, so it
+   sits under the pickers it is the consequence of rather than beside them. */
+.recurnote {
+  flex-basis: 100%;
+  margin: 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  line-height: 1.7;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+}
+/* On its own line under the first-task line: the clamp is a caveat about the
+   date above it, not a second fact of equal weight. */
+.recurclamp {
+  display: block;
+  opacity: 0.72;
+}
 .delbtn {
   font-family: var(--font-pixel), monospace;
   font-size: 8px;
@@ -1450,7 +1513,11 @@ span.title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  /* Centred on whatever line it lands on, and no top offset of its own: it
+     shares a line with the chips when recurring is off and with the recurring
+     pickers when it is on, and sat a touch below either while it carried one.
+     `.chips`' `gap` already spaces the wrapped lines. */
+  align-self: center;
   margin-left: auto;
 }
 .ghostbtn {
@@ -1551,7 +1618,12 @@ span.title {
      whole pill is the tap target — stacking the name above the control got
      it to ~42px on its own and this carries it the rest of the way, on both
      mobile surfaces that render `TaskFieldChips`. */
+  /* The mobile padding already carries a chip past the 44px floor above, so
+     the floor stops binding and the two rows are free to disagree by the
+     pixel or two that separates a date input from a `<select>`. Raised past
+     what the padding produces, so it binds here too. */
   .chip {
+    min-height: 48px;
     padding: 8px 10px;
   }
 
@@ -1642,6 +1714,24 @@ span.title {
   }
   .sheet .chip input[type="date"] {
     color-scheme: light;
+  }
+  /* The sheet is a light surface, so the note, the toggle and the rule the
+     second row hangs under all follow the chips there rather than staying
+     pale-on-dark. */
+  .sheet .recurnote {
+    color: #404040;
+    font-size: 8px;
+  }
+  .sheet .recurrule {
+    border-top-color: rgba(0, 0, 0, 0.12);
+  }
+  .sheet .recurbtn {
+    background: rgba(0, 0, 0, 0.08);
+    color: #404040;
+  }
+  .sheet .recurbtn[aria-pressed="true"] {
+    background: var(--safari-dark);
+    color: var(--safari-box);
   }
   .sheet .primary {
     align-self: stretch;

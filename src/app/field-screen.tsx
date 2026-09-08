@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 
 import { ADD_FORM_HREF, FIELD_LOG_HREF, resolveFieldView, taskHref } from "@/app/(app)/chrome/navigation";
 import { useOverlaySlot } from "@/app/(app)/chrome/overlay-slot";
+import { createRecurrenceAction } from "@/app/actions/recurrence";
 import {
   completeTaskAction,
   createTaskAction,
@@ -15,6 +16,7 @@ import {
 } from "@/app/actions/task";
 import { AddTaskSheet, FieldLogPanel } from "@/app/field-log-panel";
 import { PENDING_ID_PREFIX } from "@/app/pending-task-id";
+import { describeRecurringForm, newTaskFormData, type NewTaskFields } from "@/app/recurring-fields";
 import { useSurface } from "@/app/responsive";
 import { TaskDetailScreen } from "@/app/task-detail-screen";
 import { type EditableFields, normalizeNotes } from "@/app/task-edit-fields";
@@ -207,15 +209,31 @@ export function FieldScreen({
     });
   }
 
-  function handleCreate(fields: EditableFields) {
+  /**
+   * One entry point for both writes a new task's form can make (#15). Which
+   * one it is comes from `describeRecurringForm`'s `rule` rather than from the
+   * form's own toggle: the rule is null while the draft cannot make one, so
+   * there is a single answer to "is this a rule" and both the optimistic draft
+   * and the action agree on it.
+   *
+   * The optimistic row carries the rule's *first date*, not the date in the
+   * chip. With recurring on that field is a start date — an anchor, not
+   * necessarily a date the rule falls on — and the row that is about to arrive
+   * is the one generation writes. Showing the anchor instead would put the row
+   * in the wrong bucket for the half-second before the server answers, and in
+   * the case a start date is not itself a date the rule falls on, on a day no task
+   * will ever exist.
+   */
+  function handleCreate(fields: NewTaskFields) {
     const label = labels.find((candidate) => candidate.id === fields.labelId);
     if (!label) return;
+    const { rule, firstTaskDate } = describeRecurringForm(fields);
     startTransition(async () => {
       const tempId = `${PENDING_ID_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const draft: Task = {
         id: tempId,
         title: fields.title,
-        dueDate: fields.dueDate,
+        dueDate: firstTaskDate ?? fields.dueDate,
         status: "open",
         size: fields.size,
         notes: normalizeNotes(fields.notes),
@@ -224,13 +242,8 @@ export function FieldScreen({
       };
       dispatch({ type: "add", task: draft });
       try {
-        const formData = new FormData();
-        formData.set("title", fields.title);
-        formData.set("dueDate", fields.dueDate);
-        formData.set("labelId", fields.labelId);
-        formData.set("size", fields.size);
-        formData.set("notes", fields.notes);
-        await createTaskAction(formData);
+        const formData = newTaskFormData(fields, rule);
+        await (rule ? createRecurrenceAction(formData) : createTaskAction(formData));
       } catch {
         flashFailedDraft(draft);
       }
