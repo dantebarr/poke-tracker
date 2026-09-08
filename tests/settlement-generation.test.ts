@@ -68,7 +68,11 @@ afterEach(async () => {
 
 /**
  * As in settlement.test.ts: a known zone to compute expected day keys against,
- * forced after provisioning. Real trainers keep whatever zone Settings holds.
+ * forced after provisioning, and the watermark re-seeded against that zone
+ * rather than the one the trigger saw at INSERT — see that file for why
+ * leaving it makes a trainer owe a day the moment they are created, for the
+ * seven hours a day UTC and the schema's default zone disagree about the date.
+ * Real trainers keep whatever zone Settings holds.
  */
 async function signedInTrainer(email: string, targetJar: CookieJar = jar) {
   const account = await createAccount(email);
@@ -77,6 +81,7 @@ async function signedInTrainer(email: string, targetJar: CookieJar = jar) {
   const trainer = await as(targetJar, ensureTrainer);
   const { error } = await adminClient().from("trainer").update({ time_zone: TIME_ZONE }).eq("id", trainer.id);
   if (error) throw new Error(`Forcing time_zone failed: ${JSON.stringify(error)}`);
+  await setLastSettledDay(trainer.id, dayKey(1));
   return trainer;
 }
 

@@ -71,6 +71,14 @@ afterEach(async () => {
  * zone they set in Settings (America/Vancouver by default); the seeding
  * trigger's own zone handling is covered without this override in
  * trainer-time-zone.test.ts.
+ *
+ * The watermark is re-seeded against that same zone, and this is not
+ * cosmetic. The trigger seeds it at INSERT, from the zone in effect *then* —
+ * the schema default, this override running after the row already exists — so
+ * between 17:00 Pacific and midnight, when UTC has already rolled over and
+ * Vancouver has not, a trainer created here owes a day the moment they are
+ * born. Left alone, that makes "nothing is owed on the creation day" false for
+ * seven hours a day and the suite red on a clock rather than on a change.
  */
 async function signedInTrainer(email: string) {
   const account = await createAccount(email);
@@ -78,6 +86,7 @@ async function signedInTrainer(email: string) {
   await signIn(jar, account);
   const trainer = await ensureTrainer();
   await setTimeZone(trainer.id, TIME_ZONE);
+  await setLastSettledDay(trainer.id, dayKey(1));
   return trainer;
 }
 
@@ -156,13 +165,12 @@ describe("triggering settlement", () => {
 
   it("does nothing, and writes nothing, for a freshly-created trainer — their creation day isn't owed yet", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
-    // Seeded to the day before creation, in whatever zone was in effect at
-    // INSERT time (the schema default — `signedInTrainer`'s own
-    // `setTimeZone` call runs after the row already exists, so it has no
-    // effect on the seeded value). Read it back rather than recomputing it
-    // against a different zone, which trainer-time-zone.test.ts already
-    // covers directly.
+    // The day before today, in this file's own zone — `signedInTrainer` puts
+    // it there, the trigger's seeded value having been computed against the
+    // zone in effect at INSERT rather than the one forced afterwards. What the
+    // trigger itself does is covered directly in trainer-time-zone.test.ts.
     const before = await trainerRow(trainer.id);
+    expect(before.last_settled_day).toBe(dayKey(1));
 
     await settleOnEntry();
 
