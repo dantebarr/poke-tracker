@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { addDays, dayKeyInTimeZone } from "@/lib/day/day";
+import { generateToHorizon } from "@/lib/recurrence/generation";
 import { settleDays, type SettlementState } from "@/lib/settlement/reducer";
 import { daysToSettle, groupTasksByDay } from "@/lib/settlement/timezone";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service";
@@ -22,10 +23,20 @@ type TrainerSettlementRow = {
  * none of. Safe to call on every app entry: a trainer already caught up has
  * no days to settle and this makes no write at all.
  *
+ * That same "no days owed, no work" gate paces generation too, which makes
+ * settlement generation a once-a-day thing rather than a once-an-entry one: an
+ * entry that owes days generates, and every entry after it that day returns
+ * before reaching it. Nothing is lost by that, a rule's horizon moving with the
+ * day rather than with the entry — with one consequence worth naming, since it
+ * is where the two triggers meet. A rule created *after* the day's first entry
+ * has only the one task creation gave it (#13) and waits until tomorrow's entry
+ * for the lead; there is no owed day left today to carry it.
+ *
  * Reads run under `client` — the trainer's own JWT, scoped by row-level
- * security like every other read in this app. Only the commit switches to a
- * service-role client: see `@/lib/supabase/service` for why that one write
- * can't go through the trainer's own JWT the way everything else does.
+ * security like every other read in this app. Only the writes switch to a
+ * service-role client — the commit, and generation's watermark: see
+ * `@/lib/supabase/service` for why neither can go through the trainer's own
+ * JWT the way everything else does.
  */
 export async function settle(client: SupabaseClient, trainerId: string): Promise<boolean> {
   const { data: trainerRow, error: trainerError } = await client
@@ -44,6 +55,17 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
   if (days.length === 0) {
     return false;
   }
+
+  const serviceRole = createSupabaseServiceRoleClient();
+
+  // Before the commit, deliberately (#14). A crash in generation leaves the
+  // day unsettled and the whole operation retries on next entry; generating
+  // after the RPC would leave a settled day with its tasks missing and no
+  // second chance at them, since settlement never revisits a settled day.
+  //
+  // It cannot change what the day settles to, either: generation only adds
+  // open tasks, and the reads below count `done` ones.
+  await generateToHorizon(client, serviceRole, trainerId, today);
 
   // A generous lower bound, not an exact one: local midnight on the earliest
   // day owed can fall up to a day either side of its UTC date, depending on
@@ -97,7 +119,7 @@ export async function settle(client: SupabaseClient, trainerId: string): Promise
     trainerRow.parting_on,
   );
 
-  const { error: applyError } = await createSupabaseServiceRoleClient().rpc("apply_settlement", {
+  const { error: applyError } = await serviceRole.rpc("apply_settlement", {
     p_trainer_id: trainerId,
     p_expected_last_settled_day: trainerRow.last_settled_day,
     p_rows: result.ledgerRows,

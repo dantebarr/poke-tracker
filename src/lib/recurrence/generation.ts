@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { labelBelongsToTrainer } from "@/lib/label/label";
-import { dueDatesBetween } from "@/lib/recurrence/dates";
-import { advanceGeneratedThrough, type Recurrence } from "@/lib/recurrence/recurrence";
+import { dueDatesBetween, generationHorizon } from "@/lib/recurrence/dates";
+import { advanceGeneratedThrough, listRecurrences, type Recurrence } from "@/lib/recurrence/recurrence";
 import { createGeneratedTasks, dueDatesForRecurrence, type Task } from "@/lib/task/task";
 
 /**
@@ -67,4 +67,47 @@ export async function generateTasks(
 
   await advanceGeneratedThrough(client, recurrence.id, through);
   return tasks;
+}
+
+/**
+ * Every task all of a trainer's rules owe as of `today` — settlement's way in
+ * (#14), where `generateTasks` above is the single rule's.
+ *
+ * The horizon is asked for per rule rather than shared, because one interval
+ * means a different reach for each: a daily rule gets tomorrow, a weekly one
+ * next week, a monthly one next month. That lead is what lets a trainer work
+ * ahead. Reaching back is not a separate case — a rule whose watermark is stale
+ * because the trainer was away backfills every date they missed out of the same
+ * loop, uncapped (ADR-0010).
+ *
+ * `today` is the caller's, and is the trainer's own day key rather than the
+ * server's (ADR-0004); nothing here reads a clock.
+ *
+ * Two clients, as everywhere generation runs: the rules are read under the
+ * trainer's own JWT, so row-level security is what scopes them, and the writing
+ * goes through service-role for the watermark's sake.
+ *
+ * **This does not catch.** A throw here reaches settlement, which is why it runs
+ * before the commit: the day stays unsettled and the whole operation retries on
+ * next entry. What keeps that from costing a trainer their ledger is that a rule
+ * they can legitimately create cannot make it throw — the check constraints make
+ * a malformed rule unrepresentable (ADR-0001), the date functions are total, and
+ * a rule whose label is not its owner's writes nothing rather than failing. A
+ * throw that gets past all of that is the database being unreachable, and the
+ * settlement queries below it would not have survived either.
+ *
+ * One rule at a time rather than all at once, so that when the retry does come
+ * the watermarks the earlier rules moved are already durable and only what is
+ * still missing is written. Every part of this is idempotent, so a retry costs
+ * nothing but the round trips.
+ */
+export async function generateToHorizon(
+  client: SupabaseClient,
+  serviceRole: SupabaseClient,
+  trainerId: string,
+  today: string,
+): Promise<void> {
+  for (const recurrence of await listRecurrences(client, trainerId)) {
+    await generateTasks(serviceRole, recurrence, generationHorizon(recurrence, today));
+  }
 }

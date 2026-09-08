@@ -8,8 +8,11 @@ import { supabaseServiceRoleKey, supabaseUrl } from "@/lib/env";
  * "the browser never talks to the database" holds exactly as it does for
  * every other client this app makes.
  *
- * Settlement's commit (`@/lib/settlement/settlement`) is the one write in
- * this app that needs it. `apply_settlement` is handed the pure reducer's
+ * Two writes in this app need it, for the same underlying reason — a grant a
+ * trainer's own JWT deliberately does not hold.
+ *
+ * Settlement's commit (`@/lib/settlement/settlement`) is the first.
+ * `apply_settlement` is handed the pure reducer's
  * already-computed ledger rows and ending state — happiness, bond
  * increments, an arriving instance — which is exactly the shape of input a
  * security-definer function reachable by a trainer's own JWT must never
@@ -19,6 +22,14 @@ import { supabaseServiceRoleKey, supabaseUrl } from "@/lib/env";
  * `authenticated` entirely and reaching it only through this client — after
  * `requireTrainerId` has already established who is asking, the normal way
  * — is what keeps it safe to accept computed input at all.
+ *
+ * A **Recurrence**'s generation (`@/lib/recurrence/generation`) is the second,
+ * reached from settlement and from creating a rule. `recurrence` carries no
+ * `update` grant at all, there being no edit surface, so moving the watermark
+ * generation derives is out of reach of the trainer's own JWT by design. That
+ * makes generation the one place in this app that writes *tasks* with row-level
+ * security switched off, which is why it re-checks the rule's label ownership
+ * itself rather than trusting the policy that is not running.
  */
 export function createSupabaseServiceRoleClient(): SupabaseClient {
   return createClient(supabaseUrl(), supabaseServiceRoleKey(), {
