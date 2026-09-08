@@ -622,6 +622,7 @@ function AddTaskEditor({
               Save
             </button>
           </div>
+          <RecurringNote view={recurring.view} />
         </div>
       </div>
     </div>
@@ -720,6 +721,7 @@ export function AddTaskSheet({
           />
           <RecurringToggle fields={recurring.fields} onChange={recurring.onChange} />
           <RecurringOptions {...recurring} />
+          <RecurringNote view={recurring.view} />
         </div>
         <button type="button" className="primary" disabled={!valid} onClick={submit}>
           Save
@@ -951,7 +953,12 @@ function RecurringOptions({
   if (!fields.recurring) return null;
 
   return (
-    <div className="recuroptions">
+    <>
+      {/* Full-width and zero-height, so it is both the rule between the two
+          rows and the thing that breaks the line: everything after it wraps
+          below. That is what lets Cancel and Save, which come after these in
+          the row, sit beside them rather than alone on a third line. */}
+      <span className="recurrule" aria-hidden="true" />
       <label className="chip">
         Every
         <select
@@ -1001,13 +1008,24 @@ function RecurringOptions({
           </select>
         </label>
       )}
-      {view.firstTaskNote && (
-        <p className="recurnote">
-          {view.firstTaskNote}
-          {view.clampNote && <span className="recurclamp">{view.clampNote}</span>}
-        </p>
-      )}
-    </div>
+    </>
+  );
+}
+
+/**
+ * The plain-language answer to "what am I about to get". Its own component,
+ * and rendered after the form's buttons rather than with the pickers it
+ * describes, because it takes a full line of its own: sitting among them it
+ * would push Cancel and Save off the row this arrangement exists to keep them
+ * on.
+ */
+function RecurringNote({ view }: { view: RecurringFormView }) {
+  if (!view.firstTaskNote) return null;
+  return (
+    <p className="recurnote">
+      {view.firstTaskNote}
+      {view.clampNote && <span className="recurclamp">{view.clampNote}</span>}
+    </p>
   );
 }
 

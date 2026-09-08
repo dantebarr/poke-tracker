@@ -1399,10 +1399,19 @@ span.title {
    is space the desktop field log doesn't have in its 0.9fr column. The
    `<label>` still wraps the control, so the name stays a touch target and
    `TaskFieldChips` needs no markup change for any of this. */
+/* `align-items: stretch` on `.chips` only agrees the heights *within a flex
+   line*, so once the recurring row opened, its two pickers agreed with each
+   other and not with the date, label and size above them — a `<select>` chip
+   is a couple of pixels shorter than a date one, and nothing was making the
+   two rows meet. A floor every chip shares is what makes them one set of
+   boxes rather than two, whichever line they land on. It sits at the 44px
+   `UI-CONSTRAINTS.md` asks of a touch target, which the chips were already
+   within a hair of. */
 .chip {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  min-height: 44px;
   gap: 3px;
   font-family: var(--font-pixel), monospace;
   font-size: 7px;
@@ -1445,6 +1454,7 @@ span.title {
   justify-content: center;
   align-self: stretch;
   min-width: 44px;
+  min-height: 44px;
   padding: 6px 10px;
   border: none;
   border-radius: 6px;
@@ -1458,18 +1468,16 @@ span.title {
   background: var(--safari-light);
   color: var(--safari-edge);
 }
-/* The second row (#15) — everything a rule needs, kept apart from the fields
-   every task has. A full-width flex item, so it wraps onto its own line rather
-   than stretching the pill row; `.chips` lays it out at all only because it is
-   a sibling of the chips. Absent entirely until recurring is on, which is what
-   keeps the one-off add form's layout exactly as it was. */
-.recuroptions {
+/* The second row's rule (#15), and the thing that starts the row: full width
+   so nothing can share its line, zero height so it costs one border, and
+   `flex-start` so `.chips`' own `stretch` doesn't blow it up to the height of
+   the line. Everything after it wraps below — which is how the recurring
+   pickers get a line apart from the fields every task has while Cancel and
+   Save, later in the same container, still land beside them. */
+.recurrule {
   flex-basis: 100%;
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 8px;
+  align-self: flex-start;
+  height: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 /* What the rule about to be created will actually do. Full width again, so it
@@ -1505,7 +1513,11 @@ span.title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  /* Centred on whatever line it lands on, and no top offset of its own: it
+     shares a line with the chips when recurring is off and with the recurring
+     pickers when it is on, and sat a touch below either while it carried one.
+     `.chips`' `gap` already spaces the wrapped lines. */
+  align-self: center;
   margin-left: auto;
 }
 .ghostbtn {
@@ -1606,7 +1618,12 @@ span.title {
      whole pill is the tap target — stacking the name above the control got
      it to ~42px on its own and this carries it the rest of the way, on both
      mobile surfaces that render `TaskFieldChips`. */
+  /* The mobile padding already carries a chip past the 44px floor above, so
+     the floor stops binding and the two rows are free to disagree by the
+     pixel or two that separates a date input from a `<select>`. Raised past
+     what the padding produces, so it binds here too. */
   .chip {
+    min-height: 48px;
     padding: 8px 10px;
   }
 
@@ -1705,7 +1722,7 @@ span.title {
     color: #404040;
     font-size: 8px;
   }
-  .sheet .recuroptions {
+  .sheet .recurrule {
     border-top-color: rgba(0, 0, 0, 0.12);
   }
   .sheet .recurbtn {
