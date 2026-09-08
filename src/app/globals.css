@@ -1434,6 +1434,37 @@ span.title {
 .chip select option {
   color: #202020;
 }
+/* The recurring toggle. Sized rather than left at the browser's default so
+   the chip it sits in clears the 44px touch target `UI-CONSTRAINTS.md` asks
+   for once the mobile padding applies — the whole `<label>` is the target,
+   the box is only what it looks like. */
+.chip input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--safari-edge);
+  cursor: pointer;
+}
+/* What the rule about to be created will actually do (#15). A full-width flex
+   item, so it wraps onto its own line beneath the chips it explains instead of
+   stretching the pill row; `.chips` only lays it out at all because it is a
+   sibling of them. Absent entirely until recurring is on, which is what keeps
+   the one-off add form's layout exactly as it was. */
+.recurnote {
+  flex-basis: 100%;
+  margin: 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  line-height: 1.7;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+}
+/* On its own line under the first-task line: the clamp is a caveat about the
+   date above it, not a second fact of equal weight. */
+.recurclamp {
+  display: block;
+  opacity: 0.72;
+}
 .delbtn {
   font-family: var(--font-pixel), monospace;
   font-size: 8px;
@@ -1642,6 +1673,12 @@ span.title {
   }
   .sheet .chip input[type="date"] {
     color-scheme: light;
+  }
+  /* The sheet is a light surface, so the note follows the chips there rather
+     than staying pale-on-dark. */
+  .sheet .recurnote {
+    color: #404040;
+    font-size: 8px;
   }
   .sheet .primary {
     align-self: stretch;

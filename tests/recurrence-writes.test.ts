@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { NewTaskFields } from "@/app/recurring-fields";
+
 import { createCookieJar, type CookieJar } from "./helpers/cookie-jar";
 import { adminClient, clientForJar, createAccount, deleteAccount, labelsFor, signIn } from "./helpers/supabase";
 
@@ -33,6 +35,8 @@ vi.mock("next/cache", () => ({
 
 const { ensureTrainer } = await import("@/app/actions/trainer");
 const { createRecurrenceAction } = await import("@/app/actions/recurrence");
+const { createTaskAction } = await import("@/app/actions/task");
+const { describeRecurringForm, newRecurringFields, newTaskFormData } = await import("@/app/recurring-fields");
 const { generateTasks } = await import("@/lib/recurrence/generation");
 const { listRecurrences } = await import("@/lib/recurrence/recurrence");
 const { currentTasks } = await import("@/lib/task/session");
@@ -273,6 +277,90 @@ describe("generation", () => {
     expect(generated).toEqual([]);
     expect(await currentTasks(trainer.id)).toHaveLength(1);
     expect((await storedRecurrence(rule.id))?.generated_through).toBe(MONDAY);
+  });
+});
+
+/**
+ * The add form's own submission (#15), end to end: the body it builds, handed
+ * to the action it picks. The form's *decisions* are proved without a database
+ * in tests/recurring-form.test.ts; what needs the real schema is that the two
+ * agree at all — `FormData` is string-keyed, so a misspelt key is invisible to
+ * the compiler and shows up only as a missing required field at runtime.
+ */
+describe("what the add form submits", () => {
+  async function saveAddForm(fields: Partial<NewTaskFields> & { labelId: string }) {
+    const complete: NewTaskFields = {
+      title: "Water the plants",
+      notes: "",
+      dueDate: MONDAY,
+      size: "small",
+      ...newRecurringFields(),
+      ...fields,
+    };
+    const { rule } = describeRecurringForm({ ...complete, startsOn: complete.dueDate });
+    const formData = newTaskFormData(complete, rule);
+    return rule ? createRecurrenceAction(formData) : createTaskAction(formData);
+  }
+
+  it("creates a rule and its one first task when the toggle is on", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+
+    await saveAddForm({
+      labelId: personal.id,
+      title: "Bins out",
+      notes: "Green bin",
+      size: "medium",
+      recurring: true,
+      frequency: "weekly",
+      dayOfWeek: WEDNESDAY,
+    });
+
+    const [rule] = await listRecurrences(adminClient(), trainer.id);
+    expect(rule).toMatchObject({ frequency: "weekly", dayOfWeek: WEDNESDAY, dayOfMonth: null, startsOn: MONDAY });
+
+    const tasks = await currentTasks(trainer.id);
+    expect(tasks.map((task) => task.dueDate)).toEqual(["2024-01-17"]);
+    expect(tasks[0]).toMatchObject({ title: "Bins out", size: "medium", notes: "Green bin" });
+  });
+
+  it("sends a daily rule neither day, which is the only shape the check constraint accepts", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+
+    // The form never clears an override once it is set, so a trainer who
+    // picked a weekday and then chose "every day" still holds one. It must not
+    // reach the database: a daily rule carrying a day of week is refused.
+    await saveAddForm({ labelId: personal.id, recurring: true, frequency: "daily", dayOfWeek: WEDNESDAY });
+
+    const [rule] = await listRecurrences(adminClient(), trainer.id);
+    expect(rule).toMatchObject({ frequency: "daily", dayOfWeek: null, dayOfMonth: null });
+    expect((await currentTasks(trainer.id)).map((task) => task.dueDate)).toEqual([MONDAY]);
+  });
+
+  it("resolves the day the trainer never touched, rather than sending the null the form holds", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+
+    // A weekly rule submitted with a null day of week is refused outright, so
+    // the default the picker shows has to be the value that is sent.
+    await saveAddForm({ labelId: personal.id, recurring: true, frequency: "weekly" });
+
+    const [rule] = await listRecurrences(adminClient(), trainer.id);
+    // 2024-01-15 is a Monday.
+    expect(rule.dayOfWeek).toBe(1);
+  });
+
+  it("creates an ordinary one-off task, and no rule, when the toggle is off", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+
+    await saveAddForm({ labelId: personal.id, title: "Just the once", dueDate: MONDAY });
+
+    expect(await listRecurrences(adminClient(), trainer.id)).toEqual([]);
+    const tasks = await currentTasks(trainer.id);
+    expect(tasks.map((task) => task.title)).toEqual(["Just the once"]);
+    expect(tasks[0].dueDate).toBe(MONDAY);
   });
 });
 

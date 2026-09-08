@@ -4,9 +4,20 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { OVERLAY_OPENER_PROPS, useOverlayDismiss } from "@/app/overlay-dismiss";
 import { isPendingTaskId } from "@/app/pending-task-id";
+import {
+  DAYS_OF_MONTH,
+  describeRecurringForm,
+  FREQUENCY_OPTIONS,
+  newRecurringFields,
+  type NewTaskFields,
+  type RecurringFields,
+  type RecurringFormView,
+  WEEKDAY_NAMES,
+} from "@/app/recurring-fields";
 import { dismissedDraftOutcome, type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
 import { dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
+import type { RecurrenceFrequency } from "@/lib/recurrence/dates";
 import {
   BUCKET_LABELS,
   BUCKET_ORDER,
@@ -77,7 +88,7 @@ export function FieldLogPanel({
   onReopen: (task: Task) => void;
   onSave: (task: Task, fields: EditableFields) => void;
   onDelete: (task: Task) => void;
-  onCreate: (fields: EditableFields) => void;
+  onCreate: (fields: NewTaskFields) => void;
   onOpenTask: (taskId: string) => void;
   onOpenAddForm: () => void;
   /** Closing an expanded row and cancelling the add editor are the same move: back to the plain field log. */
@@ -450,14 +461,42 @@ function useNewTaskDraft(defaults: { todayKey: string; labels: Label[] }) {
   const [labelId, setLabelId] = useState(initial.labelId);
   const [size, setSize] = useState<TaskSize>(initial.size);
   const [notes, setNotes] = useState(initial.notes);
+  // The recurring half (#15), one piece of state rather than four: every part
+  // of it is read together by `describeRecurringForm` and written together by
+  // the pickers, and keeping it whole is what lets the day fields stay null —
+  // "follow the date" — instead of being copied in as defaults.
+  const [recurring, setRecurring] = useState<RecurringFields>(newRecurringFields);
+  const recurringView = describeRecurringForm({ ...recurring, startsOn: dueDate });
 
-  const valid = title.trim().length > 0 && dueDate !== "" && labelId !== "";
-
-  function fields(): EditableFields {
-    return { title: title.trim(), dueDate, labelId, size, notes };
+  function editRecurring(patch: Partial<RecurringFields>) {
+    setRecurring((current) => ({ ...current, ...patch }));
   }
 
-  return { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields };
+  // Unchanged by recurring: a rule needs exactly the fields a task does, and
+  // the date it starts from is the same field the chip was already holding.
+  const valid = title.trim().length > 0 && dueDate !== "" && labelId !== "";
+
+  function fields(): NewTaskFields {
+    return { title: title.trim(), dueDate, labelId, size, notes, ...recurring };
+  }
+
+  return {
+    title,
+    setTitle,
+    dueDate,
+    setDueDate,
+    labelId,
+    setLabelId,
+    size,
+    setSize,
+    notes,
+    setNotes,
+    recurring,
+    editRecurring,
+    recurringView,
+    valid,
+    fields,
+  };
 }
 
 /**
@@ -497,11 +536,26 @@ function AddTaskEditor({
 }: {
   labels: Label[];
   todayKey: string;
-  onCreate: (fields: EditableFields) => void;
+  onCreate: (fields: NewTaskFields) => void;
   onLeaveOverlay: () => void;
 }) {
-  const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
-    useNewTaskDraft({ todayKey, labels });
+  const {
+    title,
+    setTitle,
+    dueDate,
+    setDueDate,
+    labelId,
+    setLabelId,
+    size,
+    setSize,
+    notes,
+    setNotes,
+    recurring,
+    editRecurring,
+    recurringView,
+    valid,
+    fields,
+  } = useNewTaskDraft({ todayKey, labels });
   const editorRef = useRef<HTMLDivElement>(null);
 
   // One resolution per mount. `onLeaveOverlay` pops history asynchronously,
@@ -580,10 +634,12 @@ function AddTaskEditor({
             labelId={labelId}
             size={size}
             labels={labels}
+            dateLabel={recurringView.dateLabel}
             onDueChange={setDueDate}
             onLabelChange={setLabelId}
             onSizeChange={setSize}
           />
+          <RecurringChips fields={recurring} view={recurringView} onChange={editRecurring} />
           <div className="editactions">
             <button type="button" className="ghostbtn" onClick={() => resolve(onLeaveOverlay)}>
               Cancel
@@ -624,10 +680,25 @@ export function AddTaskSheet({
   labels: Label[];
   todayKey: string;
   onCancel: () => void;
-  onSave: (fields: EditableFields) => void;
+  onSave: (fields: NewTaskFields) => void;
 }) {
-  const { title, setTitle, dueDate, setDueDate, labelId, setLabelId, size, setSize, notes, setNotes, valid, fields } =
-    useNewTaskDraft({ todayKey, labels });
+  const {
+    title,
+    setTitle,
+    dueDate,
+    setDueDate,
+    labelId,
+    setLabelId,
+    size,
+    setSize,
+    notes,
+    setNotes,
+    recurring,
+    editRecurring,
+    recurringView,
+    valid,
+    fields,
+  } = useNewTaskDraft({ todayKey, labels });
   const [visible, setVisible] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -683,10 +754,12 @@ export function AddTaskSheet({
             labelId={labelId}
             size={size}
             labels={labels}
+            dateLabel={recurringView.dateLabel}
             onDueChange={setDueDate}
             onLabelChange={setLabelId}
             onSizeChange={setSize}
           />
+          <RecurringChips fields={recurring} view={recurringView} onChange={editRecurring} />
         </div>
         <button type="button" className="primary" disabled={!valid} onClick={submit}>
           Save
@@ -776,6 +849,7 @@ export function TaskFieldChips({
   labelId,
   size,
   labels,
+  dateLabel = "Due",
   onDueChange,
   onLabelChange,
   onSizeChange,
@@ -784,6 +858,13 @@ export function TaskFieldChips({
   labelId: string;
   size: TaskSize;
   labels: Label[];
+  /**
+   * What the date chip is called. "Starts" once the add form's recurring
+   * toggle is on (#15), the field then anchoring a rule rather than naming a
+   * due date — a prop rather than a fork of this component, since the other
+   * three callers are unaffected and a rule has no edit surface to relabel.
+   */
+  dateLabel?: "Due" | "Starts";
   onDueChange: (value: string) => void;
   onLabelChange: (value: string) => void;
   onSizeChange: (value: TaskSize) => void;
@@ -791,13 +872,13 @@ export function TaskFieldChips({
   return (
     <>
       <label className="chip">
-        Due
+        {dateLabel}
         <input
           type="date"
           value={dueDate}
           onChange={(event) => onDueChange(event.target.value)}
           onKeyDown={keepEscapeInChip}
-          aria-label="Due date"
+          aria-label={`${dateLabel} date`}
         />
       </label>
       <label className="chip">
@@ -830,6 +911,107 @@ export function TaskFieldChips({
           ))}
         </select>
       </label>
+    </>
+  );
+}
+
+/**
+ * The recurring toggle and, once it is on, the pickers it expands into (#15).
+ * Rendered into the same `.chips` row as `TaskFieldChips` and only by the two
+ * add surfaces: a **Recurrence** has no edit surface and no update grant, so
+ * there is nothing for the task detail screen to show.
+ *
+ * Everything shown here is decided by `describeRecurringForm` rather than in
+ * this component — which day the pickers default to, what the resolved first
+ * date is, whether the clamping note applies — because the suite has no DOM
+ * tests and logic left in here would be logic left unproven.
+ *
+ * The whole thing stays on the one form, so capture is still single-step
+ * (`UI-CONSTRAINTS.md`): turning recurring on adds pickers beside the ones
+ * already there rather than opening a second step to fill in.
+ *
+ * "Every" and "On" rather than "Repeats" and "Frequency": CONTEXT.md puts
+ * *repeat* on the Recurrence's `_Avoid_` list, and the two chips read as the
+ * sentence a trainer is composing — every week, on Wednesday.
+ */
+function RecurringChips({
+  fields,
+  view,
+  onChange,
+}: {
+  fields: RecurringFields;
+  view: RecurringFormView;
+  onChange: (patch: Partial<RecurringFields>) => void;
+}) {
+  return (
+    <>
+      <label className="chip">
+        Recurring
+        <input
+          type="checkbox"
+          checked={fields.recurring}
+          onChange={(event) => onChange({ recurring: event.target.checked })}
+          onKeyDown={keepEscapeInChip}
+          aria-label="Recurring"
+        />
+      </label>
+      {fields.recurring && (
+        <label className="chip">
+          Every
+          <select
+            value={fields.frequency}
+            onChange={(event) => onChange({ frequency: event.target.value as RecurrenceFrequency })}
+            onKeyDown={keepEscapeInChip}
+            aria-label="Recurrence frequency"
+          >
+            {FREQUENCY_OPTIONS.map((option) => (
+              <option key={option.frequency} value={option.frequency}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {view.dayOfWeek !== null && (
+        <label className="chip">
+          On
+          <select
+            value={String(view.dayOfWeek)}
+            onChange={(event) => onChange({ dayOfWeek: Number(event.target.value) })}
+            onKeyDown={keepEscapeInChip}
+            aria-label="Day of week"
+          >
+            {WEEKDAY_NAMES.map((name, day) => (
+              <option key={name} value={day}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {view.dayOfMonth !== null && (
+        <label className="chip">
+          On the
+          <select
+            value={String(view.dayOfMonth)}
+            onChange={(event) => onChange({ dayOfMonth: Number(event.target.value) })}
+            onKeyDown={keepEscapeInChip}
+            aria-label="Day of month"
+          >
+            {DAYS_OF_MONTH.map((day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {view.firstTaskNote && (
+        <p className="recurnote">
+          {view.firstTaskNote}
+          {view.clampNote && <span className="recurclamp">{view.clampNote}</span>}
+        </p>
+      )}
     </>
   );
 }
