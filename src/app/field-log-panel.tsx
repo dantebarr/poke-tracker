@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { OVERLAY_OPENER_PROPS, useOverlayDismiss } from "@/app/overlay-dismiss";
 import { isPendingTaskId } from "@/app/pending-task-id";
@@ -467,9 +467,9 @@ function useNewTaskDraft(defaults: { todayKey: string; labels: Label[] }) {
   // "follow the date" — instead of being copied in as defaults.
   const [recurringFields, setRecurring] = useState<RecurringFields>(newRecurringFields);
 
-  // Exactly `RecurringChips`' own props, so both surfaces spread it in rather
-  // than naming three more things apiece — the destructure below is already
-  // the longest line in this file.
+  // Exactly `RecurringOptions`' own props, so both surfaces spread it in
+  // rather than naming three more things apiece — the destructure below is
+  // already the longest line in this file.
   const recurring = {
     fields: recurringFields,
     view: describeRecurringForm({ ...recurringFields, dueDate }),
@@ -608,12 +608,12 @@ function AddTaskEditor({
             size={size}
             labels={labels}
             dateLabel={recurring.view.dateLabel}
-            afterDateChip={<RecurringChips {...recurring} />}
             onDueChange={setDueDate}
             onLabelChange={setLabelId}
             onSizeChange={setSize}
           />
-          <RecurringNote view={recurring.view} />
+          <RecurringToggle fields={recurring.fields} onChange={recurring.onChange} />
+          <RecurringOptions {...recurring} />
           <div className="editactions">
             <button type="button" className="ghostbtn" onClick={() => resolve(onLeaveOverlay)}>
               Cancel
@@ -714,12 +714,12 @@ export function AddTaskSheet({
             size={size}
             labels={labels}
             dateLabel={recurring.view.dateLabel}
-            afterDateChip={<RecurringChips {...recurring} />}
             onDueChange={setDueDate}
             onLabelChange={setLabelId}
             onSizeChange={setSize}
           />
-          <RecurringNote view={recurring.view} />
+          <RecurringToggle fields={recurring.fields} onChange={recurring.onChange} />
+          <RecurringOptions {...recurring} />
         </div>
         <button type="button" className="primary" disabled={!valid} onClick={submit}>
           Save
@@ -810,7 +810,6 @@ export function TaskFieldChips({
   size,
   labels,
   dateLabel = "Due",
-  afterDateChip,
   onDueChange,
   onLabelChange,
   onSizeChange,
@@ -826,13 +825,6 @@ export function TaskFieldChips({
    * three callers are unaffected and a rule has no edit surface to relabel.
    */
   dateLabel?: "Due" | "Starts";
-  /**
-   * Chips to put immediately after the date one, which is where the add
-   * surfaces' recurring toggle belongs: it is the control that changes what
-   * the date chip means, and a toggle sitting past Label and Size would leave
-   * the relabel looking like something the form did on its own.
-   */
-  afterDateChip?: ReactNode;
   onDueChange: (value: string) => void;
   onLabelChange: (value: string) => void;
   onSizeChange: (value: TaskSize) => void;
@@ -849,7 +841,6 @@ export function TaskFieldChips({
           aria-label={`${dateLabel} date`}
         />
       </label>
-      {afterDateChip}
       <label className="chip">
         Label
         <select
@@ -885,27 +876,70 @@ export function TaskFieldChips({
 }
 
 /**
- * The recurring toggle and, once it is on, the pickers it expands into (#15).
- * Rendered into the same `.chips` row as `TaskFieldChips` and only by the two
- * add surfaces: a **Recurrence** has no edit surface and no update grant, so
- * there is nothing for the task detail screen to show.
+ * The recurring toggle (#15): an icon button, and nothing else, sitting to the
+ * right of every other chip on the row. Only the two add surfaces render it —
+ * a **Recurrence** has no edit surface and no update grant, so there is
+ * nothing for the task detail screen to show.
  *
- * Everything shown here is decided by `describeRecurringForm` rather than in
- * this component — which pickers appear, and what day each defaults to —
- * because the suite has no DOM tests and logic left in here would be logic
- * left unproven. `RecurringNote` renders the rest of what it decided; it is a
- * separate component only because `.chips` lays it out as a full-width item
- * beneath these rather than as one of them.
+ * A button rather than a labelled checkbox chip, and last rather than beside
+ * the date: what it does is reveal a second row of settings, and a control
+ * that opens something reads better as a button at the end of a row than as a
+ * fourth thing to fill in halfway along it. `aria-pressed` is the state, since
+ * the row appearing is a consequence of recurring being on rather than a
+ * disclosure a trainer can leave open with recurring off.
+ */
+function RecurringToggle({
+  fields,
+  onChange,
+}: {
+  fields: RecurringFields;
+  onChange: (patch: Partial<RecurringFields>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="recurbtn"
+      aria-pressed={fields.recurring}
+      aria-label="Recurring"
+      title="Recurring"
+      onClick={() => onChange({ recurring: !fields.recurring })}
+    >
+      {/* Two arrows round a circle. Drawn rather than set in type: the chrome's
+          two faces are pixel fonts, neither of which carries a glyph like this,
+          so a character would land on whatever fallback each machine happened
+          to have. */}
+      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+        <path d="M3 8a5 5 0 0 1 8.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M12.4 2.3v3.4H9z" fill="currentColor" />
+        <path d="M13 8a5 5 0 0 1-8.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M3.6 13.7v-3.4H7z" fill="currentColor" />
+      </svg>
+    </button>
+  );
+}
+
+/**
+ * What the toggle opens: the frequency, the day it asks for, and the plain
+ * answer to "what am I about to get" — on their own row beneath the chips
+ * rather than among them. A rule is a different kind of thing from a due date
+ * and a size, and reading the two apart is what the separate row buys; mixed
+ * into one wrapping row they were four pills that looked alike and meant
+ * different things.
  *
- * The whole thing stays on the one form, so capture is still single-step
- * (`UI-CONSTRAINTS.md`): turning recurring on adds pickers beside the ones
- * already there rather than opening a second step to fill in.
+ * Everything shown is decided by `describeRecurringForm` rather than here —
+ * which pickers appear, what day each defaults to, the resolved first date,
+ * whether the clamping note applies — because the suite has no DOM tests and
+ * logic left in a component is logic left unproven.
+ *
+ * Still one step, so capture stays single-step (`UI-CONSTRAINTS.md`): the row
+ * opens in place on the same form, with nothing to navigate to and nothing
+ * hidden behind it.
  *
  * "Every" and "On" rather than "Repeats" and "Frequency": CONTEXT.md puts
  * *repeat* on the Recurrence's `_Avoid_` list, and the two chips read as the
  * sentence a trainer is composing — every week, on Wednesday.
  */
-function RecurringChips({
+function RecurringOptions({
   fields,
   view,
   onChange,
@@ -914,35 +948,25 @@ function RecurringChips({
   view: RecurringFormView;
   onChange: (patch: Partial<RecurringFields>) => void;
 }) {
+  if (!fields.recurring) return null;
+
   return (
-    <>
+    <div className="recuroptions">
       <label className="chip">
-        Recurring
-        <input
-          type="checkbox"
-          checked={fields.recurring}
-          onChange={(event) => onChange({ recurring: event.target.checked })}
+        Every
+        <select
+          value={fields.frequency}
+          onChange={(event) => onChange({ frequency: event.target.value as RecurrenceFrequency })}
           onKeyDown={keepEscapeInChip}
-          aria-label="Recurring"
-        />
+          aria-label="Every day, week or month"
+        >
+          {FREQUENCY_OPTIONS.map((option) => (
+            <option key={option.frequency} value={option.frequency}>
+              {option.name}
+            </option>
+          ))}
+        </select>
       </label>
-      {fields.recurring && (
-        <label className="chip">
-          Every
-          <select
-            value={fields.frequency}
-            onChange={(event) => onChange({ frequency: event.target.value as RecurrenceFrequency })}
-            onKeyDown={keepEscapeInChip}
-            aria-label="Every day, week or month"
-          >
-            {FREQUENCY_OPTIONS.map((option) => (
-              <option key={option.frequency} value={option.frequency}>
-                {option.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       {view.dayOfWeek !== null && (
         <label className="chip">
           On
@@ -977,23 +1001,13 @@ function RecurringChips({
           </select>
         </label>
       )}
-    </>
-  );
-}
-
-/**
- * The plain-language answer to "what am I about to get" (#15), on its own line
- * under the chips it explains. Separate from `RecurringChips` because it does
- * not sit among them: `.chips` lays it out as a full-width flex item, so it
- * has to be a sibling of the chips rather than one of them.
- */
-function RecurringNote({ view }: { view: RecurringFormView }) {
-  if (!view.firstTaskNote) return null;
-  return (
-    <p className="recurnote">
-      {view.firstTaskNote}
-      {view.clampNote && <span className="recurclamp">{view.clampNote}</span>}
-    </p>
+      {view.firstTaskNote && (
+        <p className="recurnote">
+          {view.firstTaskNote}
+          {view.clampNote && <span className="recurclamp">{view.clampNote}</span>}
+        </p>
+      )}
+    </div>
   );
 }
 

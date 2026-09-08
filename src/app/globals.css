@@ -1434,26 +1434,46 @@ span.title {
 .chip select option {
   color: #202020;
 }
-/* The recurring toggle. Sized rather than left at the browser's default so
-   the chip it sits in clears the 44px touch target `UI-CONSTRAINTS.md` asks
-   for once the mobile padding applies — the whole `<label>` is the target,
-   the box is only what it looks like. */
-.chip input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  /* The light green, not `--safari-edge`: the chip's own fill is
-     `rgba(0, 0, 0, .28)` over a dark panel, and the darkest token as a checked
-     fill would leave on and off telling each other apart by almost nothing.
-     The sheet re-themes it below, that surface being a light one. */
-  accent-color: var(--safari-light);
+/* The recurring toggle (#15): an icon on its own, last on the chip row. It
+   stretches to whatever height the chips settled on rather than setting one,
+   so it stays square-ish with them, and `min-width` is what carries the 44px
+   touch target `UI-CONSTRAINTS.md` asks for — there is no text here to widen
+   it the way a chip's name widens a chip. */
+.recurbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 44px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--safari-pale);
   cursor: pointer;
 }
-/* What the rule about to be created will actually do (#15). A full-width flex
-   item, so it wraps onto its own line beneath the chips it explains instead of
-   stretching the pill row; `.chips` only lays it out at all because it is a
-   sibling of them. Absent entirely until recurring is on, which is what keeps
-   the one-off add form's layout exactly as it was. */
+/* On, and unmistakably so: the row it opens is the only other sign, and that
+   row is below the fold of the eye's path across the chips. */
+.recurbtn[aria-pressed="true"] {
+  background: var(--safari-light);
+  color: var(--safari-edge);
+}
+/* The second row (#15) — everything a rule needs, kept apart from the fields
+   every task has. A full-width flex item, so it wraps onto its own line rather
+   than stretching the pill row; `.chips` lays it out at all only because it is
+   a sibling of the chips. Absent entirely until recurring is on, which is what
+   keeps the one-off add form's layout exactly as it was. */
+.recuroptions {
+  flex-basis: 100%;
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+/* What the rule about to be created will actually do. Full width again, so it
+   sits under the pickers it is the consequence of rather than beside them. */
 .recurnote {
   flex-basis: 100%;
   margin: 0;
@@ -1678,14 +1698,23 @@ span.title {
   .sheet .chip input[type="date"] {
     color-scheme: light;
   }
-  /* The sheet is a light surface, so the note and the toggle follow the chips
-     there rather than staying pale-on-dark. */
+  /* The sheet is a light surface, so the note, the toggle and the rule the
+     second row hangs under all follow the chips there rather than staying
+     pale-on-dark. */
   .sheet .recurnote {
     color: #404040;
     font-size: 8px;
   }
-  .sheet .chip input[type="checkbox"] {
-    accent-color: var(--safari-dark);
+  .sheet .recuroptions {
+    border-top-color: rgba(0, 0, 0, 0.12);
+  }
+  .sheet .recurbtn {
+    background: rgba(0, 0, 0, 0.08);
+    color: #404040;
+  }
+  .sheet .recurbtn[aria-pressed="true"] {
+    background: var(--safari-dark);
+    color: var(--safari-box);
   }
   .sheet .primary {
     align-self: stretch;
