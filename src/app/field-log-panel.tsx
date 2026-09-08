@@ -12,12 +12,12 @@ import {
   type NewTaskFields,
   type RecurringFields,
   type RecurringFormView,
-  WEEKDAY_NAMES,
 } from "@/app/recurring-fields";
 import { dismissedDraftOutcome, type EditableFields, newTaskFields, useTaskFields } from "@/app/task-edit-fields";
 import { dayKeyToUtcDate } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
 import type { RecurrenceFrequency } from "@/lib/recurrence/dates";
+import { recurrenceSentence, shortMonthNote, WEEKDAY_NAMES } from "@/lib/recurrence/wording";
 import {
   BUCKET_LABELS,
   BUCKET_ORDER,
@@ -26,7 +26,7 @@ import {
   sortForFieldLog,
   todayPoints,
 } from "@/lib/task/dates";
-import { TASK_SIZES, type Task, type TaskSize } from "@/lib/task/task";
+import { TASK_SIZES, type Task, type TaskRecurrence, type TaskSize } from "@/lib/task/task";
 import { capitalise } from "@/lib/text";
 
 const HEADER_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
@@ -70,6 +70,7 @@ export function FieldLogPanel({
   onReopen,
   onSave,
   onDelete,
+  onDeleteRule,
   onCreate,
   onOpenTask,
   onOpenAddForm,
@@ -88,6 +89,8 @@ export function FieldLogPanel({
   onReopen: (task: Task) => void;
   onSave: (task: Task, fields: EditableFields) => void;
   onDelete: (task: Task) => void;
+  /** The rule and every open task it generated (#16) — only reachable from a task that has one. */
+  onDeleteRule: (task: Task) => void;
   onCreate: (fields: NewTaskFields) => void;
   onOpenTask: (taskId: string) => void;
   onOpenAddForm: () => void;
@@ -174,6 +177,10 @@ export function FieldLogPanel({
                     onDelete={() => {
                       if (expandedTaskId === task.id) onLeaveOverlay();
                       onDelete(task);
+                    }}
+                    onDeleteRule={() => {
+                      if (expandedTaskId === task.id) onLeaveOverlay();
+                      onDeleteRule(task);
                     }}
                   />
                 ),
@@ -283,6 +290,7 @@ function OpenTaskRow({
   onComplete,
   onSave,
   onDelete,
+  onDeleteRule,
 }: {
   task: Task;
   labels: Label[];
@@ -294,9 +302,10 @@ function OpenTaskRow({
   onComplete: () => void;
   onSave: (fields: EditableFields) => void;
   onDelete: () => void;
+  onDeleteRule: () => void;
 }) {
   const { fields, edit, reset, flush } = useTaskFields(task, onSave);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState<PendingDelete>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
   const wasExpanded = useRef(expanded);
@@ -321,7 +330,7 @@ function OpenTaskRow({
     ref: rowRef,
     onDismiss: () => {
       if (confirmingDelete) {
-        setConfirmingDelete(false);
+        setConfirmingDelete(null);
         return;
       }
       onCollapse();
@@ -335,7 +344,7 @@ function OpenTaskRow({
   useEffect(() => {
     if (expanded && !wasExpanded.current) {
       reset(task);
-      setConfirmingDelete(false);
+      setConfirmingDelete(null);
     }
     wasExpanded.current = expanded;
   }, [expanded, task, reset]);
@@ -401,6 +410,7 @@ function OpenTaskRow({
 
       {expanded && (
         <div className="expander">
+          {task.recurrence && <RecurrenceMarker recurrence={task.recurrence} />}
           <textarea
             className="notes"
             placeholder="Notes"
@@ -422,12 +432,14 @@ function OpenTaskRow({
               <button type="button" className="ghostbtn" onClick={onCollapse}>
                 Close
               </button>
-              <DeleteControl
+              <DeleteControls
+                recurring={task.recurrence !== null}
                 confirming={confirmingDelete}
                 label="Delete"
-                onRequestConfirm={() => setConfirmingDelete(true)}
-                onConfirm={onDelete}
-                onCancel={() => setConfirmingDelete(false)}
+                onRequestConfirm={setConfirmingDelete}
+                onDelete={onDelete}
+                onDeleteRule={onDeleteRule}
+                onCancel={() => setConfirmingDelete(null)}
               />
             </div>
           </div>
@@ -732,41 +744,75 @@ export function AddTaskSheet({
 }
 
 /**
- * The delete control shared between an open row's desktop expander and the
- * mobile task detail screen (#29's `TaskDetailScreen`): a single button that
- * turns into a confirm/cancel pair rather than deleting on the first tap.
- * `confirmingWrapperClassName` wraps only the confirm/cancel pair — the
- * detail screen needs `.editactions` there for the same spacing the row's
- * expander already gets from its own, always-present `.editactions` div;
- * the row passes nothing, since the pair renders straight into that div.
+ * Which destructive verb a Ranger has armed, if either (#16). The two are one
+ * piece of state rather than a boolean each because they are alternatives: a
+ * loaded control should be the only one showing, so there is never a pair of
+ * confirm buttons on screen for a Ranger to mistake for each other.
  */
-export function DeleteControl({
+export type PendingDelete = null | "task" | "rule";
+
+/**
+ * The delete controls shared between an open row's desktop expander and the
+ * mobile task detail screen (#29's `TaskDetailScreen`): a button that turns
+ * into a confirm/cancel pair rather than deleting on the first tap.
+ *
+ * A task a **Recurrence** generated offers two of them (#16), on the task
+ * itself, since rules are reached through the tasks they generate and there is
+ * no recurrences screen to hunt one down on. "Delete this one" leaves the rule
+ * running — the watermark has passed that date, so it does not come back — and
+ * "Delete and stop recurring" takes the rule and every open task it generated.
+ * A task with no rule shows neither variant, only the plain `label`.
+ *
+ * The confirm words differ per verb rather than both saying "Confirm delete":
+ * arming the second one is the moment to be sure it is the rule and not the
+ * one task that is about to go.
+ *
+ * `confirmingWrapperClassName` wraps only the confirm/cancel pair — the detail
+ * screen needs `.editactions` there for the same spacing the row's expander
+ * already gets from its own, always-present `.editactions` div; the row passes
+ * nothing, since the pair renders straight into that div.
+ */
+export function DeleteControls({
+  recurring,
   confirming,
   label,
   confirmingWrapperClassName,
   onRequestConfirm,
-  onConfirm,
+  onDelete,
+  onDeleteRule,
   onCancel,
 }: {
-  confirming: boolean;
+  recurring: boolean;
+  confirming: PendingDelete;
   label: string;
   confirmingWrapperClassName?: string;
-  onRequestConfirm: () => void;
-  onConfirm: () => void;
+  onRequestConfirm: (pending: Exclude<PendingDelete, null>) => void;
+  onDelete: () => void;
+  onDeleteRule: () => void;
   onCancel: () => void;
 }) {
   if (!confirming) {
     return (
-      <button type="button" className="delbtn" onClick={onRequestConfirm}>
-        {label}
-      </button>
+      <>
+        <button type="button" className="delbtn" onClick={() => onRequestConfirm("task")}>
+          {recurring ? "Delete this one" : label}
+        </button>
+        {recurring && (
+          <button type="button" className="delbtn" onClick={() => onRequestConfirm("rule")}>
+            Delete and stop recurring
+          </button>
+        )}
+      </>
     );
   }
 
+  // Which verb was armed decides which one confirms, here rather than at each
+  // call site: both surfaces would otherwise carry the same branch, and the
+  // one that got it backwards would delete the wrong thing.
   const pair = (
     <>
-      <button type="button" className="delbtn" onClick={onConfirm}>
-        Confirm delete
+      <button type="button" className="delbtn" onClick={confirming === "rule" ? onDeleteRule : onDelete}>
+        {confirming === "rule" ? "Confirm delete and stop" : "Confirm delete"}
       </button>
       <button type="button" className="ghostbtn" onClick={onCancel}>
         Cancel
@@ -774,6 +820,55 @@ export function DeleteControl({
     </>
   );
   return confirmingWrapperClassName ? <div className={confirmingWrapperClassName}>{pair}</div> : pair;
+}
+
+/**
+ * What an opened task says about the rule that generated it (#16): its own
+ * line of text, in the desktop row's expander and on the mobile detail screen,
+ * telling a Ranger why the task is there and what happens after they complete
+ * it.
+ *
+ * Not the Notes box, which stays whatever the rule stamped onto the task —
+ * trainer-authored and untouched — and not the collapsed row either, which is
+ * unchanged: the marker belongs to the task a Ranger opened, not to every row
+ * in the log.
+ *
+ * The sentence comes from `recurrenceSentence`, which the add form's preview
+ * reads too, so a rule cannot be worded one way while it is being created and
+ * another afterwards. The glyph is the recurring toggle's own, for the same
+ * reason it is drawn rather than set in type there.
+ */
+export function RecurrenceMarker({ recurrence }: { recurrence: TaskRecurrence }) {
+  // The clamp travels with the sentence rather than being left behind on the
+  // add form: a task due on the 29th whose rule says "the 31st" is exactly the
+  // moment a trainer needs telling why, and this is the surface #16 asks to
+  // explain why the task is there.
+  const clampNote = shortMonthNote(recurrence.dayOfMonth);
+  return (
+    <p className="recurmarker">
+      <RecurringGlyph />
+      {recurrenceSentence(recurrence)}
+      {clampNote && <span className="recurclamp">{clampNote}</span>}
+    </p>
+  );
+}
+
+/**
+ * Two arrows round a circle — the mark of a rule, on the toggle that creates
+ * one and on the marker of a task one generated. Drawn rather than set in
+ * type: the chrome's two faces are pixel fonts, neither of which carries a
+ * glyph like this, so a character would land on whatever fallback each machine
+ * happened to have.
+ */
+function RecurringGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+      <path d="M3 8a5 5 0 0 1 8.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M12.4 2.3v3.4H9z" fill="currentColor" />
+      <path d="M13 8a5 5 0 0 1-8.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M3.6 13.7v-3.4H7z" fill="currentColor" />
+    </svg>
+  );
 }
 
 /**
@@ -906,16 +1001,7 @@ function RecurringToggle({
       title="Recurring"
       onClick={() => onChange({ recurring: !fields.recurring })}
     >
-      {/* Two arrows round a circle. Drawn rather than set in type: the chrome's
-          two faces are pixel fonts, neither of which carries a glyph like this,
-          so a character would land on whatever fallback each machine happened
-          to have. */}
-      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
-        <path d="M3 8a5 5 0 0 1 8.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M12.4 2.3v3.4H9z" fill="currentColor" />
-        <path d="M13 8a5 5 0 0 1-8.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M3.6 13.7v-3.4H7z" fill="currentColor" />
-      </svg>
+      <RecurringGlyph />
     </button>
   );
 }

@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 
 import { ADD_FORM_HREF, FIELD_LOG_HREF, resolveFieldView, taskHref } from "@/app/(app)/chrome/navigation";
 import { useOverlaySlot } from "@/app/(app)/chrome/overlay-slot";
-import { createRecurrenceAction } from "@/app/actions/recurrence";
+import { createRecurrenceAction, deleteRecurrenceAction } from "@/app/actions/recurrence";
 import {
   completeTaskAction,
   createTaskAction,
@@ -210,6 +210,40 @@ export function FieldScreen({
   }
 
   /**
+   * "Delete and stop recurring" (#16): the rule and every open task it
+   * generated, in one gesture from the task the Ranger already has open.
+   *
+   * The optimistic half removes every *open* task of that rule, not only the
+   * one in front of them — that is the point of the verb, and a field log that
+   * kept showing last week's overdue leftovers until the server answered would
+   * misreport what was just asked for. Done tasks are left alone here for the
+   * same reason the action leaves them alone in the database: they are the
+   * record that the work happened.
+   *
+   * A failure flashes on the task the Ranger acted from, the only row of the
+   * set they were actually looking at.
+   */
+  function handleDeleteRule(task: Task) {
+    const recurrenceId = task.recurrence?.id;
+    if (!recurrenceId) return;
+    const doomed = optimisticTasks.filter(
+      (candidate) => candidate.status === "open" && candidate.recurrence?.id === recurrenceId,
+    );
+    startTransition(async () => {
+      for (const open of doomed) {
+        dispatch({ type: "delete", id: open.id });
+      }
+      try {
+        const formData = new FormData();
+        formData.set("id", recurrenceId);
+        await deleteRecurrenceAction(formData);
+      } catch {
+        flashError(task.id);
+      }
+    });
+  }
+
+  /**
    * One entry point for both writes a new task's form can make (#15). Which
    * one it is comes from `describeRecurringForm`'s `rule` rather than from the
    * form's own toggle: the rule is null while the draft cannot make one, so
@@ -239,6 +273,12 @@ export function FieldScreen({
         notes: normalizeNotes(fields.notes),
         completedAt: null,
         label,
+        // No marker on the optimistic row, even when a rule is on its way:
+        // the rule has no id until the server answers, and the row this
+        // stands in for is replaced by the real one moments later. Claiming a
+        // recurrence here would mean rendering a delete-and-stop verb pointed
+        // at a rule that does not exist yet.
+        recurrence: null,
       };
       dispatch({ type: "add", task: draft });
       try {
@@ -333,6 +373,7 @@ export function FieldScreen({
         onReopen={handleReopen}
         onSave={handleSave}
         onDelete={handleDelete}
+        onDeleteRule={handleDeleteRule}
         onCreate={handleCreate}
         onOpenTask={(taskId) => openOverlay(taskHref(taskId))}
         onOpenAddForm={() => openOverlay(ADD_FORM_HREF)}
@@ -363,6 +404,10 @@ export function FieldScreen({
                 onDelete={() => {
                   leaveOverlay();
                   handleDelete(detailTask);
+                }}
+                onDeleteRule={() => {
+                  leaveOverlay();
+                  handleDeleteRule(detailTask);
                 }}
               />
             )}

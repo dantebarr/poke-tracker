@@ -121,6 +121,33 @@ export async function listRecurrences(
 }
 
 /**
+ * Deletes a rule. Row-level security refuses this if it belongs to another
+ * trainer — this throws rather than silently deleting nothing, the same way
+ * `deleteTask` does.
+ *
+ * The tasks it generated are not taken with it: `tasks.recurrence_id` is `on
+ * delete set null`, so what survives this is intact and independent. Clearing
+ * the open ones is a separate step, and necessarily an earlier one
+ * (`deleteOpenTasksForRecurrence`) — after this there is no reference left to
+ * find them by. The two together are the "delete and stop recurring" verb.
+ */
+export async function deleteRecurrence(client: SupabaseClient, id: string): Promise<void> {
+  const { data, error } = await client
+    .from("recurrence")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new DatabaseError("Deleting recurrence", error);
+  }
+  if (!data) {
+    throw new Error("Deleting recurrence: no matching rule");
+  }
+}
+
+/**
  * Moves the watermark to the last date generation has considered. Needs a
  * service-role client: `recurrence` has no update grant at all, so this is
  * out of reach of a trainer's own JWT by design.
