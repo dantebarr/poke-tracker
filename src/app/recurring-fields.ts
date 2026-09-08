@@ -29,6 +29,13 @@ import { firstDueDate, type RecurrenceFrequency, type RecurrenceRule } from "@/l
  * picked. Storing the default as absence rather than copying it in is what
  * lets changing the date move the default while leaving an override alone —
  * a copied-in default could only do one of those.
+ *
+ * The consequence, worth naming because a trainer can reach it in one click:
+ * *touching* the picker fixes the day even if what they picked is the value
+ * already shown, and following the date again means switching frequency away
+ * and back. That is the right way round — a trainer who opened the picker at
+ * all was thinking about the day, and a chosen value that silently moved
+ * later would be the worse surprise.
  */
 export type RecurringFields = {
   recurring: boolean;
@@ -90,7 +97,8 @@ export type RecurringFormView = {
   dayOfMonth: number | null;
   /** What would be created, ready to submit; null while there is nothing to create. */
   rule: RecurrenceRule | null;
-  firstTask: string | null;
+  /** The day key the rule's first task falls on, not a task — null while there is no rule. */
+  firstTaskDate: string | null;
   firstTaskNote: string | null;
   clampNote: string | null;
 };
@@ -99,6 +107,12 @@ export type RecurringFormView = {
 // own: this string is rendered by the server and again by the browser at
 // hydration, and a browser whose default locale disagrees would rewrite it
 // after first paint. The day key is already the trainer's own day.
+//
+// "Monday, Jan 15" rather than #15's illustrative "Wednesday 9 Sep": the
+// criterion is that the date reads in plain language, and every other date in
+// this app is already month-first (`@/lib/task/dates`'s own formatters). One
+// form saying the day first would read as a different app's, which is a worse
+// outcome than departing from a sketch in the ticket.
 const FIRST_TASK_FORMAT = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
   month: "short",
@@ -160,60 +174,71 @@ export function newTaskFormData(fields: NewTaskFields, rule: RecurrenceRule | nu
   return formData;
 }
 
+// What an undated form's pickers show. Only reachable by clearing the date
+// chip, which `newTaskFields` fills in and Save refuses without — the pickers
+// stay on screen rather than vanishing with the date, so no field the form is
+// offering becomes unreachable (`UI-CONSTRAINTS.md`).
+const UNDATED_DAY_OF_WEEK = 0;
+const UNDATED_DAY_OF_MONTH = 1;
+
 /**
  * The whole of what the form shows once the toggle is on.
  *
- * `startsOn` is the date chip's own value — the same field the form was
- * already filling in, which is why the chip is relabelled rather than a second
- * date being asked for. It can be blank, a trainer being free to clear it, and
- * everything downstream of it then has nothing to say: Save is refused in that
- * state regardless, so a preview guessed from a missing date would be the only
- * thing on the form claiming to know something it does not.
+ * Takes the form's own `dueDate` — the chip is relabelled rather than a second
+ * date being asked for, so the one field means "due" or "starts" depending on
+ * this very toggle, and translating it into a rule's `startsOn` happens here,
+ * once, rather than at each call site.
+ *
+ * It can be blank, a trainer being free to clear it, and there is then no rule
+ * and nothing to preview: Save is refused in that state regardless, so a first
+ * date guessed from a missing one would be the only thing on the form claiming
+ * to know something it does not.
  */
 export function describeRecurringForm({
   recurring,
   frequency,
   dayOfWeek,
   dayOfMonth,
-  startsOn,
-}: RecurringFields & { startsOn: string }): RecurringFormView {
+  dueDate,
+}: RecurringFields & { dueDate: string }): RecurringFormView {
   if (!recurring) {
     return {
       dateLabel: "Due",
       dayOfWeek: null,
       dayOfMonth: null,
       rule: null,
-      firstTask: null,
+      firstTaskDate: null,
       firstTaskNote: null,
       clampNote: null,
     };
   }
 
-  const dated = startsOn !== "";
+  const dated = dueDate !== "";
   // Resolved, not merely displayed: the check constraints require exactly the
   // day its frequency calls for and refuse the other (ADR-0001), so a weekly
   // rule submitted with a null day of week would be rejected by the database
   // rather than quietly defaulted by it.
-  const weekly = frequency === "weekly";
-  const monthly = frequency === "monthly";
-  const resolvedDayOfWeek = weekly
-    ? (dayOfWeek ?? (dated ? dayKeyToUtcDate(startsOn).getUTCDay() : null))
-    : null;
-  const resolvedDayOfMonth = monthly ? (dayOfMonth ?? (dated ? dayKeyParts(startsOn).day : null)) : null;
-
-  const rule =
-    dated && (!weekly || resolvedDayOfWeek !== null) && (!monthly || resolvedDayOfMonth !== null)
-      ? { frequency, dayOfWeek: resolvedDayOfWeek, dayOfMonth: resolvedDayOfMonth, startsOn }
+  const resolvedDayOfWeek =
+    frequency === "weekly"
+      ? (dayOfWeek ?? (dated ? dayKeyToUtcDate(dueDate).getUTCDay() : UNDATED_DAY_OF_WEEK))
       : null;
-  const firstTask = rule && firstDueDate(rule);
+  const resolvedDayOfMonth =
+    frequency === "monthly"
+      ? (dayOfMonth ?? (dated ? dayKeyParts(dueDate).day : UNDATED_DAY_OF_MONTH))
+      : null;
+
+  const rule = dated
+    ? { frequency, dayOfWeek: resolvedDayOfWeek, dayOfMonth: resolvedDayOfMonth, startsOn: dueDate }
+    : null;
+  const firstTaskDate = rule && firstDueDate(rule);
 
   return {
     dateLabel: "Starts",
     dayOfWeek: resolvedDayOfWeek,
     dayOfMonth: resolvedDayOfMonth,
     rule,
-    firstTask,
-    firstTaskNote: firstTask && `First task: ${FIRST_TASK_FORMAT.format(dayKeyToUtcDate(firstTask))}`,
+    firstTaskDate,
+    firstTaskNote: firstTaskDate && `First task: ${FIRST_TASK_FORMAT.format(dayKeyToUtcDate(firstTaskDate))}`,
     clampNote:
       resolvedDayOfMonth !== null && resolvedDayOfMonth > SHORTEST_MONTH
         ? `the ${ordinal(resolvedDayOfMonth)}, or the last day in shorter months`

@@ -221,19 +221,19 @@ export function FieldScreen({
    * necessarily a date the rule falls on — and the row that is about to arrive
    * is the one generation writes. Showing the anchor instead would put the row
    * in the wrong bucket for the half-second before the server answers, and in
-   * the case a start date is not itself a date of the series, on a day no task
+   * the case a start date is not itself a date the rule falls on, on a day no task
    * will ever exist.
    */
   function handleCreate(fields: NewTaskFields) {
     const label = labels.find((candidate) => candidate.id === fields.labelId);
     if (!label) return;
-    const { rule, firstTask } = describeRecurringForm({ ...fields, startsOn: fields.dueDate });
+    const { rule, firstTaskDate } = describeRecurringForm(fields);
     startTransition(async () => {
       const tempId = `${PENDING_ID_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const draft: Task = {
         id: tempId,
         title: fields.title,
-        dueDate: firstTask ?? fields.dueDate,
+        dueDate: firstTaskDate ?? fields.dueDate,
         status: "open",
         size: fields.size,
         notes: normalizeNotes(fields.notes),

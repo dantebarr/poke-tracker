@@ -297,7 +297,7 @@ describe("what the add form submits", () => {
       ...newRecurringFields(),
       ...fields,
     };
-    const { rule } = describeRecurringForm({ ...complete, startsOn: complete.dueDate });
+    const { rule } = describeRecurringForm(complete);
     const formData = newTaskFormData(complete, rule);
     return rule ? createRecurrenceAction(formData) : createTaskAction(formData);
   }

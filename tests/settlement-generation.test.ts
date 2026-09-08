@@ -207,7 +207,7 @@ describe("the tasks a recurrence owes arrive on the way in", () => {
         labelId: babylon.id,
         size: "medium",
         frequency: "weekly",
-        // The weekday the series already starts on, so its dates are the start
+        // The weekday the rule already starts on, so its dates are the start
         // date and every seventh day after it.
         dayOfWeek: String(dayKeyToUtcDate(startsOn).getUTCDay()),
       }),

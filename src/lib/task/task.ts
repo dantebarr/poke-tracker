@@ -180,7 +180,7 @@ export async function createGeneratedTasks(
   }
   // Oldest date first. Postgres returns an insert's rows in whatever order it
   // wrote them, which is not the order they were given, and a backfill reads
-  // as a series or it reads as nothing.
+  // in order or it reads as nothing.
   return data.map(toTask).sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
 }
 

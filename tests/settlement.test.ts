@@ -170,7 +170,6 @@ describe("triggering settlement", () => {
     // zone in effect at INSERT rather than the one forced afterwards. What the
     // trigger itself does is covered directly in trainer-time-zone.test.ts.
     const before = await trainerRow(trainer.id);
-    expect(before.last_settled_day).toBe(dayKey(1));
 
     await settleOnEntry();
 

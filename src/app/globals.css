@@ -1442,7 +1442,11 @@ span.title {
   width: 20px;
   height: 20px;
   margin: 0;
-  accent-color: var(--safari-edge);
+  /* The light green, not `--safari-edge`: the chip's own fill is
+     `rgba(0, 0, 0, .28)` over a dark panel, and the darkest token as a checked
+     fill would leave on and off telling each other apart by almost nothing.
+     The sheet re-themes it below, that surface being a light one. */
+  accent-color: var(--safari-light);
   cursor: pointer;
 }
 /* What the rule about to be created will actually do (#15). A full-width flex
@@ -1674,11 +1678,14 @@ span.title {
   .sheet .chip input[type="date"] {
     color-scheme: light;
   }
-  /* The sheet is a light surface, so the note follows the chips there rather
-     than staying pale-on-dark. */
+  /* The sheet is a light surface, so the note and the toggle follow the chips
+     there rather than staying pale-on-dark. */
   .sheet .recurnote {
     color: #404040;
     font-size: 8px;
+  }
+  .sheet .chip input[type="checkbox"] {
+    accent-color: var(--safari-dark);
   }
   .sheet .primary {
     align-self: stretch;
