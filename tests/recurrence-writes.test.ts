@@ -34,8 +34,8 @@ vi.mock("next/cache", () => ({
 }));
 
 const { ensureTrainer } = await import("@/app/actions/trainer");
-const { createRecurrenceAction } = await import("@/app/actions/recurrence");
-const { createTaskAction } = await import("@/app/actions/task");
+const { createRecurrenceAction, deleteRecurrenceAction } = await import("@/app/actions/recurrence");
+const { completeTaskAction, createTaskAction, deleteTaskAction } = await import("@/app/actions/task");
 const { describeRecurringForm, newRecurringFields, newTaskFormData } = await import("@/app/recurring-fields");
 const { generateTasks } = await import("@/lib/recurrence/generation");
 const { listRecurrences } = await import("@/lib/recurrence/recurrence");
@@ -450,7 +450,146 @@ describe("one task per rule per due date", () => {
   });
 });
 
-describe("deleting a rule", () => {
+/**
+ * The three verbs on a generated task (#16). Complete is not retested here —
+ * it is ordinary completion, already covered by tests/task-writes.test.ts, and
+ * the rule is untouched by it, which the delete-and-stop test below relies on
+ * to have a done task to leave behind.
+ */
+describe("the verbs on a generated task", () => {
+  /** A daily rule with a backfill behind it: 15th through 18th, four open tasks. */
+  async function dailyRuleWithBackfill(trainerId: string, labelId: string) {
+    await createRecurrenceAction(
+      formData({
+        title: "Water the plants",
+        startsOn: MONDAY,
+        labelId,
+        size: "small",
+        frequency: "daily",
+      }),
+    );
+    const [rule] = await listRecurrences(adminClient(), trainerId);
+    await generateTasks(adminClient(), rule, "2024-01-18");
+    return rule;
+  }
+
+  it("surfaces the rule alongside the task it generated, and nothing alongside one typed by hand", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+
+    const { recurrence } = await createRecurrenceAction(
+      formData({
+        title: "Bins out",
+        startsOn: MONDAY,
+        labelId: personal.id,
+        size: "small",
+        frequency: "weekly",
+        dayOfWeek: String(WEDNESDAY),
+      }),
+    );
+    await createTaskAction(
+      formData({ title: "Just the once", dueDate: MONDAY, labelId: personal.id, size: "small" }),
+    );
+
+    const tasks = await currentTasks(trainer.id);
+    const generated = tasks.find((task) => task.title === "Bins out");
+    const handTyped = tasks.find((task) => task.title === "Just the once");
+
+    expect(generated?.recurrence).toEqual({
+      id: recurrence.id,
+      frequency: "weekly",
+      dayOfWeek: WEDNESDAY,
+      dayOfMonth: null,
+      startsOn: MONDAY,
+    });
+    expect(handTyped?.recurrence).toBeNull();
+  });
+
+  it("deletes just this one, leaving the rule running and the deleted date gone for good", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+    const rule = await dailyRuleWithBackfill(trainer.id, personal.id);
+
+    const wednesday = (await currentTasks(trainer.id)).find((task) => task.dueDate === "2024-01-17");
+    await deleteTaskAction(formData({ id: wednesday!.id }));
+
+    // The rule is untouched…
+    const [survivor] = await listRecurrences(adminClient(), trainer.id);
+    expect(survivor.id).toBe(rule.id);
+
+    // …and it carries on from where the watermark already reached, so the
+    // deleted date does not come back with the next one.
+    const next = await generateTasks(adminClient(), survivor, "2024-01-19");
+    expect(next.map((task) => task.dueDate)).toEqual(["2024-01-19"]);
+
+    const dates = (await currentTasks(trainer.id)).map((task) => task.dueDate);
+    expect(dates).toEqual(["2024-01-15", "2024-01-16", "2024-01-18", "2024-01-19"]);
+  });
+
+  it("deletes and stops: the rule, the pending task and every overdue leftover", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+    const rule = await dailyRuleWithBackfill(trainer.id, personal.id);
+
+    const done = (await currentTasks(trainer.id)).find((task) => task.dueDate === MONDAY);
+    await completeTaskAction(formData({ id: done!.id }));
+
+    await deleteRecurrenceAction(formData({ id: rule.id }));
+
+    expect(await storedRecurrence(rule.id)).toBeNull();
+    expect(await listRecurrences(adminClient(), trainer.id)).toEqual([]);
+
+    // The done task is the only survivor, and carries a null reference — from
+    // here it is indistinguishable from a task typed by hand.
+    const remaining = await currentTasks(trainer.id);
+    expect(remaining.map((task) => task.id)).toEqual([done!.id]);
+    expect(remaining[0].status).toBe("done");
+    expect(remaining[0].recurrence).toBeNull();
+  });
+
+  it("leaves a second rule's tasks alone", async () => {
+    const trainer = await signedInTrainer(ALLOW_LISTED);
+    const [personal] = await labelsFor(trainer.id);
+    const rule = await dailyRuleWithBackfill(trainer.id, personal.id);
+    await createRecurrenceAction(
+      formData({
+        title: "Bins out",
+        startsOn: MONDAY,
+        labelId: personal.id,
+        size: "small",
+        frequency: "weekly",
+        dayOfWeek: String(WEDNESDAY),
+      }),
+    );
+
+    await deleteRecurrenceAction(formData({ id: rule.id }));
+
+    const remaining = await currentTasks(trainer.id);
+    expect(remaining.map((task) => task.title)).toEqual(["Bins out"]);
+  });
+
+  it("refuses a rival's delete, and takes none of the tasks with it", async () => {
+    const ash = await signedInTrainer(ALLOW_LISTED);
+    const [ashLabel] = await labelsFor(ash.id);
+    const rule = await dailyRuleWithBackfill(ash.id, ashLabel.id);
+
+    const rivalJar = createCookieJar();
+    await signedInTrainer(RIVAL, rivalJar);
+
+    await expect(as(rivalJar, () => deleteRecurrenceAction(formData({ id: rule.id })))).rejects.toThrow();
+
+    expect((await storedRecurrence(rule.id))?.task).toBe("Water the plants");
+    expect(await currentTasks(ash.id)).toHaveLength(4);
+  });
+});
+
+/**
+ * The row on its own, not the verb: what the foreign key does when a rule is
+ * deleted and nothing has cleared its tasks first. The verb above is what
+ * clears them; this is the guarantee underneath it, and the reason a done task
+ * survives one.
+ */
+describe("deleting a rule row directly", () => {
   it("leaves the tasks it generated in place, pointing at nothing", async () => {
     const trainer = await signedInTrainer(ALLOW_LISTED);
     const [personal] = await labelsFor(trainer.id);

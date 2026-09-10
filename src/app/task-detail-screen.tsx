@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { DeleteControl, TaskFieldChips } from "@/app/field-log-panel";
+import { DeleteControls, type PendingDelete, RecurrenceMarker, TaskFieldChips } from "@/app/field-log-panel";
 import { useOverlayDismiss } from "@/app/overlay-dismiss";
 import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
@@ -42,15 +42,17 @@ export function TaskDetailScreen({
   onCancel,
   onSave,
   onDelete,
+  onDeleteRule,
 }: {
   task: Task;
   labels: Label[];
   onCancel: () => void;
   onSave: (fields: EditableFields) => void;
   onDelete: () => void;
+  onDeleteRule: () => void;
 }) {
   const { fields, edit } = useTaskFields(task);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState<PendingDelete>(null);
 
   /**
    * Escape leaves, and leaves the way Cancel does — discarding, per the
@@ -69,7 +71,7 @@ export function TaskDetailScreen({
     outsidePointer: false,
     onDismiss: () => {
       if (confirmingDelete) {
-        setConfirmingDelete(false);
+        setConfirmingDelete(null);
         return;
       }
       onCancel();
@@ -93,6 +95,7 @@ export function TaskDetailScreen({
           onChange={(event) => edit({ title: event.target.value })}
           aria-label="Title"
         />
+        {task.recurrence && <RecurrenceMarker recurrence={task.recurrence} />}
         <textarea
           className="notes"
           placeholder="Notes (optional)"
@@ -111,13 +114,15 @@ export function TaskDetailScreen({
             onSizeChange={(value) => edit({ size: value })}
           />
         </div>
-        <DeleteControl
+        <DeleteControls
+          recurring={task.recurrence !== null}
           confirming={confirmingDelete}
           label="Delete task"
           confirmingWrapperClassName="editactions"
-          onRequestConfirm={() => setConfirmingDelete(true)}
-          onConfirm={onDelete}
-          onCancel={() => setConfirmingDelete(false)}
+          onRequestConfirm={setConfirmingDelete}
+          onDelete={onDelete}
+          onDeleteRule={onDeleteRule}
+          onCancel={() => setConfirmingDelete(null)}
         />
       </div>
       <div className="detailfoot">

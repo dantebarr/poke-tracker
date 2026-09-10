@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { firstDueDate, type RecurrenceFrequency } from "@/lib/recurrence/dates";
 import { generateTasks } from "@/lib/recurrence/generation";
-import { createRecurrence, type Recurrence } from "@/lib/recurrence/recurrence";
+import { createRecurrence, deleteRecurrence, type Recurrence } from "@/lib/recurrence/recurrence";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service";
-import type { Task, TaskSize } from "@/lib/task/task";
+import { deleteOpenTasksForRecurrence, type Task, type TaskSize } from "@/lib/task/task";
 import { requireTrainerId } from "@/lib/trainer/session";
 
 /**
@@ -118,4 +118,45 @@ export async function createRecurrenceAction(
 
   revalidatePath("/", "layout");
   return { recurrence, tasks };
+}
+
+/**
+ * "Delete and stop recurring" (#16): the rule goes, and with it every open task
+ * it generated — the pending one and any overdue leftovers, so ending an
+ * obligation actually clears the field log of it.
+ *
+ * Done tasks are never touched. They keep the work a trainer actually did, and
+ * come out of this carrying a null recurrence reference — thereafter
+ * indistinguishable from a task typed by hand.
+ *
+ * Order is load-bearing: the open tasks are cleared first, while they still
+ * name the rule. `tasks.recurrence_id` is `on delete set null`, so deleting the
+ * rule first would strand them with nothing to find them by.
+ *
+ * Both writes go through the trainer's own JWT, so row-level security is what
+ * refuses a rule that is not theirs: a rival's first step matches no rows at
+ * all, and the second throws.
+ *
+ * The two are not one transaction, and the order is chosen for the failure as
+ * much as for the success. If the second write fails, the tasks are gone and
+ * the rule lives on — visibly, because it goes on generating, so the next task
+ * it produces offers this verb again and the retry costs one tap. The other
+ * order would leave tasks behind with nothing naming them and no way to find
+ * them but by hand. A stored procedure would make it atomic and is the right
+ * answer if this ever needs to be; it is not worth a migration for a failure
+ * that heals itself.
+ *
+ * Deleting the *single* task in front of the trainer is not here — that is
+ * `deleteTaskAction`, unchanged and unaware of rules, which is exactly why the
+ * rule carries on after it: the watermark has already passed that date.
+ */
+export async function deleteRecurrenceAction(formData: FormData): Promise<void> {
+  const client = await createSupabaseServerClient();
+  await requireTrainerId(client);
+
+  const id = requiredField(formData, "id");
+  await deleteOpenTasksForRecurrence(client, id);
+  await deleteRecurrence(client, id);
+
+  revalidatePath("/", "layout");
 }

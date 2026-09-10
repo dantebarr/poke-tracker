@@ -1,6 +1,7 @@
 import type { EditableFields } from "@/app/task-edit-fields";
 import { dayKeyParts, dayKeyToUtcDate } from "@/lib/day/day";
 import { firstDueDate, type RecurrenceFrequency, type RecurrenceRule } from "@/lib/recurrence/dates";
+import { shortMonthNote } from "@/lib/recurrence/wording";
 
 /**
  * The recurring half of the add form (#15), as a plain module: what the two
@@ -60,23 +61,6 @@ export function newRecurringFields(): RecurringFields {
  */
 export type NewTaskFields = EditableFields & RecurringFields;
 
-/**
- * The weekly picker's options, indexed by the day number the rest of the
- * system counts in: 0 is Sunday, matching `Date`'s `getUTCDay` and Postgres's
- * `extract(dow)` (`@/lib/recurrence/dates`). Written out rather than formatted
- * so that the index and the name cannot drift apart, which a locale-driven
- * list is one `Intl` change away from doing.
- */
-export const WEEKDAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
 /** The monthly picker's options. The 29th through the 31st are offered and clamped, not withheld. */
 export const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, index) => index + 1);
 
@@ -119,24 +103,6 @@ const FIRST_TASK_FORMAT = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: "UTC",
 });
-
-// February is the short month that matters, but 30 and 31 are worth naming
-// too — a rule on the 31st skips four months a year without this.
-const SHORTEST_MONTH = 28;
-
-function ordinal(day: number): string {
-  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
-  switch (day % 10) {
-    case 1:
-      return `${day}st`;
-    case 2:
-      return `${day}nd`;
-    case 3:
-      return `${day}rd`;
-    default:
-      return `${day}th`;
-  }
-}
 
 /**
  * What the add form submits, for whichever of the two writes it turned out to
@@ -239,9 +205,6 @@ export function describeRecurringForm({
     rule,
     firstTaskDate,
     firstTaskNote: firstTaskDate && `First task: ${FIRST_TASK_FORMAT.format(dayKeyToUtcDate(firstTaskDate))}`,
-    clampNote:
-      resolvedDayOfMonth !== null && resolvedDayOfMonth > SHORTEST_MONTH
-        ? `the ${ordinal(resolvedDayOfMonth)}, or the last day in shorter months`
-        : null,
+    clampNote: shortMonthNote(resolvedDayOfMonth),
   };
 }

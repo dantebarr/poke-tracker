@@ -1497,6 +1497,41 @@ span.title {
   display: block;
   opacity: 0.72;
 }
+/* What an opened task says about the rule that generated it (#16) — the same
+   words the add form promised, on a line of its own directly under the title,
+   in both the desktop expander and the mobile detail screen. Its own line and
+   not the notes box: the notes are whatever the rule stamped, and are the
+   trainer's to edit.
+
+   The glyph is the recurring toggle's, so the marker and the control that
+   creates one read as the same mechanic; `baseline` keeps it sitting on the
+   line of the text rather than riding above it. */
+.recurmarker {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  line-height: 1.7;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+}
+/* The detail screen's own column gap already spaces this from the notes box;
+   the expander is a plain block, so it needs the space written out. */
+.expander .recurmarker {
+  margin-bottom: 8px;
+}
+.recurmarker svg {
+  flex: none;
+  align-self: center;
+}
+/* The clamp is a block inside a flex line, so it needs a line of its own
+   rather than the `display: block` that does the job inside `.recurnote`. */
+.recurmarker .recurclamp {
+  flex-basis: 100%;
+}
 .delbtn {
   font-family: var(--font-pixel), monospace;
   font-size: 8px;

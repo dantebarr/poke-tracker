@@ -198,10 +198,13 @@ export async function moveLabel(
 }
 
 /**
- * Deletes a label. Refused by the database while a task still references it —
- * `tasks.label_id` takes the default `no action` on delete, so the guard is the
- * foreign key itself and there is nothing to check here — `tests/task-list.test.ts`
- * asserts the refusal through `deleteLabelAction`.
+ * Deletes a label. Refused by the database while a task — or a **Recurrence** —
+ * still references it: `tasks.label_id` and `recurrence.label_id` both take the
+ * default `no action` on delete, so the guard is the foreign key itself and
+ * there is nothing to check here. `tests/task-list.test.ts` asserts the refusal
+ * for a task through `deleteLabelAction`, and `tests/recurrence-writes.test.ts`
+ * for a rule, which is what keeps a live rule from being left pointing at
+ * nothing.
  */
 export async function deleteLabel(client: SupabaseClient, id: string): Promise<void> {
   const { error } = await client.from("label").delete().eq("id", id);

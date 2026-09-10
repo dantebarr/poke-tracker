@@ -5,6 +5,7 @@ import {
   newRecurringFields,
   type RecurringFields,
 } from "@/app/recurring-fields";
+import { recurrenceSentence } from "@/lib/recurrence/wording";
 
 /**
  * Pure logic, no database — these run without the local Supabase stack even
@@ -147,6 +148,19 @@ describe("the first task a trainer is about to get", () => {
 
     expect(today.firstTaskNote).toBe("First task: Monday, Jan 15");
     expect(nextWeek.firstTaskNote).toBe("First task: Sunday, Jan 21");
+  });
+});
+
+describe("the rule the form hands over", () => {
+  it("is worded, by the marker on the task it generates, in terms of this same resolved rule (#16)", () => {
+    // The preview shows the first date and the marker shows the rule, so the
+    // two never render the same string — but both resolve it with
+    // `firstDueDate`, which is what keeps them from disagreeing about which
+    // day the rule actually falls on.
+    const view = describeRecurringForm({ ...on({ frequency: "weekly", dayOfWeek: WEDNESDAY }), dueDate: MONDAY });
+
+    expect(recurrenceSentence(view.rule!)).toBe("Every Wednesday");
+    expect(view.firstTaskNote).toBe("First task: Wednesday, Jan 17");
   });
 });
 
