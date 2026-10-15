@@ -21,21 +21,27 @@
  * orders by the trainer's own label order first, due date second, title third,
  * so a bucket reads as one area of life at a time rather than an interleave of
  * every label.
+ *
+ * The buckets themselves changed in #22: the single Later bucket is gone, and
+ * every due date from today on gets a bucket of its own, with no cut-off — a
+ * window would only bring the Later pile back at its edge. Overdue alone still
+ * gathers many dates into one, because it is an alarm rather than a calendar.
  */
 
-import { dayKeyInTimeZone, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
+import { dayKeyInTimeZone, dayKeyParts, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
 import { effortPoints, type TaskSize } from "@/lib/task/task";
 
-export type Bucket = "overdue" | "today" | "tomorrow" | "later";
-
-export const BUCKET_ORDER: Bucket[] = ["overdue", "today", "tomorrow", "later"];
-
-export const BUCKET_LABELS: Record<Bucket, string> = {
-  overdue: "Overdue",
-  today: "Today",
-  tomorrow: "Tomorrow",
-  later: "Later",
-};
+/**
+ * One heading's worth of the field log. `key` is stable across renders —
+ * `"overdue"`, or the due date's day key — and `overdue` marks the only
+ * bucket styled as an alarm (#7), so callers never compare labels to find it.
+ */
+export interface Bucket<T> {
+  key: string;
+  label: string;
+  overdue: boolean;
+  tasks: T[];
+}
 
 const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
 const MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -74,23 +80,48 @@ export function parseDateOnly(dateStr: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function getBucket(dueDate: string, todayKey: string): Bucket {
-  const diff = daysBetweenKeys(todayKey, dueDate);
-  if (diff < 0) return "overdue";
-  if (diff === 0) return "today";
-  if (diff === 1) return "tomorrow";
-  return "later";
+/**
+ * Open tasks as the field log reads them: Overdue (every date before today),
+ * then one bucket per due date in date order — Today and Tomorrow by name,
+ * the rest by date. Empty buckets are never returned.
+ *
+ * Input order is kept within each bucket, so `sortForFieldLog` runs first;
+ * the buckets' own order comes from their dates, not from the input, since
+ * that sort puts label ahead of due date.
+ */
+export function bucketOpenTasks<T extends { dueDate: string }>(tasks: T[], todayKey: string): Bucket<T>[] {
+  const overdue: Bucket<T> = { key: "overdue", label: "Overdue", overdue: true, tasks: [] };
+  const byDay = new Map<string, Bucket<T>>();
+
+  for (const task of tasks) {
+    const diff = daysBetweenKeys(todayKey, task.dueDate);
+    if (diff < 0) {
+      overdue.tasks.push(task);
+      continue;
+    }
+
+    let bucket = byDay.get(task.dueDate);
+    if (!bucket) {
+      bucket = { key: task.dueDate, label: dueDayLabel(task.dueDate, todayKey, diff), overdue: false, tasks: [] };
+      byDay.set(task.dueDate, bucket);
+    }
+    bucket.tasks.push(task);
+  }
+
+  const days = Array.from(byDay.values()).sort((a, b) => (a.key < b.key ? -1 : 1));
+  return overdue.tasks.length > 0 ? [overdue, ...days] : days;
 }
 
-export function bucketOpenTasks<T extends { dueDate: string }>(
-  tasks: T[],
-  todayKey: string,
-): Record<Bucket, T[]> {
-  const buckets = Object.fromEntries(BUCKET_ORDER.map((bucket) => [bucket, [] as T[]])) as Record<Bucket, T[]>;
-  for (const task of tasks) {
-    buckets[getBucket(task.dueDate, todayKey)].push(task);
-  }
-  return buckets;
+// "Fri Oct 23", or "Jan 5 2027" outside today's year, where the weekday
+// gives way to the year. Composed from parts because en-US's own combined
+// format puts commas in both.
+function dueDayLabel(dueDate: string, todayKey: string, diff: number): string {
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  const date = dayKeyToUtcDate(dueDate);
+  const { year } = dayKeyParts(dueDate);
+  if (year !== dayKeyParts(todayKey).year) return `${MONTH_DAY_FORMAT.format(date)} ${year}`;
+  return `${WEEKDAY_FORMAT.format(date)} ${MONTH_DAY_FORMAT.format(date)}`;
 }
 
 /**

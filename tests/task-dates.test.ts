@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  BUCKET_LABELS,
-  BUCKET_ORDER,
   bucketOpenTasks,
   completedToday,
-  getBucket,
   groupDoneByDay,
   humanizeDueDate,
   sortForFieldLog,
@@ -25,45 +22,54 @@ import {
 const TODAY = "2024-01-15"; // Monday
 const ZONE = "UTC";
 
-describe("getBucket", () => {
-  it("buckets a date before today as overdue", () => {
-    expect(getBucket("2024-01-14", TODAY)).toBe("overdue");
-  });
-
-  it("buckets today's date as today", () => {
-    expect(getBucket("2024-01-15", TODAY)).toBe("today");
-  });
-
-  it("buckets tomorrow's date as tomorrow", () => {
-    expect(getBucket("2024-01-16", TODAY)).toBe("tomorrow");
-  });
-
-  it("buckets a date two days out as later", () => {
-    expect(getBucket("2024-01-17", TODAY)).toBe("later");
-  });
-});
-
 describe("bucketOpenTasks", () => {
-  it("groups tasks by bucket, preserving order within each", () => {
+  it("groups overdue, today and tomorrow, then gives every later due date a bucket of its own", () => {
     const tasks = [
       { id: "a", dueDate: "2024-01-10" },
       { id: "b", dueDate: "2024-01-15" },
       { id: "c", dueDate: "2024-01-16" },
-      { id: "d", dueDate: "2024-02-01" },
+      { id: "d", dueDate: "2024-01-17" },
       { id: "e", dueDate: "2024-01-09" },
+      { id: "f", dueDate: "2024-02-01" },
+      { id: "g", dueDate: "2024-01-17" },
     ];
 
     const buckets = bucketOpenTasks(tasks, TODAY);
 
-    expect(buckets.overdue.map((t) => t.id)).toEqual(["a", "e"]);
-    expect(buckets.today.map((t) => t.id)).toEqual(["b"]);
-    expect(buckets.tomorrow.map((t) => t.id)).toEqual(["c"]);
-    expect(buckets.later.map((t) => t.id)).toEqual(["d"]);
+    expect(buckets.map((bucket) => [bucket.label, bucket.tasks.map((t) => t.id)])).toEqual([
+      ["Overdue", ["a", "e"]],
+      ["Today", ["b"]],
+      ["Tomorrow", ["c"]],
+      ["Wed Jan 17", ["d", "g"]],
+      ["Thu Feb 1", ["f"]],
+    ]);
   });
 
-  it("covers every bucket in BUCKET_ORDER and BUCKET_LABELS", () => {
-    expect(BUCKET_ORDER).toEqual(["overdue", "today", "tomorrow", "later"]);
-    expect(Object.keys(BUCKET_LABELS).sort()).toEqual([...BUCKET_ORDER].sort());
+  it("names a due date in another year by month, day and year, without the weekday", () => {
+    const buckets = bucketOpenTasks([{ id: "a", dueDate: "2025-01-05" }], TODAY);
+
+    expect(buckets.map((bucket) => bucket.label)).toEqual(["Jan 5 2025"]);
+  });
+
+  it("still calls tomorrow Tomorrow when it falls in the next year", () => {
+    const buckets = bucketOpenTasks([{ id: "a", dueDate: "2025-01-01" }], "2024-12-31");
+
+    expect(buckets.map((bucket) => bucket.label)).toEqual(["Tomorrow"]);
+  });
+
+  it("marks Overdue as the only alarm bucket", () => {
+    const tasks = [
+      { id: "a", dueDate: "2024-01-09" },
+      { id: "b", dueDate: "2024-01-15" },
+      { id: "c", dueDate: "2024-01-16" },
+      { id: "d", dueDate: "2024-01-17" },
+    ];
+
+    expect(bucketOpenTasks(tasks, TODAY).map((bucket) => bucket.overdue)).toEqual([true, false, false, false]);
+  });
+
+  it("returns no buckets when there are no open tasks", () => {
+    expect(bucketOpenTasks([], TODAY)).toEqual([]);
   });
 });
 
@@ -154,16 +160,20 @@ describe("sortForFieldLog", () => {
       { id: "f", title: "Catch a Rattata", dueDate: "2024-01-10", label: { position: 0 } }, // overdue
       { id: "g", title: "Weed the patch", dueDate: "2024-01-16", label: { position: 0 } }, // tomorrow
       { id: "h", title: "Battle Brock", dueDate: "2024-01-16", label: { position: 0 } }, // tomorrow
-      { id: "i", title: "Restock repels", dueDate: "2024-02-01", label: { position: 0 } }, // later
-      { id: "j", title: "Cycle to Cerulean", dueDate: "2024-02-01", label: { position: 0 } }, // later
+      { id: "i", title: "Restock repels", dueDate: "2024-02-01", label: { position: 0 } }, // Thu Feb 1
+      { id: "j", title: "Cycle to Cerulean", dueDate: "2024-02-01", label: { position: 0 } }, // Thu Feb 1
+      { id: "k", title: "Visit Bill", dueDate: "2024-01-20", label: { position: 1 } }, // Sat Jan 20
     ];
 
     const buckets = bucketOpenTasks(sortForFieldLog(tasks), TODAY);
 
-    expect(buckets.overdue.map((t) => t.id)).toEqual(["b", "f", "d"]);
-    expect(buckets.today.map((t) => t.id)).toEqual(["e", "c", "a"]);
-    expect(buckets.tomorrow.map((t) => t.id)).toEqual(["h", "g"]);
-    expect(buckets.later.map((t) => t.id)).toEqual(["j", "i"]);
+    expect(buckets.map((bucket) => bucket.tasks.map((t) => t.id))).toEqual([
+      ["b", "f", "d"],
+      ["e", "c", "a"],
+      ["h", "g"],
+      ["k"],
+      ["j", "i"],
+    ]);
   });
 });
 

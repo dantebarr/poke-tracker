@@ -91,9 +91,10 @@ Settings, never detected from their device (see ADR-0004). The unit everything
 in the game loop is measured in.
 
 **Bucket**:
-How open tasks are grouped for reading, by due date relative to today:
-**Overdue** (due before today), **Today**, **Tomorrow**, **Later** (beyond
-tomorrow). Buckets replace raw dates as the thing you read.
+How open tasks are grouped for reading in the **field log**, by due date
+relative to today: **Overdue** (every date before today, together), **Today**,
+**Tomorrow**, then one per due date beyond that, however far out. Only a day
+with open tasks has a bucket.
 
 **Settlement**:
 Working out what each unsettled day did to the trainer's Pokémon. Days are
