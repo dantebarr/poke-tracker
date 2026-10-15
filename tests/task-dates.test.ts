@@ -36,7 +36,7 @@ describe("bucketOpenTasks", () => {
 
     const buckets = bucketOpenTasks(tasks, TODAY);
 
-    expect(buckets.map((bucket) => [bucket.label, bucket.tasks.map((t) => t.id)])).toEqual([
+    expect(buckets.map((bucket) => [bucket.heading, bucket.tasks.map((t) => t.id)])).toEqual([
       ["Overdue", ["a", "e"]],
       ["Today", ["b"]],
       ["Tomorrow", ["c"]],
@@ -48,13 +48,13 @@ describe("bucketOpenTasks", () => {
   it("names a due date in another year by month, day and year, without the weekday", () => {
     const buckets = bucketOpenTasks([{ id: "a", dueDate: "2025-01-05" }], TODAY);
 
-    expect(buckets.map((bucket) => bucket.label)).toEqual(["Jan 5 2025"]);
+    expect(buckets.map((bucket) => bucket.heading)).toEqual(["Jan 5 2025"]);
   });
 
   it("still calls tomorrow Tomorrow when it falls in the next year", () => {
     const buckets = bucketOpenTasks([{ id: "a", dueDate: "2025-01-01" }], "2024-12-31");
 
-    expect(buckets.map((bucket) => bucket.label)).toEqual(["Tomorrow"]);
+    expect(buckets.map((bucket) => bucket.heading)).toEqual(["Tomorrow"]);
   });
 
   it("marks Overdue as the only alarm bucket", () => {

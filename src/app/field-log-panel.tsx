@@ -151,7 +151,7 @@ export function FieldLogPanel({
           buckets.map((bucket) => (
             <div key={bucket.key} className="bucket">
               <div className={`grouphead${bucket.overdue ? " late" : ""}`}>
-                <span>{bucket.label}</span>
+                <span>{bucket.heading}</span>
                 <span className="count">{bucket.tasks.length}</span>
               </div>
               {bucket.tasks.map((task) =>
