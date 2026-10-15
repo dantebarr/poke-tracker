@@ -21,21 +21,26 @@
  * orders by the trainer's own label order first, due date second, title third,
  * so a bucket reads as one area of life at a time rather than an interleave of
  * every label.
+ *
+ * #22 replaced the Later bucket with one bucket per due date, uncapped — a
+ * window would only rebuild the Later pile at its edge. Overdue still gathers
+ * every past date into one, since it is an alarm rather than a calendar.
  */
 
-import { dayKeyInTimeZone, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
+import { dayKeyInTimeZone, dayKeyParts, dayKeyToUtcDate, daysBetweenKeys } from "@/lib/day/day";
 import { effortPoints, type TaskSize } from "@/lib/task/task";
 
-export type Bucket = "overdue" | "today" | "tomorrow" | "later";
-
-export const BUCKET_ORDER: Bucket[] = ["overdue", "today", "tomorrow", "later"];
-
-export const BUCKET_LABELS: Record<Bucket, string> = {
-  overdue: "Overdue",
-  today: "Today",
-  tomorrow: "Tomorrow",
-  later: "Later",
-};
+/**
+ * One heading in the field log and the tasks under it. `key` is `"overdue"`
+ * or the due date's day key. `overdue` flags the one alarm bucket (#7), so
+ * callers never match on heading text.
+ */
+export interface Bucket<T> {
+  key: string;
+  heading: string;
+  overdue: boolean;
+  tasks: T[];
+}
 
 const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
 const MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -74,23 +79,48 @@ export function parseDateOnly(dateStr: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function getBucket(dueDate: string, todayKey: string): Bucket {
-  const diff = daysBetweenKeys(todayKey, dueDate);
-  if (diff < 0) return "overdue";
-  if (diff === 0) return "today";
-  if (diff === 1) return "tomorrow";
-  return "later";
+/**
+ * Open tasks as the field log shows them: Overdue, then one bucket per due
+ * date in date order. Only dates with tasks get a bucket.
+ *
+ * Each bucket keeps its tasks in input order, so callers run
+ * `sortForFieldLog` first. The buckets themselves are ordered by date here,
+ * because that sort puts label ahead of due date.
+ */
+export function bucketOpenTasks<T extends { dueDate: string }>(tasks: T[], todayKey: string): Bucket<T>[] {
+  const overdue: Bucket<T> = { key: "overdue", heading: "Overdue", overdue: true, tasks: [] };
+  const bucketsByDay = new Map<string, Bucket<T>>();
+
+  for (const task of tasks) {
+    // Day keys ('YYYY-MM-DD') compare as dates.
+    if (task.dueDate < todayKey) {
+      overdue.tasks.push(task);
+      continue;
+    }
+
+    let bucket = bucketsByDay.get(task.dueDate);
+    if (!bucket) {
+      bucket = { key: task.dueDate, heading: dueDayHeading(task.dueDate, todayKey), overdue: false, tasks: [] };
+      bucketsByDay.set(task.dueDate, bucket);
+    }
+    bucket.tasks.push(task);
+  }
+
+  const dayBuckets = Array.from(bucketsByDay.values()).sort((a, b) => (a.key < b.key ? -1 : 1));
+  return overdue.tasks.length > 0 ? [overdue, ...dayBuckets] : dayBuckets;
 }
 
-export function bucketOpenTasks<T extends { dueDate: string }>(
-  tasks: T[],
-  todayKey: string,
-): Record<Bucket, T[]> {
-  const buckets = Object.fromEntries(BUCKET_ORDER.map((bucket) => [bucket, [] as T[]])) as Record<Bucket, T[]>;
-  for (const task of tasks) {
-    buckets[getBucket(task.dueDate, todayKey)].push(task);
-  }
-  return buckets;
+// "Today", "Tomorrow", "Fri Oct 23", or "Jan 5 2027" in another year. Built
+// from parts because en-US's combined formats add commas.
+function dueDayHeading(dueDate: string, todayKey: string): string {
+  const daysAway = daysBetweenKeys(todayKey, dueDate);
+  if (daysAway === 0) return "Today";
+  if (daysAway === 1) return "Tomorrow";
+
+  const date = dayKeyToUtcDate(dueDate);
+  const { year } = dayKeyParts(dueDate);
+  if (year !== dayKeyParts(todayKey).year) return `${MONTH_DAY_FORMAT.format(date)} ${year}`;
+  return `${WEEKDAY_FORMAT.format(date)} ${MONTH_DAY_FORMAT.format(date)}`;
 }
 
 /**

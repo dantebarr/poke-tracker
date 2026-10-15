@@ -60,10 +60,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Overdue clause can never drift from the Overdue group a Ranger sees on
   // the field log, wherever they're standing when he says it.
   const todayKey = dayKeyInTimeZone(currentMoment(), trainer.timeZone);
-  const overdueCount = bucketOpenTasks(
+  const buckets = bucketOpenTasks(
     tasks.filter((task) => task.status === "open"),
     todayKey,
-  ).overdue.length;
+  );
+  // No Overdue bucket means nothing is overdue.
+  const overdueCount = buckets.find((bucket) => bucket.overdue)?.tasks.length ?? 0;
 
   // Compared against today's key rather than merely being non-null (#5): a
   // parting_on left over from a day settlement hasn't consumed yet — the

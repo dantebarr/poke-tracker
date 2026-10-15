@@ -19,8 +19,6 @@ import type { Label } from "@/lib/label/label";
 import type { RecurrenceFrequency } from "@/lib/recurrence/dates";
 import { recurrenceSentence, shortMonthNote, WEEKDAY_NAMES } from "@/lib/recurrence/wording";
 import {
-  BUCKET_LABELS,
-  BUCKET_ORDER,
   bucketOpenTasks,
   completedToday,
   sortForFieldLog,
@@ -150,13 +148,13 @@ export function FieldLogPanel({
         {openTasks.length === 0 ? (
           <p className="clearday">Nothing open. Clear day, Ranger.</p>
         ) : (
-          BUCKET_ORDER.filter((bucket) => buckets[bucket].length > 0).map((bucket) => (
-            <div key={bucket} className="bucket">
-              <div className={`grouphead${bucket === "overdue" ? " late" : ""}`}>
-                <span>{BUCKET_LABELS[bucket]}</span>
-                <span className="count">{buckets[bucket].length}</span>
+          buckets.map((bucket) => (
+            <div key={bucket.key} className="bucket">
+              <div className={`grouphead${bucket.overdue ? " late" : ""}`}>
+                <span>{bucket.heading}</span>
+                <span className="count">{bucket.tasks.length}</span>
               </div>
-              {buckets[bucket].map((task) =>
+              {bucket.tasks.map((task) =>
                 task.id === failedDraft?.id ? (
                   <FailedDraftRow key={task.id} task={task} />
                 ) : (

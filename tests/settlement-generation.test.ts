@@ -237,10 +237,11 @@ describe("the tasks a recurrence owes arrive on the way in", () => {
     // A generated task is bucketed by its due date like any other; missing one
     // does not stop the next arriving.
     const buckets = bucketOpenTasks(await tasksFor(trainer.id), dayKey(0));
-    expect(buckets.overdue.map((task) => task.dueDate)).toEqual([dayKey(3), dayKey(2), dayKey(1)]);
-    expect(buckets.today.map((task) => task.dueDate)).toEqual([dayKey(0)]);
-    expect(buckets.tomorrow.map((task) => task.dueDate)).toEqual([dayKey(-1)]);
-    expect(buckets.later).toEqual([]);
+    expect(buckets.map((bucket) => [bucket.heading, bucket.tasks.map((task) => task.dueDate)])).toEqual([
+      ["Overdue", [dayKey(3), dayKey(2), dayKey(1)]],
+      ["Today", [dayKey(0)]],
+      ["Tomorrow", [dayKey(-1)]],
+    ]);
   });
 });
 
