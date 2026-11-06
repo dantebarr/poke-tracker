@@ -1,7 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { keepEscapeInChip } from "@/app/field-log/chips";
+import { DAYS_OF_MONTH, type RecurringFields, type RecurringFormView } from "@/app/recurring-fields";
 import type { EditableFields } from "@/app/task-edit-fields";
+import type { RecurrenceFrequency } from "@/lib/recurrence/dates";
+import { WEEKDAY_NAMES } from "@/lib/recurrence/wording";
 import { addDays } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
 import { effortPoints, TASK_SIZES } from "@/lib/task/task";
@@ -13,20 +18,28 @@ import { capitalise } from "@/lib/text";
  * ▶ cursor. Each line is a real radio group, so arrow keys move the cursor the
  * way they would in a menu, and Tab moves between lines.
  *
- * The mobile detail screen and both add forms keep `TaskFieldChips`; this is
- * only the inline editor an open row expands into.
+ * Shared by the two desktop forms — an open row's inline editor and the add
+ * form — so editing and creating a task look and work alike. The mobile
+ * detail screen and add sheet keep `TaskFieldChips`.
  */
 export function TaskEditMenu({
   taskId,
   fields,
   labels,
   todayKey,
+  dateLabel = "Due",
+  afterEffort,
   onChange,
 }: {
+  /** Keeps each form's radio groups apart, since radios group by name. */
   taskId: string;
-  fields: EditableFields;
+  fields: Omit<EditableFields, "title">;
   labels: Label[];
   todayKey: string;
+  /** "Starts" once the add form is creating a repeating task. */
+  dateLabel?: "Due" | "Starts";
+  /** Extra lines between Effort and Notes — the add form's Repeat lines. */
+  afterEffort?: ReactNode;
   onChange: (patch: Partial<EditableFields>) => void;
 }) {
   const quickDates = [
@@ -38,8 +51,8 @@ export function TaskEditMenu({
 
   return (
     <div className="editmenu">
-      <div className="menuline" role="radiogroup" aria-label="Due">
-        <span className="menukey">Due</span>
+      <div className="menuline" role="radiogroup" aria-label={dateLabel}>
+        <span className="menukey">{dateLabel}</span>
         <div className="menuopts">
           {quickDates.map((option) => (
             <label key={option.label} className="menuopt">
@@ -58,7 +71,7 @@ export function TaskEditMenu({
               value={fields.dueDate}
               onChange={(event) => event.target.value && onChange({ dueDate: event.target.value })}
               onKeyDown={keepEscapeInChip}
-              aria-label="Due date"
+              aria-label={`${dateLabel} date`}
             />
           </label>
         </div>
@@ -102,6 +115,8 @@ export function TaskEditMenu({
         </div>
       </div>
 
+      {afterEffort}
+
       <label className="menuline">
         <span className="menukey">Notes</span>
         <textarea
@@ -113,5 +128,107 @@ export function TaskEditMenu({
         />
       </label>
     </div>
+  );
+}
+
+const REPEAT_OPTIONS: { frequency: RecurrenceFrequency; name: string }[] = [
+  { frequency: "daily", name: "Daily" },
+  { frequency: "weekly", name: "Weekly" },
+  { frequency: "monthly", name: "Monthly" },
+];
+
+/**
+ * The add form's repeat controls as menu lines: Never or a frequency, then —
+ * for weekly and monthly — which day. Replaces the chip form's icon toggle
+ * and its dropdowns on desktop; the rule itself is unchanged.
+ */
+export function RepeatMenuLines({
+  formId,
+  fields,
+  view,
+  onChange,
+}: {
+  formId: string;
+  fields: RecurringFields;
+  view: RecurringFormView;
+  onChange: (patch: Partial<RecurringFields>) => void;
+}) {
+  return (
+    <>
+      <div className="menuline" role="radiogroup" aria-label="Repeat">
+        <span className="menukey">Repeat</span>
+        <div className="menuopts">
+          <label className="menuopt">
+            <input
+              type="radio"
+              name={`repeat-${formId}`}
+              checked={!fields.recurring}
+              onChange={() => onChange({ recurring: false })}
+            />
+            <span>Never</span>
+          </label>
+          {REPEAT_OPTIONS.map((option) => (
+            <label key={option.frequency} className="menuopt">
+              <input
+                type="radio"
+                name={`repeat-${formId}`}
+                checked={fields.recurring && fields.frequency === option.frequency}
+                onChange={() => onChange({ recurring: true, frequency: option.frequency })}
+              />
+              <span>{option.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {fields.recurring && view.dayOfWeek !== null && (
+        <div className="menuline" role="radiogroup" aria-label="On which day of the week">
+          <span className="menukey">On</span>
+          <div className="menuopts">
+            {WEEKDAY_NAMES.map((name, day) => (
+              <label key={name} className="menuopt" title={name}>
+                <input
+                  type="radio"
+                  name={`weekday-${formId}`}
+                  checked={view.dayOfWeek === day}
+                  onChange={() => onChange({ dayOfWeek: day })}
+                  aria-label={name}
+                />
+                <span>{name.slice(0, 3)}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {fields.recurring && view.dayOfMonth !== null && (
+        <label className="menuline">
+          <span className="menukey">On the</span>
+          <span className="menuopts">
+            <span className="menuopt menudate picked">
+              <select
+                value={String(view.dayOfMonth)}
+                onChange={(event) => onChange({ dayOfMonth: Number(event.target.value) })}
+                onKeyDown={keepEscapeInChip}
+                aria-label="On the day of the month"
+              >
+                {DAYS_OF_MONTH.map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </span>
+          </span>
+        </label>
+      )}
+
+      {fields.recurring && view.firstTaskNote && (
+        <p className="menunote">
+          {view.firstTaskNote}
+          {view.clampNote && <span className="recurclamp">{view.clampNote}</span>}
+        </p>
+      )}
+    </>
   );
 }
