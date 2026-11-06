@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { DeleteControls, type PendingDelete } from "@/app/field-log/delete-controls";
-import { TaskFieldChips } from "@/app/field-log/chips";
+import { TaskEditMenu } from "@/app/field-log/edit-menu";
 import { RecurrenceMarker } from "@/app/field-log/recurring-controls";
 import { OVERLAY_OPENER_PROPS, useOverlayDismiss } from "@/app/overlay-dismiss";
 import { type EditableFields, taskToFields, useTaskFields } from "@/app/task-edit-fields";
@@ -102,6 +102,7 @@ export function OpenTaskRow({
   errored,
   pending,
   lateText,
+  todayKey,
   onExpand,
   onCollapse,
   onComplete,
@@ -116,6 +117,7 @@ export function OpenTaskRow({
   pending: boolean;
   /** "2d late" for a task in the Overdue bucket, otherwise null. */
   lateText: string | null;
+  todayKey: string;
   onExpand: () => void;
   onCollapse: () => void;
   onComplete: () => void;
@@ -232,40 +234,28 @@ export function OpenTaskRow({
       {expanded && (
         <div className="expander">
           {task.recurrence && <RecurrenceMarker recurrence={task.recurrence} />}
-          <textarea
-            className="notes"
-            placeholder="Notes"
-            value={fields.notes}
-            onChange={(event) => edit({ notes: event.target.value })}
-            aria-label="Notes"
-          />
-          <div className="chips">
-            <TaskFieldChips
-              dueDate={fields.dueDate}
-              labelId={fields.labelId}
-              size={fields.size}
-              labels={labels}
-              onDueChange={(value) => edit({ dueDate: value })}
-              onLabelChange={(value) => edit({ labelId: value })}
-              onSizeChange={(value) => edit({ size: value })}
-            />
-            <div className="editactions">
-              <button type="button" className="ghostbtn" onClick={onCollapse}>
-                Cancel
-              </button>
-              <button type="button" className="primary" disabled={!dirty || !valid} onClick={save}>
-                Save
-              </button>
+          <TaskEditMenu taskId={task.id} fields={fields} labels={labels} todayKey={todayKey} onChange={edit} />
+          <div className="editfoot">
+            <div className="editdanger">
               <DeleteControls
                 recurring={task.recurrence !== null}
                 confirming={confirmingDelete}
-                label="Delete"
+                label="Delete task"
                 onRequestConfirm={setConfirmingDelete}
                 onDelete={onDelete}
                 onDeleteRule={onDeleteRule}
                 onCancel={() => setConfirmingDelete(null)}
               />
             </div>
+            <span className="editstate" aria-live="polite">
+              {dirty ? "Unsaved changes" : ""}
+            </span>
+            <button type="button" className="ghostbtn" onClick={onCollapse}>
+              Cancel
+            </button>
+            <button type="button" className="primary" disabled={!dirty || !valid} onClick={save}>
+              Save changes
+            </button>
           </div>
         </div>
       )}

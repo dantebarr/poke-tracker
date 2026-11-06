@@ -216,6 +216,7 @@ export function FieldLogPanel({
                     errored={erroredId === task.id}
                     pending={isPendingTaskId(task.id)}
                     lateText={bucket.overdue ? lateLabel(task.dueDate, todayKey) : null}
+                    todayKey={todayKey}
                     onExpand={() => onOpenTask(task.id)}
                     onCollapse={onLeaveOverlay}
                     onComplete={() => {

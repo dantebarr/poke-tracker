@@ -1523,10 +1523,6 @@ body {
 .taskrow:hover {
   background: rgba(0, 0, 0, 0.16);
 }
-.taskrow.expanded {
-  background: rgba(0, 0, 0, 0.28);
-  box-shadow: inset 0 0 0 2px rgba(242, 245, 200, 0.5);
-}
 .rowhead {
   display: flex;
   align-items: center;
@@ -1983,6 +1979,210 @@ span.title {
 .primary:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* ── the desktop task editor: a game menu ────────────────────────────────
+   An expanded row opens the way a menu does in the games — the classic white
+   textbox (black rim, thin inner rule) — and every choice is laid out with
+   the chosen one marked by the ▶ cursor, instead of hiding behind dropdowns.
+   The textbox is the one loud thing; inside it everything is plain ink. */
+.taskrow.expanded {
+  margin: 6px 0;
+  background: var(--safari-box);
+  color: var(--safari-boxink);
+  border: 4px solid #101010;
+  border-radius: 9px;
+  box-shadow:
+    inset 0 0 0 2px #c8c8c8,
+    0 5px 0 rgba(0, 0, 0, 0.35);
+}
+.taskrow.expanded:hover {
+  background: var(--safari-box);
+}
+.taskrow.expanded .rowhead {
+  text-shadow: none;
+  padding: 10px 10px 8px 8px;
+}
+.taskrow.expanded .circle {
+  border-color: #606060;
+}
+.taskrow.expanded .circle:hover {
+  background: rgba(47, 143, 71, 0.18);
+}
+.taskrow.expanded input.title {
+  color: var(--safari-boxink);
+  text-decoration: none;
+  border-bottom: 2px dashed #a0a0a0;
+  padding-bottom: 1px;
+}
+.taskrow.expanded input.title:focus {
+  border-bottom-color: var(--safari-boxink);
+}
+.taskrow.expanded .rowhead .sz {
+  color: #fff;
+  background: var(--safari-dark);
+}
+.taskrow.expanded .latechip {
+  color: #c03020;
+}
+.taskrow.expanded .expander {
+  padding: 0 14px 12px 39px;
+}
+.taskrow.expanded .recurmarker {
+  color: #4a6a52;
+  margin: 2px 0 6px;
+}
+
+.editmenu {
+  border-top: 2px dotted #c8c8c8;
+  padding-top: 4px;
+}
+.menuline {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  padding: 3px 0;
+}
+.menukey {
+  font-family: var(--font-display), monospace;
+  font-size: 18px;
+  color: #6a6a6a;
+}
+.menuopts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
+.menuopt {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 2px 6px 2px 21px;
+  border-radius: 4px;
+  font-family: var(--font-display), monospace;
+  font-size: 20px;
+  line-height: 1;
+  color: #505050;
+  cursor: pointer;
+}
+.menuopt:hover {
+  color: var(--safari-boxink);
+  background: rgba(0, 0, 0, 0.05);
+}
+.menuopt input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+/* The cursor. Drawn on every option and shown only on the chosen one, so
+   choosing moves it without anything else on the line shifting. */
+.menuopt::before {
+  content: "▶";
+  position: absolute;
+  left: 2px;
+  font-size: 15px;
+  color: var(--safari-boxink);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+.menuopt:has(input:checked),
+.menudate.picked {
+  color: var(--safari-boxink);
+}
+.menuopt:has(input:checked)::before,
+.menudate.picked::before {
+  opacity: 1;
+  transform: none;
+}
+.menuopt:has(input:focus-visible) {
+  outline: 2px solid var(--safari-boxink);
+  outline-offset: 1px;
+}
+.menuopt .tag {
+  min-width: 0;
+}
+.menupts {
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  color: #fff;
+  background: var(--safari-mid);
+  border-radius: 9px;
+  padding: 3px 6px;
+}
+.menudate input {
+  font-family: var(--font-display), monospace;
+  font-size: 18px;
+  color: var(--safari-boxink);
+  background: #fff;
+  border: 2px solid #c8c8c8;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color-scheme: light;
+}
+.menudate input:focus {
+  outline: none;
+  border-color: var(--safari-boxink);
+}
+.menunotes {
+  width: 100%;
+  min-height: 2.6em;
+  resize: vertical;
+  font-family: var(--font-display), monospace;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--safari-boxink);
+  background: #fff;
+  border: 2px solid #c8c8c8;
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin: 4px 0;
+}
+.menunotes::placeholder {
+  color: #9a9a9a;
+}
+.menunotes:focus {
+  outline: none;
+  border-color: var(--safari-boxink);
+}
+
+.editfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 2px dotted #c8c8c8;
+}
+.editdanger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+.taskrow.expanded .delbtn {
+  color: #b02818;
+}
+.taskrow.expanded .delbtn:hover {
+  background: rgba(224, 64, 48, 0.12);
+}
+.editstate {
+  font-family: var(--font-display), monospace;
+  font-size: 17px;
+  color: #7a7a7a;
+}
+.taskrow.expanded .ghostbtn {
+  color: #404040;
+  border-color: #b0b0b0;
+}
+.taskrow.expanded .ghostbtn:hover {
+  border-color: #404040;
 }
 
 /* "A Ranger with nothing Open sees a clear-day state, not an empty panel"
