@@ -269,23 +269,6 @@ export function OpenTaskRow({
   );
 }
 
-/**
- * Ink for a tag: white or near-black, whichever reads better on the label's
- * stored fill (WCAG relative luminance). Falls back to white for anything that
- * is not a plain #rrggbb value.
- */
-function tagInk(background: string): string {
-  const match = /^#([0-9a-f]{6})$/i.exec(background.trim());
-  if (!match) return "#fff";
-  const [r, g, b] = [0, 2, 4].map((offset) => {
-    const channel = parseInt(match[1].slice(offset, offset + 2), 16) / 255;
-    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  // Contrast against white is 1.05 / (L + 0.05); against #1a1a1a it is (L + 0.05) / 0.0103.
-  return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.0103 ? "#fff" : "#1a1a1a";
-}
-
 // The colour is a stored value, not a style class name (label.ts) — the
 // tag's solid fill for open tasks, dimmed for done ones (#28) since there's
 // no separate stored "done" variant the way the mockup's fixed demo palette
@@ -296,7 +279,7 @@ function LabelTag({ label, muted = false }: { label: Task["label"]; muted?: bool
     <span
       className="tag"
       title={label.name}
-      style={{ backgroundColor: label.color, color: tagInk(label.color), opacity: muted ? 0.55 : 1 }}
+      style={{ backgroundColor: label.color, opacity: muted ? 0.55 : 1 }}
     >
       {label.abbreviation}
     </span>

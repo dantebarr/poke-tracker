@@ -43,7 +43,7 @@
   --safari-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
   /* One height for Warden Baoba's dialogue tray (#23), so it never grows or
      shrinks with the length of the line the rule list chose. */
-  --safari-tray: 128px;
+  --safari-tray: 118px;
 }
 
 @theme inline {
@@ -329,9 +329,7 @@ body {
 .panes {
   height: 100%;
   display: grid;
-  /* The field log is the point of the app, so it gets the larger share: the
-     encounter column is ~40%, enough for the scene and Baoba's tray. */
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-columns: 1.1fr 0.9fr;
   grid-template-rows: minmax(0, 1fr);
   gap: 12px;
 }
@@ -1065,7 +1063,7 @@ body {
   width: 100%;
 }
 
-/* A narrow encounter column (the desktop split gives it ~40%): the status
+/* A narrow encounter column (mid-width desktops): the status
    box already holds the top-left, so the prompt boxes drop to the bottom,
    clear of the field menu's icon, instead of fighting it for the top row. */
 @container (max-width: 640px) {
@@ -1642,8 +1640,6 @@ body {
   border-radius: 3px;
   color: #fff;
   flex: none;
-  /* The row's drop shadow would smear the dark ink the tag picks on light fills. */
-  text-shadow: none;
 }
 
 /* Fixed-width, like `.sz` below: every row's title then starts at the same x
