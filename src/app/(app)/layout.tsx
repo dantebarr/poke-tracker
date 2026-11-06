@@ -4,21 +4,23 @@ import { AppStage } from "@/app/(app)/chrome/app-stage";
 import { FirstDayBriefing } from "@/app/(app)/chrome/first-day-briefing";
 import { OverlaySlot } from "@/app/(app)/chrome/overlay-slot";
 import { StatusStrip } from "@/app/(app)/chrome/status-strip";
+import { CompactPokemonCard } from "@/app/compact-pokemon-card";
 import { PokemonPane } from "@/app/pokemon-pane";
-import { buildBaobaLine } from "@/lib/baoba/dialogue";
+import { buildBaobaLine, moodFor } from "@/lib/baoba/dialogue";
 import { dayKeyInTimeZone } from "@/lib/day/day";
 import { currentMoment } from "@/lib/day/session";
 import { currentActivePokemon, currentEvolutionOptions } from "@/lib/pokemon/session";
 import { currentLatestDayLedgerEvent } from "@/lib/settlement/session";
-import { bucketOpenTasks } from "@/lib/task/dates";
+import { bucketOpenTasks, todayPoints } from "@/lib/task/dates";
 import { currentTasks } from "@/lib/task/session";
 import { dayCount } from "@/lib/trainer/day-count";
 import { currentTrainer } from "@/lib/trainer/session";
 
 /**
- * The Safari Zone chrome (#21, given its persistent left pane by #33): every
- * authenticated screen wears the same status strip and the same two-pane
- * stage, the Active Pokémon's scene and Warden Baoba's tray fixed in the left
+ * The Safari Zone chrome (#21, given its persistent left pane by #33,
+ * reworked by the overhaul): every
+ * authenticated screen wears the same status strip (with today's progress)
+ * and the same two-pane stage, the Active Pokémon's scene and Warden Baoba's tray fixed in the left
  * pane and whichever destination a Ranger has chosen filling the right — so
  * this is the one place that fetches both the trainer's identity and
  * everything the left pane needs, and redirects a signed-out visitor. Each
@@ -74,6 +76,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // the menu must not offer to undo it.
   const parting = trainer.partingOn === todayKey;
 
+  // The same `todayPoints` the field log's own "3/3" readout sums, so the
+  // strip, the compact card and the log can never disagree.
+  const points = todayPoints(tasks, trainer.timeZone, todayKey);
+  const mood = activePokemon ? moodFor(activePokemon.happiness, trainer.dailyTarget) : null;
+  const needsAttention =
+    activePokemon !== null && (activePokemon.nickname === null || evolutionOptions.length > 0);
+
   const baobaLine = buildBaobaLine({
     pokemon: activePokemon,
     dailyTarget: trainer.dailyTarget,
@@ -92,14 +101,30 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           overlay slot still need to be its direct flex children, not this
           div's. */}
       <div inert={briefingUnseen} className="contents">
-        <StatusStrip rangerName={trainer.displayName ?? trainer.email} day={day} />
+        <StatusStrip
+          rangerName={trainer.displayName ?? trainer.email}
+          day={day}
+          points={points}
+          dailyTarget={trainer.dailyTarget}
+        />
         <AppStage
           left={
             <PokemonPane
               pokemon={activePokemon}
               evolutionOptions={evolutionOptions}
               parting={parting}
+              mood={mood}
               baobaLine={baobaLine}
+            />
+          }
+          compact={
+            <CompactPokemonCard
+              pokemon={activePokemon}
+              mood={mood}
+              parting={parting}
+              needsAttention={needsAttention}
+              points={points}
+              dailyTarget={trainer.dailyTarget}
             />
           }
           right={children}

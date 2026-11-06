@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { MoodMeter } from "@/app/mood-meter";
+import type { Mood } from "@/lib/baoba/dialogue";
 import { buildEncounterView } from "@/lib/pokemon/encounter-view";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 
@@ -11,10 +13,11 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  * tray, #24's naming prompt, #25's evolve prompt) extend this pane rather
  * than replace it.
  *
- * Happiness has no place in this box, by design: it is a background number,
- * and Warden Baoba's tray below is the only thing that ever hints at it. The
- * face that used to sit opposite the Nickname is gone, and the space it held
- * is left empty on purpose.
+ * Happiness gets a surface here since the overhaul: `mood` (hearts and a
+ * word, never a number) sits under the Bond bar and turns into a warning when
+ * the Pokémon is at risk of leaving. It is derived by the layout from the
+ * same bands Warden Baoba's line uses (`moodFor`), so the box and his tray
+ * cannot disagree.
  *
  * Bond shows the bare level, never `level / requirement`: bond rises forever
  * and never falls, so a denominator would name a ceiling that doesn't exist.
@@ -37,11 +40,13 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
 export function EncounterView({
   pokemon,
   parting = false,
+  mood = null,
   prompt,
   fieldMenu,
 }: {
   pokemon: ActivePokemon | null;
   parting?: boolean;
+  mood?: Mood | null;
   prompt?: ReactNode;
   fieldMenu?: ReactNode;
 }) {
@@ -76,6 +81,7 @@ export function EncounterView({
           </span>
           <span className="num">{view.bond.level}</span>
         </div>
+        {mood && <MoodMeter mood={mood} nickname={view.nickname} />}
       </div>
 
       {prompt}

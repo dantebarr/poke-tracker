@@ -43,7 +43,7 @@
   --safari-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
   /* One height for Warden Baoba's dialogue tray (#23), so it never grows or
      shrinks with the length of the line the rule list chose. */
-  --safari-tray: 118px;
+  --safari-tray: 128px;
 }
 
 @theme inline {
@@ -181,18 +181,71 @@ body {
   background: linear-gradient(180deg, #e8503c 0 45%, #101010 45% 55%, #f4f4f4 55%);
   border: 2px solid #101010;
 }
+/* Two lines: the brand, then who is signed in and which day it is —
+   "Demo Ranger · Day 13", not a run-on of four words. */
 .identity {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
+}
+.identity .zone {
+  font-size: 11px;
+  letter-spacing: 0.5px;
 }
 .identity .who {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 7px;
+  min-width: 0;
+  font-size: 8px;
+  color: var(--safari-pale);
+  white-space: nowrap;
+}
+.identity .ranger {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.identity .day {
+  flex: none;
+}
+
+/* Today's progress, on every screen: points earned today against the daily
+   target, from the same `todayPoints` the field log sums. */
+.todaychip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--safari-edge);
+  border-radius: 7px;
+  text-shadow: none;
+}
+.todaychip .todaylabel {
+  font-size: 8px;
   color: var(--safari-pale);
 }
+.todaychip .todaynum {
+  font-size: 10px;
+}
+.todaychip .track {
+  width: 64px;
+  height: 8px;
+  background: #0b2a14;
+  border-radius: 4px;
+  padding: 1px;
+}
+.todaychip .track i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--success);
+}
+
 .strip nav {
   margin-left: auto;
   display: flex;
@@ -200,68 +253,65 @@ body {
   gap: 8px;
   flex: none;
 }
-/* Every nav button's look is three custom properties, so marking one is a
-   matter of setting them rather than restating the button (#32) — which
+/* Every nav link's look is three custom properties, so marking one is a
+   matter of setting them rather than restating the link (#32) — which
    matters because the field log's mark is surface-dependent, so the marked
    values have to be stated once per surface. Only a media query can be right
-   in the first paint; a viewport read in JS cannot. */
-.strip nav a.icobtn {
-  --icobtn-face: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
-  --icobtn-keyline: rgba(255, 255, 255, 0.3);
-  --icobtn-ink: #fff;
+   in the first paint; a viewport read in JS cannot.
+
+   On a wide screen each link is an icon with its label beside it; below the
+   breakpoint the same links become the bottom tab bar (mobile block below). */
+.strip nav a.navlink {
+  --navlink-face: linear-gradient(180deg, var(--safari-light), var(--safari-mid));
+  --navlink-keyline: rgba(255, 255, 255, 0.3);
+  --navlink-ink: #fff;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  background: var(--icobtn-face);
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 10px;
+  background: var(--navlink-face);
   border: 3px solid var(--safari-edge);
   border-radius: 7px;
   box-shadow:
-    inset 0 0 0 1px var(--icobtn-keyline),
+    inset 0 0 0 1px var(--navlink-keyline),
     0 3px 0 rgba(0, 0, 0, 0.35);
-  color: var(--icobtn-ink);
+  color: var(--navlink-ink);
   text-decoration: none;
+  white-space: nowrap;
 }
-.strip nav a.icobtn:hover {
-  --icobtn-face: linear-gradient(180deg, #74d086, var(--safari-light));
+.strip nav a.navlink:hover {
+  --navlink-face: linear-gradient(180deg, #74d086, var(--safari-light));
 }
-/* `.active` marks at any width; the other two are the status strip's answer
-   for one surface only. The two queries are exact complements, so every
-   width gets one of these rules and `.active` is honoured by both. */
-@media not all and (max-width: 900px) {
-  .strip nav a.icobtn.active,
-  .strip nav a.icobtn.active-wide {
-    --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
-    --icobtn-keyline: rgba(0, 0, 0, 0.2);
-    --icobtn-ink: #23330f;
-  }
-}
-@media (max-width: 900px) {
-  .strip nav a.icobtn.active,
-  .strip nav a.icobtn.active-narrow {
-    --icobtn-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
-    --icobtn-keyline: rgba(0, 0, 0, 0.2);
-    --icobtn-ink: #23330f;
-  }
-}
-.strip nav a.icobtn svg {
+.strip nav a.navlink svg {
+  flex: none;
   width: 16px;
   height: 16px;
 }
-/* The home arrow (#32): the one control that returns a Ranger to the
-   encounter view, at the left end of the same row as the destinations, which
-   it pushes to the right. Never drawn on a wide screen, where the field log
-   icon already leads to the screen holding both panes — hidden by CSS rather
-   than decided in JS for the same first-paint reason as the marking above,
-   and the same treatment the mobile-only chrome below gets. It sits in flow
-   here, never floating, so it cannot cover a Pokédex tile, a ledger row, or
-   one of Settings' own reorder arrows. */
-.strip nav a.home {
+.strip nav a.navlink .navtext.short,
+.strip nav a.navlink.narrow-only {
   display: none;
-  margin-right: auto;
-  font-size: 18px;
-  line-height: 1;
+}
+/* `.active` marks at any width; the other two are the nav's answer for one
+   surface only. The two queries are exact complements, so every width gets
+   one of these rules and `.active` is honoured by both. */
+@media not all and (max-width: 900px) {
+  .strip nav a.navlink.active,
+  .strip nav a.navlink.active-wide {
+    --navlink-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
+    --navlink-keyline: rgba(0, 0, 0, 0.2);
+    --navlink-ink: #23330f;
+    text-shadow: none;
+  }
+}
+@media (max-width: 900px) {
+  .strip nav a.navlink.active,
+  .strip nav a.navlink.active-narrow {
+    --navlink-face: linear-gradient(180deg, var(--safari-sel), #d8dd96);
+    --navlink-keyline: rgba(0, 0, 0, 0.2);
+    --navlink-ink: #23330f;
+    text-shadow: none;
+  }
 }
 
 /* ── stage: the shell every screen's own content fills ────────────── */
@@ -279,7 +329,9 @@ body {
 .panes {
   height: 100%;
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  /* The field log is the point of the app, so it gets the larger share: the
+     encounter column is ~40%, enough for the scene and Baoba's tray. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 12px;
 }
@@ -538,11 +590,140 @@ body {
   padding: 3px 5px;
 }
 
-/* Happiness has no surface at all — no face, no number, no bar, no label.
-   Warden Baoba's tray is the only place it is ever felt; see
-   baoba/dialogue.ts's mood bands. Nothing that *reads* the Pokémon belongs on
-   the right of .line1 — the MOVING ON marker above is a state the Ranger set,
-   not a measurement of anything, which is why it is the one thing there. */
+/* Mood (the overhaul): five hearts and a word under the Bond bar, read from
+   the same bands as Baoba's line. Quiet while the Pokémon is fine; alert-red
+   and labelled with a "!" when it is at risk of leaving, so a Ranger sees it
+   coming. Never a number. */
+.mood {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+.mood .hearts {
+  display: flex;
+  gap: 2px;
+}
+.mood .hearts > span {
+  width: 14px;
+  height: 14px;
+}
+.mood .hearts svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mood .on {
+  color: #e8506c;
+}
+.mood .off {
+  color: #c4c4c4;
+}
+.mood .moodword {
+  font-size: 17px;
+  line-height: 1;
+  color: #585858;
+}
+.mood.atrisk .on {
+  color: var(--urgent);
+  animation: evolve-blink 1.4s steps(2) infinite;
+}
+.mood.atrisk .moodword {
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--urgent);
+}
+
+/* The narrow screen's compact Pokémon card: hidden until the mobile block
+   below turns it on for the field log. */
+.compactcard {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  color: var(--safari-boxink);
+  text-decoration: none;
+}
+.compactcard .cc-sprite {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #cdeed3, #93d3a3);
+  border: 2px solid #101010;
+  border-radius: 7px;
+}
+.compactcard .cc-sprite img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.compactcard .cc-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.compactcard .cc-line1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.compactcard .cc-nick {
+  font-family: var(--font-pixel), monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compactcard .cc-species {
+  font-size: 16px;
+  line-height: 1;
+  color: #585858;
+}
+.compactcard .movingon,
+.compactcard .cc-alert {
+  flex: none;
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  padding: 2px 4px;
+}
+.compactcard .movingon {
+  color: #585858;
+}
+.compactcard .cc-alert {
+  color: var(--urgent);
+  animation: evolve-blink 1.1s steps(2) infinite;
+}
+.compactcard .rows {
+  margin-top: 0;
+  gap: 8px;
+}
+.compactcard .cc-bond {
+  grid-template-columns: auto 1fr;
+}
+.compactcard .cc-progress .num {
+  font-size: 16px;
+  line-height: 1;
+  color: #202020;
+}
+.compactcard .mood {
+  margin-top: 0;
+}
+.compactcard .cc-go {
+  flex: none;
+  font-size: 28px;
+  line-height: 1;
+  color: #585858;
+}
 
 /* Bond is the bar, because it only ever climbs, toward a known threshold —
    and stays full past it while the number beside it keeps counting, with no
@@ -884,61 +1065,136 @@ body {
   width: 100%;
 }
 
+/* A narrow encounter column (the desktop split gives it ~40%): the status
+   box already holds the top-left, so the prompt boxes drop to the bottom,
+   clear of the field menu's icon, instead of fighting it for the top row. */
+@container (max-width: 640px) {
+  .naming,
+  .evolve {
+    top: auto;
+    bottom: 16px;
+    left: 16px;
+    right: 76px;
+    max-width: none;
+  }
+  .mon {
+    top: 48%;
+    height: min(44cqh, 70cqw);
+  }
+}
+
+/* Mid-width desktops give the encounter column well under 500px, where a
+   long Baoba line needs a fourth row: let the tray grow instead of clipping. */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .dialogue {
+    height: auto;
+    min-height: var(--safari-tray);
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════
- * MOBILE (~390px and up to 900px): two full-screen panes, reached by
- * explicit buttons — never a swipe, never a stack (UI-CONSTRAINTS.md).
+ * MOBILE (~390px and up to 900px): one full-screen pane at a time, reached
+ * by explicit buttons — never a swipe, never a stack (UI-CONSTRAINTS.md).
+ * Home is the field log, led by a compact Pokémon card; the full scene and
+ * Warden Baoba are the "Partner" tab (or a tap on the card). Navigation is a
+ * bottom tab bar in thumb reach.
  * ══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
   .app {
     padding: 10px;
+    /* room for the fixed tab bar: its 56px targets plus padding and rim */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
     gap: 8px;
   }
   .strip {
     padding: 9px 11px;
     gap: 10px;
-    align-items: flex-start;
-    /* 44px touch targets (below) no longer fit next to identity on one row
-       at ~390px, so nav wraps onto a row of its own rather than crushing
-       identity's text into a wrap of its own. */
-    flex-wrap: wrap;
-  }
-  .strip nav {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-end;
-  }
-  .identity {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
   }
   .identity .zone {
-    font-size: 9px;
+    font-size: 10px;
   }
-  .identity .who {
-    gap: 8px;
-    font-size: 7px;
+  .todaychip {
+    margin-left: auto;
+    padding: 5px 8px;
+    gap: 6px;
   }
-  .strip .ball {
-    margin-top: 2px;
+  .todaychip .track {
+    width: 44px;
+  }
+  /* the compact card carries today's progress itself on the home screen */
+  .app:has(.stage.on-log) .todaychip {
+    display: none;
   }
 
-  /* Below 900px this is the *only* way a Ranger moves between screens (#32)
-     — UI-CONSTRAINTS.md's 44px touch-target minimum applies for real here,
-     unlike the desktop chrome above where a mouse is doing the pointing. The
-     home arrow is an `.icobtn` too, so it is sized by the same rule. */
-  .strip nav a.icobtn {
-    width: 44px;
-    height: 44px;
+  /* The bottom tab bar (every destination, one tap): icon over a short
+     label, each at least 44px — and well past it — because this is the
+     only way a Ranger moves between screens (#32). Fixed to the viewport,
+     with the home-indicator inset kept clear. */
+  .strip nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px 6px max(6px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, var(--safari-mid), var(--safari-dark));
+    border-top: 4px solid var(--safari-edge);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28);
   }
-  .strip nav a.home {
+  .strip nav a.navlink {
+    --navlink-face: transparent;
+    --navlink-keyline: transparent;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-height: 52px;
+    height: auto;
+    padding: 4px 2px;
+    border: 3px solid transparent;
+    box-shadow: inset 0 0 0 1px var(--navlink-keyline);
+    font-family: var(--font-display), monospace;
+    font-size: 15px;
+    line-height: 1;
+    text-shadow: var(--safari-shadow);
+  }
+  .strip nav a.navlink:hover {
+    --navlink-face: transparent;
+  }
+  .strip nav a.navlink.narrow-only {
     display: flex;
+  }
+  .strip nav a.navlink svg {
+    width: 20px;
+    height: 20px;
+  }
+  .strip nav a.navlink .navtext.long {
+    display: none;
+  }
+  .strip nav a.navlink .navtext.short {
+    display: block;
   }
 
   .stage {
     min-height: 0;
     /* the two panes sit side by side at double width; translateX shows one */
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .stage.on-log .compactcard {
+    display: flex;
+  }
+  /* The tray has the whole screen's width to itself down here, so let a
+     longer line (an Overdue clause on top of a mood line) grow it rather
+     than clip. */
+  .dialogue {
+    height: auto;
+    min-height: var(--safari-tray);
   }
   /* A task takes over the whole screen, so the stage behind it goes away
      rather than scrolling underneath (#32) — the mobile task detail
@@ -956,7 +1212,9 @@ body {
   .panes {
     display: flex;
     width: 200%;
-    height: 100%;
+    height: auto;
+    flex: 1;
+    min-height: 0;
     gap: 0;
     transition: transform 0.22s ease;
   }
@@ -1044,15 +1302,90 @@ body {
   text-shadow: var(--safari-shadow);
   color: #fff;
   padding: 2px 4px 11px;
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 .logtop .date {
   color: var(--safari-pale);
 }
 .quota {
+  position: relative;
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
+}
+.qtext b {
+  display: inline-block;
+  font-weight: normal;
+  color: var(--safari-sel);
+  animation: qbump 0.32s ease;
+}
+@keyframes qbump {
+  0% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* Target met: the fill and the readout turn gold-green, with a mark that
+   survives without colour. Exceeded adds a star and a warmer fill. */
+.quota.met .qtext {
+  color: var(--safari-sel);
+}
+.quota.met .track {
+  box-shadow: 0 0 0 2px rgba(242, 245, 200, 0.55);
+}
+.quota.met .track i {
+  background: #ffe36a;
+}
+.quota.over .qmark {
+  color: #ffe36a;
+}
+.qmark {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--safari-sel);
+  text-shadow: none;
+}
+/* "+N" rising from a completion: opacity and transform only, one-shot, ends
+   invisible. Reduced motion collapses the animation to 0.01ms, which would
+   hide it entirely — so there it is shown static instead (the pop on the
+   logged row and the readout's change are the reward). */
+.floatpts {
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  color: #ffe36a;
+  text-shadow: var(--safari-shadow);
+  pointer-events: none;
+  animation: floatpts 1.2s ease-out forwards;
+}
+.quotaburst {
+  position: absolute;
+  right: 0;
+  top: -2px;
+  z-index: 2;
+}
+@keyframes floatpts {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.25);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .floatpts {
+    animation: none;
+    opacity: 1;
+  }
 }
 .quota .track {
   width: 92px;
@@ -1078,7 +1411,12 @@ body {
 }
 .addbtn {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   text-align: left;
+  min-height: 44px;
   padding: 10px 10px;
   font-family: var(--font-pixel), monospace;
   font-size: 10px;
@@ -1089,6 +1427,23 @@ body {
 }
 .addbtn:hover {
   background: rgba(0, 0, 0, 0.16);
+}
+/* The shortcut hint: desktop only, and only where a hover-capable pointer
+   suggests a keyboard. */
+.kbdhint {
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  color: var(--safari-pale);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(184, 232, 194, 0.45);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+@media (hover: none), (max-width: 900px) {
+  .kbdhint {
+    display: none;
+  }
 }
 .addeditor {
   padding: 10px 0 14px;
@@ -1287,6 +1642,8 @@ body {
   border-radius: 3px;
   color: #fff;
   flex: none;
+  /* The row's drop shadow would smear the dark ink the tag picks on light fills. */
+  text-shadow: none;
 }
 
 /* Fixed-width, like `.sz` below: every row's title then starts at the same x
@@ -1316,6 +1673,7 @@ body {
 input.title {
   font-family: var(--font-display), monospace;
 }
+
 input.title[readonly] {
   cursor: pointer;
 }
@@ -1336,13 +1694,64 @@ span.title {
   text-decoration: line-through;
 }
 
+/* The task's worth in the header's own unit ("+2"). Heavier tasks read
+   brighter, so a glance down the column separates the big ones. */
 .sz {
   font-family: var(--font-pixel), monospace;
   font-size: 8px;
   color: var(--safari-pale);
-  min-width: 16px;
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: 9px;
+  padding: 4px 7px;
+  min-width: 30px;
   text-align: center;
   flex: none;
+}
+.sz-medium {
+  color: #e6f5a8;
+}
+.sz-large {
+  color: #ffe36a;
+  background: rgba(0, 0, 0, 0.42);
+}
+.taskrow.done .sz {
+  opacity: 0.55;
+}
+/* How overdue, quietly: small, no fill, a soft red that stays readable on the
+   dark green (>=4.5:1). The bucket heading already carries the alarm. */
+.latechip {
+  flex: none;
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  text-transform: uppercase;
+  color: #ffb4a8;
+  white-space: nowrap;
+}
+/* Just completed: the check pops, the row glows once, then settles. */
+.taskrow.celebrate .circle.check {
+  animation: circle-check-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) forwards;
+}
+.taskrow.celebrate .rowhead {
+  position: relative;
+}
+.taskrow.celebrate .rowhead .floatpts {
+  position: absolute;
+  right: 44px;
+  top: 4px;
+}
+@keyframes circle-check-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* the expander — fades in via opacity only, per UI-CONSTRAINTS: never
@@ -1583,16 +1992,42 @@ span.title {
 /* "A Ranger with nothing Open sees a clear-day state, not an empty panel"
    (#28's acceptance criteria). */
 .clearday {
-  margin: 28px 8px;
-  padding: 20px 16px;
+  margin: 24px 8px 12px;
+  padding: 22px 16px 20px;
   text-align: center;
   font-family: var(--font-pixel), monospace;
-  font-size: 9px;
   text-transform: uppercase;
   color: var(--safari-pale);
   text-shadow: var(--safari-shadow);
   border: 2px dashed rgba(184, 232, 194, 0.35);
   border-radius: 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+.clearmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--safari-pale);
+  font-size: 18px;
+  color: var(--safari-sel);
+}
+.clearhead {
+  margin: 12px 0 0;
+  font-size: 10px;
+  color: var(--safari-sel);
+}
+.clearsub {
+  margin: 10px 0 0;
+  font-size: 8px;
+  line-height: 1.7;
+  opacity: 0.85;
+}
+/* Logged today sits a little apart from the open list. */
+.loggedbucket {
+  margin-top: 18px;
 }
 
 /* Logged today: collapsible on mobile, always open on desktop (#29) — only
@@ -1632,6 +2067,9 @@ span.title {
   }
   .logpanel {
     padding: 10px;
+  }
+  .quota .track {
+    width: 56px;
   }
 
   /* Touch targets ≥44px, with extra care on the control that mutates state
@@ -1864,8 +2302,6 @@ span.title {
   display: flex;
   flex-direction: column;
   padding: 12px;
-  max-width: 640px;
-  margin: 0 auto;
 }
 .settop {
   margin: 0;
@@ -1915,37 +2351,47 @@ span.title {
   border-radius: 4px;
 }
 
-/* ── daily target ───────────────────────────────────────────────────── */
-.targetrow {
+/* ── daily target / time zone: one row each — the control, then its Save ── */
+.setrow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px 12px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.setfield {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 .targetinput {
-  width: 72px;
+  width: 5rem;
   font-family: var(--font-pixel), monospace;
-  font-size: 15px;
+  font-size: 16px;
   text-align: center;
   background: rgba(0, 0, 0, 0.28);
   color: #fff;
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 7px;
-  padding: 9px 4px;
+  padding: 10px 4px;
+  min-height: 44px;
 }
 .targetunit {
   font-size: 17px;
   color: var(--safari-pale);
   text-transform: uppercase;
 }
-
-/* ── time zone: same row shape as the daily target, a `<select>` in place
-   of the number input ──────────────────────────────────────────────── */
 .tzselect {
   flex: 1;
   min-width: 0;
-  max-width: 22rem;
+  min-height: 44px;
   font-size: 16px;
+  text-overflow: ellipsis;
   background: rgba(0, 0, 0, 0.28);
   color: #fff;
   border: 2px solid rgba(255, 255, 255, 0.25);
@@ -1955,36 +2401,70 @@ span.title {
 .tzselect option {
   color: #202020;
 }
+.setsave {
+  flex: none;
+  min-height: 44px;
+}
 
-/* ── labels ─────────────────────────────────────────────────────────── */
+/* ── labels: one card per label, one form, one Save ─────────────────── */
 .labellist {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 8px;
 }
-.labelrow {
+.labelcard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.labeledit {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-  padding: 8px 8px 8px 4px;
-  border-radius: 7px;
+  gap: 8px;
+  flex: 1 1 22rem;
+  min-width: 0;
 }
-.labelrow:hover {
-  background: rgba(0, 0, 0, 0.14);
+.labeledit .labelname {
+  flex: 1;
+  min-width: 0;
+}
+.labelsave {
+  flex: none;
+  min-height: 44px;
+}
+.labelaside {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 .reorder {
   display: flex;
-  flex-direction: column;
+  gap: 4px;
+}
+.reorder form {
+  display: flex;
 }
 .arrowbtn {
-  font-size: 10px;
-  padding: 1px 4px;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 12px;
   color: var(--safari-pale);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
 }
 .arrowbtn:hover:not(:disabled) {
   color: #fff;
+  background: rgba(0, 0, 0, 0.35);
 }
 .arrowbtn:disabled {
   opacity: 0.25;
@@ -1992,8 +2472,8 @@ span.title {
 }
 .swatch {
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 2px solid var(--safari-edge);
   border-radius: 6px;
@@ -2007,65 +2487,74 @@ span.title {
   border: none;
   border-radius: 3px;
 }
-.fieldform {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.labelrow input.title {
+.labeledit input.title,
+.addeditorrow input.title {
   min-width: 0;
-  width: 9rem;
+  min-height: 44px;
   font-size: 20px;
   background: rgba(0, 0, 0, 0.22);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 6px;
-  padding: 6px 8px;
-}
-.labelrow input.title:focus {
-  outline: none;
+  padding: 6px 10px;
 }
 .abbrinput {
+  flex: none;
   width: 4.5rem;
-  font-family: var(--font-pixel), monospace;
-  font-size: 10px;
+  min-height: 44px;
+  font-family: var(--font-display), monospace;
+  font-size: 20px;
   text-transform: uppercase;
   text-align: center;
   background: rgba(0, 0, 0, 0.22);
   color: var(--safari-sel);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 6px;
-  padding: 8px 4px;
+  padding: 6px 4px;
 }
-.savebtn {
-  font-family: var(--font-pixel), monospace;
-  font-size: 7px;
-  text-transform: uppercase;
-  color: var(--safari-pale);
-  padding: 7px 8px;
-  border-radius: 6px;
-  flex: none;
+/* Delete sits apart from the edit controls, tinted and set off by a gap, and
+   asks before it acts. */
+.labeldelete,
+.delyes {
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 2px solid rgba(224, 64, 48, 0.45);
 }
-.savebtn:hover {
-  background: rgba(0, 0, 0, 0.2);
-  color: #fff;
+.delconfirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.labelrow .delbtn {
-  margin-left: auto;
+.delask {
+  font-size: 17px;
+  color: #ffd0c8;
+}
+.delyes {
+  background: rgba(224, 64, 48, 0.3);
+}
+.delconfirm .ghostbtn {
+  min-height: 44px;
+}
+.labelerror {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 17px;
+  color: #ffd0c8;
 }
 
 /* The add-label control is a native `<details>` — its own `<summary>` is
    both the dashed toggle button and, once open, the row's Cancel (a second
    click collapses it again), so no client JS is needed for either. */
-.addeditor > summary {
+.labeladd > summary {
   list-style: none;
   cursor: pointer;
 }
-.addeditor > summary::-webkit-details-marker,
-.addeditor > summary::marker {
+.labeladd > summary::-webkit-details-marker,
+.labeladd > summary::marker {
   display: none;
 }
-.addeditor[open] > summary {
+.labeladd[open] > summary {
   margin-bottom: 4px;
 }
 .addeditorrow {
@@ -2078,16 +2567,15 @@ span.title {
 .addeditorrow input.title {
   flex: 1;
   min-width: 8rem;
-  font-size: 20px;
-  background: rgba(0, 0, 0, 0.22);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  padding: 8px 10px;
 }
 .addeditorrow input.title::placeholder,
 .addeditorrow .abbrinput::placeholder {
   color: rgba(242, 245, 200, 0.5);
+}
+.addbtn {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 /* ── briefing ───────────────────────────────────────────────────────── */
@@ -2108,17 +2596,30 @@ span.title {
   background: #ffec9a;
 }
 
-/* ── session ────────────────────────────────────────────────────────── */
+/* ── account ────────────────────────────────────────────────────────── */
 .sessionrow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px 12px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
-.sessionrow span {
+.sessionwho {
   font-size: 17px;
   color: rgba(255, 255, 255, 0.65);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sessionwho b {
+  font-weight: normal;
+  color: #fff;
+}
+.signoutbtn {
+  min-height: 44px;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -2185,6 +2686,12 @@ span.title {
   gap: 10px;
 }
 .dextile {
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2198,6 +2705,21 @@ span.title {
 .dextile.seen {
   background: rgba(0, 0, 0, 0.28);
   box-shadow: inset 0 0 0 1px rgba(242, 245, 200, 0.35);
+}
+.dextile:hover {
+  background: rgba(0, 0, 0, 0.34);
+}
+.dextile.target {
+  box-shadow: inset 0 0 0 2px var(--safari-sel);
+  background: rgba(242, 245, 200, 0.12);
+}
+.dextile.open {
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.dexbond {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  color: var(--safari-sel);
 }
 .dextile img {
   width: 52px;
@@ -2225,6 +2747,110 @@ span.title {
   color: #fff;
 }
 
+/* ── field notes, filter tabs, entry note ───────────────────────────── */
+.dexfocus {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(242, 245, 200, 0.3);
+}
+.dexfocushead {
+  font-family: var(--font-pixel), monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--safari-sel);
+  text-shadow: var(--safari-shadow);
+  margin-bottom: 8px;
+}
+.dexfocuslist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dexfocusline {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.25;
+  color: #fff;
+}
+.dextabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.dextab {
+  min-height: 44px;
+  padding: 0 14px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+  border-radius: 7px;
+  border: 2px solid rgba(184, 232, 194, 0.4);
+}
+.dextab[aria-pressed="true"] {
+  background: var(--safari-sel);
+  border-color: var(--safari-sel);
+  color: #23330f;
+}
+.dexempty {
+  margin: 8px 2px;
+  font-size: 19px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.65);
+}
+.dexnote {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(242, 245, 200, 0.35);
+}
+.dexnoteimg {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.dexnoteimg.silhouette {
+  filter: brightness(0) opacity(0.32);
+}
+.dexnotetext {
+  flex: 1;
+  min-width: 0;
+}
+.dexnotename {
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: var(--safari-shadow);
+}
+.dexnotenum {
+  margin-left: 10px;
+  font-size: 8px;
+  color: var(--safari-sel);
+}
+.dexnotebody {
+  margin-top: 6px;
+  font-size: 18px;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.8);
+}
+.dexnoteclose {
+  flex: none;
+  min-height: 44px;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
  * The Logbook (#30): every settled day, grouped by month with a count,
  * most recent first — reusing `.grouphead` from the field log's Bucket
@@ -2236,8 +2862,6 @@ span.title {
   display: flex;
   flex-direction: column;
   padding: 12px;
-  max-width: 640px;
-  margin: 0 auto;
 }
 .histtop {
   margin: 0;
@@ -2260,6 +2884,71 @@ span.title {
 .histscroll::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.35);
   border-radius: 4px;
+}
+.histsummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.histstat {
+  padding: 10px 10px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  min-width: 0;
+}
+.histstat dt {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
+}
+.histstat dd {
+  margin: 8px 0 0;
+  font-family: var(--font-pixel), monospace;
+  font-size: 14px;
+  color: #fff;
+  text-shadow: var(--safari-shadow);
+}
+.histnote {
+  display: block;
+  margin-top: 6px;
+  font-size: 7px;
+  color: var(--safari-sel);
+}
+.histempty {
+  margin: 12px 4px;
+  padding: 18px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.histemptytitle {
+  margin: 0 0 10px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--safari-sel);
+  text-shadow: var(--safari-shadow);
+}
+.histemptytext {
+  margin: 0 0 10px;
+  font-size: 19px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.85);
+}
+.histsample {
+  margin-top: 14px;
+  padding: 8px 6px 4px;
+  border-top: 2px dashed rgba(184, 232, 194, 0.3);
+  opacity: 0.6;
+}
+.histsamplelabel {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--safari-pale);
 }
 .ledgerrow {
   display: grid;
@@ -2424,12 +3113,7 @@ span.title {
     grid-column: 1 / -1;
   }
 
-  /* Settings is the first screen to put this chrome's small buttons —
-     sized for a mouse in the field log's desktop-only debut (#28) — in
-     front of a thumb. UI-CONSTRAINTS.md's 44px minimum applies for real
-     here, the same reason the icon nav gets it in the shared chrome block. */
-  .arrowbtn,
-  .savebtn,
+  /* 44px floor on settings' small buttons: the same rule the icon nav gets. */
   .delbtn,
   .ghostbtn,
   .primary {
@@ -2438,16 +3122,25 @@ span.title {
     align-items: center;
     justify-content: center;
   }
-  .addbtn {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
+  .setrow .setsave,
+  .sessionrow form,
+  .sessionrow .signoutbtn {
+    flex: 1 1 100%;
   }
-  .swatch {
-    width: 44px;
-    height: 44px;
+  .labeledit {
+    flex-wrap: wrap;
   }
-  .reorder {
-    flex-direction: row;
+  .labeledit .labelname {
+    flex: 1 1 8rem;
+  }
+  .labelsave {
+    flex: 1 1 100%;
+  }
+  .labelaside {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    margin-left: 0;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 }

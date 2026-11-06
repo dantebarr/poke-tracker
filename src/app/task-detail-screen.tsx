@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
-import { DeleteControls, type PendingDelete, RecurrenceMarker, TaskFieldChips } from "@/app/field-log-panel";
+import { TaskFieldChips } from "@/app/field-log/chips";
+import { DeleteControls, type PendingDelete } from "@/app/field-log/delete-controls";
+import { RecurrenceMarker } from "@/app/field-log/recurring-controls";
 import { useOverlayDismiss } from "@/app/overlay-dismiss";
 import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";

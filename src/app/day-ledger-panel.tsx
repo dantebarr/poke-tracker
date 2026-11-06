@@ -2,6 +2,7 @@ import { parseDateOnly } from "@/lib/task/dates";
 import type { DayLedgerEntry } from "@/lib/settlement/ledger";
 import { groupDayLedgerByMonth } from "@/lib/settlement/ledger-months";
 import { describeLedgerRowDisplay } from "@/lib/settlement/ledger-row-display";
+import { summariseLedger } from "@/lib/settlement/ledger-summary";
 import { capitalise } from "@/lib/text";
 
 const WEEKDAY_MONTH_DAY_FORMAT = new Intl.DateTimeFormat("en-US", {
@@ -41,26 +42,75 @@ function describeEvent(entry: DayLedgerEntry): string | null {
  */
 export function DayLedgerPanel({ entries }: { entries: DayLedgerEntry[] }) {
   const months = groupDayLedgerByMonth(entries);
+  const summary = summariseLedger(entries);
 
   return (
     <div className="histpanel panel">
       <h1 className="histtop">Logbook</h1>
       <div className="histscroll">
         {months.length === 0 ? (
-          <p className="clearday">No settled days yet. Come back after your first day passes.</p>
+          <LogbookEmpty />
         ) : (
-          months.map((month) => (
-            <div key={month.key}>
-              <div className="grouphead">
-                <span>{month.label}</span>
-                <span className="count">{month.entries.length}</span>
+          <>
+            <dl className="histsummary" aria-label="Summary of settled days">
+              <SummaryStat label="Days logged" value={summary.daysLogged} />
+              <SummaryStat label="Target met" value={`${summary.goodDays} / ${summary.daysLogged}`} />
+              <SummaryStat label="Streak" value={summary.currentStreak} note={`best ${summary.bestStreak}`} />
+            </dl>
+            {months.map((month) => (
+              <div key={month.key}>
+                <div className="grouphead">
+                  <span>{month.label}</span>
+                  <span className="count">{month.entries.length}</span>
+                </div>
+                {month.entries.map((entry) => (
+                  <DayLedgerRow key={entry.day} entry={entry} />
+                ))}
               </div>
-              {month.entries.map((entry) => (
-                <DayLedgerRow key={entry.day} entry={entry} />
-              ))}
-            </div>
-          ))
+            ))}
+          </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value, note }: { label: string; value: number | string; note?: string }) {
+  return (
+    <div className="histstat">
+      <dt>{label}</dt>
+      <dd>
+        {value}
+        {note && <span className="histnote">{note}</span>}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Nothing is settled until a day has passed, so a new Ranger's Logbook is
+ * empty for a while. Say what will land here and when, with a sample row so
+ * the shape is familiar by the time the first real one arrives.
+ */
+function LogbookEmpty() {
+  return (
+    <div className="histempty">
+      <p className="histemptytitle">Nothing in the logbook yet</p>
+      <p className="histemptytext">
+        Each night your day is settled and one line lands here: the points you earned against your daily target,
+        and what it meant for your Pokémon. Today is never shown until it is over, so your first entry appears
+        tomorrow.
+      </p>
+      <p className="histemptytext">Meeting your target is a good day and builds bond. Falling short drains happiness, and a Pokémon whose happiness runs out will leave.</p>
+      <div className="histsample" aria-hidden="true">
+        <span className="histsamplelabel">Example</span>
+        <div className="ledgerrow">
+          <span className="ledgerdate">Mon, Jan 1</span>
+          <span className="ledgerpts">
+            6<span className="sign">/5</span>
+          </span>
+          <span className="ledgerdesc">Your Pokémon gained a bond point</span>
+        </div>
       </div>
     </div>
   );

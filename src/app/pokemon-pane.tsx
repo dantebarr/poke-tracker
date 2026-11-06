@@ -9,6 +9,7 @@ import { EncounterView } from "@/app/encounter-view";
 import { EvolvePrompt } from "@/app/evolve-prompt";
 import { FieldMenu } from "@/app/field-menu";
 import { NamingPrompt } from "@/app/naming-prompt";
+import type { Mood } from "@/lib/baoba/dialogue";
 import { buildEncounterView } from "@/lib/pokemon/encounter-view";
 import type { EvolutionOption } from "@/lib/pokemon/evolution";
 import type { ActivePokemon } from "@/lib/pokemon/pokemon";
@@ -24,8 +25,8 @@ import type { ActivePokemon } from "@/lib/pokemon/pokemon";
  * every time a Ranger loaded the home page. Since #33 this pane is mounted
  * once by the chrome layout and never taken down, so there is no remount to
  * reset `skipped` on a narrow screen's own return to the encounter view —
- * the one surviving boundary a narrow screen still has, reached by the ←
- * arrow or a bare `/` — is treated as that next visit instead. A wide
+ * the one surviving boundary a narrow screen still has, reached by the
+ * Partner tab or the compact card — is treated as that next visit instead. A wide
  * screen has no such boundary (the pane is permanently on screen, which is
  * the point of #33), so a skip there lasts the rest of the session.
  */
@@ -33,12 +34,15 @@ export function PokemonPane({
   pokemon,
   evolutionOptions,
   parting,
+  mood,
   baobaLine,
 }: {
   pokemon: ActivePokemon | null;
   evolutionOptions: EvolutionOption[];
   /** A Parting is set for today (#5) — decided by the chrome layout against the Ranger's own day key. */
   parting: boolean;
+  /** How the Pokémon feels, from the same bands Baoba's line uses; null with no Active Pokémon. */
+  mood: Mood | null;
   baobaLine: string;
 }) {
   const [skipped, setSkipped] = useState(false);
@@ -49,7 +53,7 @@ export function PokemonPane({
   // the screen actually holding it — a wide screen just never leaves.
   const pathname = usePathname();
   const params = useSearchParams();
-  const onNarrowEncounterView = resolveNavigation({ pathname, params, surface: "narrow" }).destination === null;
+  const onNarrowEncounterView = resolveNavigation({ pathname, params, surface: "narrow" }).destination === "encounter";
   const wasOnNarrowEncounterView = useRef(onNarrowEncounterView);
   useEffect(() => {
     if (onNarrowEncounterView && !wasOnNarrowEncounterView.current) {
@@ -112,6 +116,7 @@ export function PokemonPane({
       <EncounterView
         pokemon={pokemon}
         parting={parting}
+        mood={mood}
         prompt={namingPrompt("box") ?? evolvePrompt("box")}
         fieldMenu={fieldMenu}
       />

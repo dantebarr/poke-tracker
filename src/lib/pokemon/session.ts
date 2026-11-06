@@ -2,7 +2,7 @@ import { cache } from "react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findEvolutionOptions, type EvolutionOption } from "@/lib/pokemon/evolution";
-import { listPokedex, type PokedexEntry } from "@/lib/pokemon/pokedex";
+import { listDexLine, listPokedex, type DexLineStep, type PokedexEntry } from "@/lib/pokemon/pokedex";
 import { findActivePokemon, type ActivePokemon } from "@/lib/pokemon/pokemon";
 
 /**
@@ -50,4 +50,13 @@ export const currentEvolutionOptions = cache(
 export async function currentPokedex(trainerId: string): Promise<PokedexEntry[]> {
   const client = await createSupabaseServerClient();
   return listPokedex(client, trainerId);
+}
+
+/**
+ * The line the Pokédex screen highlights: the current species and the forms it
+ * could still evolve into, with their cumulative bond requirements.
+ */
+export async function currentDexLine(currentSpeciesId: number): Promise<DexLineStep[]> {
+  const client = await createSupabaseServerClient();
+  return listDexLine(client, currentSpeciesId);
 }

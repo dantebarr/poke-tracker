@@ -88,7 +88,7 @@ export function normalizeNotes(notes: string): string | null {
  * so a title typed character by character is one write, not one per
  * keystroke (UI-CONSTRAINTS.md's complaint about the mockup's own
  * per-keystroke model). That is the desktop inline expander (`OpenTaskRow`
- * in `field-log-panel.tsx`), where editing is a fast in-place thing and
+ * in `field-log/task-rows.tsx`), where editing is a fast in-place thing and
  * there is no moment that reads as "done".
  *
  * Leave it out and nothing is ever saved on this hook's own initiative: the
