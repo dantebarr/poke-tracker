@@ -3,9 +3,8 @@
 import type { ReactNode } from "react";
 
 import { keepEscapeInChip } from "@/app/field-log/chips";
-import { DAYS_OF_MONTH, type RecurringFields, type RecurringFormView } from "@/app/recurring-fields";
+import { DAYS_OF_MONTH, FREQUENCY_OPTIONS, type RecurringFields, type RecurringFormView } from "@/app/recurring-fields";
 import type { EditableFields } from "@/app/task-edit-fields";
-import type { RecurrenceFrequency } from "@/lib/recurrence/dates";
 import { WEEKDAY_NAMES } from "@/lib/recurrence/wording";
 import { addDays } from "@/lib/day/day";
 import type { Label } from "@/lib/label/label";
@@ -18,9 +17,9 @@ import { capitalise } from "@/lib/text";
  * ▶ cursor. Each line is a real radio group, so arrow keys move the cursor the
  * way they would in a menu, and Tab moves between lines.
  *
- * Shared by the two desktop forms — an open row's inline editor and the add
- * form — so editing and creating a task look and work alike. The mobile
- * detail screen and add sheet keep `TaskFieldChips`.
+ * Shared by every task form — the desktop row editor and add form, and the
+ * mobile task screen and add sheet — so editing and creating a task look and
+ * work alike everywhere.
  */
 export function TaskEditMenu({
   taskId,
@@ -131,12 +130,6 @@ export function TaskEditMenu({
   );
 }
 
-const REPEAT_OPTIONS: { frequency: RecurrenceFrequency; name: string }[] = [
-  { frequency: "daily", name: "Daily" },
-  { frequency: "weekly", name: "Weekly" },
-  { frequency: "monthly", name: "Monthly" },
-];
-
 /**
  * The add form's repeat controls as menu lines: Never or a frequency, then —
  * for weekly and monthly — which day. Replaces the chip form's icon toggle
@@ -167,7 +160,7 @@ export function RepeatMenuLines({
             />
             <span>Never</span>
           </label>
-          {REPEAT_OPTIONS.map((option) => (
+          {FREQUENCY_OPTIONS.map((option) => (
             <label key={option.frequency} className="menuopt">
               <input
                 type="radio"

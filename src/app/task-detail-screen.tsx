@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 
-import { TaskFieldChips } from "@/app/field-log/chips";
+import { TaskEditMenu } from "@/app/field-log/edit-menu";
 import { DeleteControls, type PendingDelete } from "@/app/field-log/delete-controls";
 import { RecurrenceMarker } from "@/app/field-log/recurring-controls";
 import { useOverlayDismiss } from "@/app/overlay-dismiss";
-import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
+import { type EditableFields, taskToFields, useTaskFields } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
 import type { Task } from "@/lib/task/task";
 
@@ -41,6 +41,7 @@ import type { Task } from "@/lib/task/task";
 export function TaskDetailScreen({
   task,
   labels,
+  todayKey,
   onCancel,
   onSave,
   onDelete,
@@ -48,6 +49,7 @@ export function TaskDetailScreen({
 }: {
   task: Task;
   labels: Label[];
+  todayKey: string;
   onCancel: () => void;
   onSave: (fields: EditableFields) => void;
   onDelete: () => void;
@@ -55,6 +57,9 @@ export function TaskDetailScreen({
 }) {
   const { fields, edit } = useTaskFields(task);
   const [confirmingDelete, setConfirmingDelete] = useState<PendingDelete>(null);
+  const stored = taskToFields(task);
+  const dirty = (Object.keys(stored) as (keyof EditableFields)[]).some((key) => fields[key] !== stored[key]);
+  const valid = fields.title.trim() !== "" && fields.dueDate !== "" && fields.labelId !== "";
 
   /**
    * Escape leaves, and leaves the way Cancel does — discarding, per the
@@ -90,31 +95,16 @@ export function TaskDetailScreen({
         <span className="pixel">Task detail</span>
       </div>
       <div className="detailbody">
-        <input
-          className="title"
-          type="text"
-          value={fields.title}
-          onChange={(event) => edit({ title: event.target.value })}
-          aria-label="Title"
-        />
-        {task.recurrence && <RecurrenceMarker recurrence={task.recurrence} />}
-        <textarea
-          className="notes"
-          placeholder="Notes (optional)"
-          value={fields.notes}
-          onChange={(event) => edit({ notes: event.target.value })}
-          aria-label="Notes"
-        />
-        <div className="chips">
-          <TaskFieldChips
-            dueDate={fields.dueDate}
-            labelId={fields.labelId}
-            size={fields.size}
-            labels={labels}
-            onDueChange={(value) => edit({ dueDate: value })}
-            onLabelChange={(value) => edit({ labelId: value })}
-            onSizeChange={(value) => edit({ size: value })}
+        <div className="detailcard textbox">
+          <input
+            className="title"
+            type="text"
+            value={fields.title}
+            onChange={(event) => edit({ title: event.target.value })}
+            aria-label="Title"
           />
+          {task.recurrence && <RecurrenceMarker recurrence={task.recurrence} />}
+          <TaskEditMenu taskId={task.id} fields={fields} labels={labels} todayKey={todayKey} onChange={edit} />
         </div>
         <DeleteControls
           recurring={task.recurrence !== null}
@@ -131,8 +121,13 @@ export function TaskDetailScreen({
         <button type="button" className="ghostbtn" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" className="primary" onClick={() => onSave(fields)}>
-          Save
+        <button
+          type="button"
+          className="primary"
+          disabled={!dirty || !valid}
+          onClick={() => onSave({ ...fields, title: fields.title.trim() })}
+        >
+          Save changes
         </button>
       </div>
     </div>

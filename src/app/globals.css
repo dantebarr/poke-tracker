@@ -1452,9 +1452,7 @@ body {
 .addeditor .circle.ghost {
   opacity: 0.35;
 }
-.addeditor input.title::placeholder,
-.addeditor textarea.notes::placeholder,
-.expander textarea.notes::placeholder {
+.addeditor input.title::placeholder {
   color: rgba(242, 245, 200, 0.5);
 }
 
@@ -1764,131 +1762,6 @@ span.title {
 .editbody {
   padding: 2px 8px 14px 39px;
 }
-.expander textarea.notes,
-.editbody textarea.notes {
-  width: 100%;
-  min-height: 52px;
-  resize: vertical;
-  background: rgba(0, 0, 0, 0.22);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  padding: 7px 9px;
-  font-size: 16px;
-  line-height: 1.3;
-  font-family: var(--font-display), monospace;
-}
-.chips {
-  display: flex;
-  /* `stretch`, not `center`: the stacked chips below differ by a pixel or two
-     in intrinsic height (a date input is not a `<select>`), and three pills
-     that don't share a bottom edge read as sloppy. `.editactions` is a
-     sibling flex item here and centres its own buttons, so stretching it
-     costs nothing. */
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-/* The field name sits *above* its control rather than inline to its left.
-   `align-items: flex-start` is what buys the horizontal saving: the chip
-   collapses to the width of its widest child — the control — instead of
-   name + gap + control, which cost the row roughly 100px across the trio and
-   is space the desktop field log doesn't have in its 0.9fr column. The
-   `<label>` still wraps the control, so the name stays a touch target and
-   `TaskFieldChips` needs no markup change for any of this. */
-/* `align-items: stretch` on `.chips` only agrees the heights *within a flex
-   line*, so once the recurring row opened, its two pickers agreed with each
-   other and not with the date, label and size above them — a `<select>` chip
-   is a couple of pixels shorter than a date one, and nothing was making the
-   two rows meet. A floor every chip shares is what makes them one set of
-   boxes rather than two, whichever line they land on. It sits at the 44px
-   `UI-CONSTRAINTS.md` asks of a touch target, which the chips were already
-   within a hair of. */
-.chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-height: 44px;
-  gap: 3px;
-  font-family: var(--font-pixel), monospace;
-  font-size: 7px;
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--safari-pale);
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 6px;
-  padding: 6px 8px;
-}
-.chip input,
-.chip select {
-  font-size: 16px;
-  /* Back to `normal`: the name's `line-height: 1` above is deliberate — it
-     keeps the chip only as much taller as the extra line — but a date input
-     that inherits it clips its own text. */
-  line-height: normal;
-  background: transparent;
-  color: #fff;
-  border: none;
-  font-family: var(--font-display), monospace;
-}
-.chip input[type="date"] {
-  color-scheme: dark;
-}
-.chip select {
-  cursor: pointer;
-}
-.chip select option {
-  color: #202020;
-}
-/* The recurring toggle (#15): an icon on its own, last on the chip row. It
-   stretches to whatever height the chips settled on rather than setting one,
-   so it stays square-ish with them, and `min-width` is what carries the 44px
-   touch target `UI-CONSTRAINTS.md` asks for — there is no text here to widen
-   it the way a chip's name widens a chip. */
-.recurbtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: stretch;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.28);
-  color: var(--safari-pale);
-  cursor: pointer;
-}
-/* On, and unmistakably so: the row it opens is the only other sign, and that
-   row is below the fold of the eye's path across the chips. */
-.recurbtn[aria-pressed="true"] {
-  background: var(--safari-light);
-  color: var(--safari-edge);
-}
-/* The second row's rule (#15), and the thing that starts the row: full width
-   so nothing can share its line, zero height so it costs one border, and
-   `flex-start` so `.chips`' own `stretch` doesn't blow it up to the height of
-   the line. Everything after it wraps below — which is how the recurring
-   pickers get a line apart from the fields every task has while Cancel and
-   Save, later in the same container, still land beside them. */
-.recurrule {
-  flex-basis: 100%;
-  align-self: flex-start;
-  height: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-/* What the rule about to be created will actually do. Full width again, so it
-   sits under the pickers it is the consequence of rather than beside them. */
-.recurnote {
-  flex-basis: 100%;
-  margin: 0;
-  font-family: var(--font-pixel), monospace;
-  font-size: 7px;
-  line-height: 1.7;
-  text-transform: uppercase;
-  color: var(--safari-pale);
-}
 /* On its own line under the first-task line: the clamp is a caveat about the
    date above it, not a second fact of equal weight. */
 .recurclamp {
@@ -1901,9 +1774,8 @@ span.title {
    not the notes box: the notes are whatever the rule stamped, and are the
    trainer's to edit.
 
-   The glyph is the recurring toggle's, so the marker and the control that
-   creates one read as the same mechanic; `baseline` keeps it sitting on the
-   line of the text rather than riding above it. */
+   `baseline` keeps the glyph sitting on the line of the text rather than
+   riding above it. */
 .recurmarker {
   display: flex;
   align-items: baseline;
@@ -1946,10 +1818,6 @@ span.title {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* Centred on whatever line it lands on, and no top offset of its own: it
-     shares a line with the chips when recurring is off and with the recurring
-     pickers when it is on, and sat a touch below either while it carried one.
-     `.chips`' `gap` already spaces the wrapped lines. */
   align-self: center;
   margin-left: auto;
 }
@@ -2215,6 +2083,74 @@ span.title {
   border-color: #404040;
 }
 
+/* The same menu on a phone: each field's name sits above its choices so the
+   choices get the full width, every choice is a 44px tap target, and the
+   mobile task screen wraps it all in the white menu box. */
+@media (max-width: 900px) {
+  .menuline {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+    padding: 6px 0;
+  }
+  .menukey {
+    font-size: 17px;
+  }
+  .menuopts {
+    gap: 2px 6px;
+  }
+  .menuopt {
+    min-height: 44px;
+    font-size: 21px;
+  }
+  .menudate input,
+  .menudate select,
+  .menunotes {
+    font-size: 18px;
+    min-height: 40px;
+  }
+  .menunote {
+    margin-left: 0;
+  }
+  .sheet .editmenu {
+    border-top: none;
+  }
+  .sheetfoot {
+    display: flex;
+    gap: 10px;
+    padding-top: 6px;
+  }
+  .sheetfoot .ghostbtn,
+  .sheetfoot .primary {
+    flex: 1;
+    text-align: center;
+    padding: 14px;
+    font-size: 11px;
+  }
+  .sheet .ghostbtn {
+    color: #404040;
+    border-color: #b0b0b0;
+  }
+  .detailcard {
+    padding: 12px 14px 8px;
+  }
+  .detailbody .detailcard input.title {
+    width: 100%;
+    font-size: 22px;
+    color: var(--safari-boxink);
+    background: none;
+    border-radius: 0;
+    padding: 2px 0 4px;
+    border-bottom: 2px dashed #a0a0a0;
+  }
+  .detailbody .detailcard input.title:focus {
+    border-bottom-color: var(--safari-boxink);
+  }
+  .detailcard .recurmarker {
+    color: #4a6a52;
+    margin-top: 8px;
+  }
+}
+
 /* "A Ranger with nothing Open sees a clear-day state, not an empty panel"
    (#28's acceptance criteria). */
 .clearday {
@@ -2313,19 +2249,6 @@ span.title {
   .rowhead {
     padding: 12px 8px;
   }
-  /* Same 44px rule, on the chips. The `<label>` wraps its control, so the
-     whole pill is the tap target — stacking the name above the control got
-     it to ~42px on its own and this carries it the rest of the way, on both
-     mobile surfaces that render `TaskFieldChips`. */
-  /* The mobile padding already carries a chip past the 44px floor above, so
-     the floor stops binding and the two rows are free to disagree by the
-     pixel or two that separates a date input from a `<select>`. Raised past
-     what the padding produces, so it binds here too. */
-  .chip {
-    min-height: 48px;
-    padding: 8px 10px;
-  }
-
   .loggedhead {
     cursor: pointer;
   }
@@ -2382,55 +2305,20 @@ span.title {
     background: #c8c8c8;
   }
   .sheet input.title {
-    font-size: 20px;
-    background: rgba(0, 0, 0, 0.06);
-    border-radius: 8px;
-    padding: 10px 12px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    font-size: 22px;
+    color: var(--safari-boxink);
+    background: none;
+    border: none;
+    border-bottom: 2px dashed #a0a0a0;
+    border-radius: 0;
+    padding: 2px 0 4px;
   }
-  .sheet textarea.notes {
-    width: 100%;
-    min-height: 64px;
-    resize: vertical;
-    font-size: 16px;
-    line-height: 1.3;
-    background: rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 8px;
-    padding: 10px 12px;
+  .sheet input.title:focus {
+    outline: none;
+    border-bottom-color: var(--safari-boxink);
   }
-  .sheet .chips {
-    margin-top: 0;
-  }
-  .sheet .chip {
-    background: rgba(0, 0, 0, 0.08);
-    color: #404040;
-    font-size: 8px;
-  }
-  .sheet .chip input,
-  .sheet .chip select {
-    color: #202020;
-  }
-  .sheet .chip input[type="date"] {
-    color-scheme: light;
-  }
-  /* The sheet is a light surface, so the note, the toggle and the rule the
-     second row hangs under all follow the chips there rather than staying
-     pale-on-dark. */
-  .sheet .recurnote {
-    color: #404040;
-    font-size: 8px;
-  }
-  .sheet .recurrule {
-    border-top-color: rgba(0, 0, 0, 0.12);
-  }
-  .sheet .recurbtn {
-    background: rgba(0, 0, 0, 0.08);
-    color: #404040;
-  }
-  .sheet .recurbtn[aria-pressed="true"] {
-    background: var(--safari-dark);
-    color: var(--safari-box);
+  .sheet input.title::placeholder {
+    color: #9a9a9a;
   }
   .sheet .primary {
     align-self: stretch;
@@ -2478,22 +2366,6 @@ span.title {
     border-radius: 8px;
     padding: 10px 12px;
   }
-  .detailbody textarea.notes {
-    width: 100%;
-    min-height: 90px;
-    resize: vertical;
-    background: rgba(0, 0, 0, 0.22);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 16px;
-    line-height: 1.35;
-    font-family: var(--font-display), monospace;
-  }
-  .detailbody .chips {
-    margin-top: 0;
-  }
   .detailbody .delbtn {
     margin: 6px auto 0;
   }
@@ -2511,8 +2383,9 @@ span.title {
   .detailfoot .primary {
     flex: 1;
     text-align: center;
-    padding: 16px;
-    font-size: 12px;
+    padding: 16px 10px;
+    font-size: 11px;
+    white-space: nowrap;
   }
 }
 

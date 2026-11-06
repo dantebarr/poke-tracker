@@ -398,6 +398,7 @@ export function FieldScreen({
                 key={detailTask.id}
                 task={detailTask}
                 labels={labels}
+                todayKey={todayKey}
                 onCancel={leaveOverlay}
                 onSave={(fields) => {
                   leaveOverlay();

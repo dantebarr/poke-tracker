@@ -2,9 +2,7 @@
 
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
-import { TaskFieldChips } from "@/app/field-log/chips";
 import { RepeatMenuLines, TaskEditMenu } from "@/app/field-log/edit-menu";
-import { RecurringNote, RecurringOptions, RecurringToggle } from "@/app/field-log/recurring-controls";
 import { useOverlayDismiss } from "@/app/overlay-dismiss";
 import { newRecurringFields, describeRecurringForm, type NewTaskFields, type RecurringFields } from "@/app/recurring-fields";
 import { dismissedDraftOutcome, newTaskFields } from "@/app/task-edit-fields";
@@ -270,36 +268,40 @@ export function AddTaskSheet({
           ref={titleRef}
           className="title"
           type="text"
-          placeholder="Task title"
+          placeholder="What needs doing?"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           aria-label="Title"
         />
-        <textarea
-          className="notes"
-          placeholder="Notes (optional)"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          aria-label="Notes"
+        <TaskEditMenu
+          taskId="new-sheet"
+          fields={{ dueDate, labelId, size, notes }}
+          labels={labels}
+          todayKey={todayKey}
+          dateLabel={recurring.view.dateLabel}
+          onChange={(patch) => {
+            if (patch.dueDate !== undefined) setDueDate(patch.dueDate);
+            if (patch.labelId !== undefined) setLabelId(patch.labelId);
+            if (patch.size !== undefined) setSize(patch.size);
+            if (patch.notes !== undefined) setNotes(patch.notes);
+          }}
+          afterEffort={
+            <RepeatMenuLines
+              formId="new-sheet"
+              fields={recurring.fields}
+              view={recurring.view}
+              onChange={recurring.onChange}
+            />
+          }
         />
-        <div className="chips">
-          <TaskFieldChips
-            dueDate={dueDate}
-            labelId={labelId}
-            size={size}
-            labels={labels}
-            dateLabel={recurring.view.dateLabel}
-            onDueChange={setDueDate}
-            onLabelChange={setLabelId}
-            onSizeChange={setSize}
-          />
-          <RecurringToggle fields={recurring.fields} onChange={recurring.onChange} />
-          <RecurringOptions {...recurring} />
-          <RecurringNote view={recurring.view} />
+        <div className="sheetfoot">
+          <button type="button" className="ghostbtn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" className="primary" disabled={!valid} onClick={submit}>
+            Add task
+          </button>
         </div>
-        <button type="button" className="primary" disabled={!valid} onClick={submit}>
-          Save
-        </button>
       </div>
     </>
   );
