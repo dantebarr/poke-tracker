@@ -6,7 +6,7 @@ import { DeleteControls, type PendingDelete } from "@/app/field-log/delete-contr
 import { TaskFieldChips } from "@/app/field-log/chips";
 import { RecurrenceMarker } from "@/app/field-log/recurring-controls";
 import { OVERLAY_OPENER_PROPS, useOverlayDismiss } from "@/app/overlay-dismiss";
-import { type EditableFields, useTaskFields } from "@/app/task-edit-fields";
+import { type EditableFields, taskToFields, useTaskFields } from "@/app/task-edit-fields";
 import type { Label } from "@/lib/label/label";
 import { capitalise } from "@/lib/text";
 import { effortPoints, type Task, type TaskSize } from "@/lib/task/task";
@@ -87,10 +87,10 @@ export function DoneTaskRow({
 
 /**
  * An open task's row. Collapsed, it's a read-only summary; on desktop,
- * expanded gains a live-editable title and an expander with notes, due
- * date, label and size — `useTaskFields` with a live save, the fast in-place
- * editing path, which #32 deliberately left alone when the mobile detail
- * screen became an explicit Cancel/Save form. On mobile, `expanded` is never
+ * expanded gains an editable title and an expander with notes, due date,
+ * label and size. Like the mobile detail screen, it is an explicit form:
+ * nothing is written until Save, so changing the due date does not move the
+ * task to another bucket while it is still being edited. On mobile, `expanded` is never
  * true: `resolveFieldView` only reports an expanded row for a wide screen,
  * so the `.expander` this row would show stays unreached rather than merely
  * hidden.
@@ -123,26 +123,34 @@ export function OpenTaskRow({
   onDelete: () => void;
   onDeleteRule: () => void;
 }) {
-  const { fields, edit, reset, flush } = useTaskFields(task, onSave);
+  const { fields, edit, reset } = useTaskFields(task);
   const [confirmingDelete, setConfirmingDelete] = useState<PendingDelete>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
   const wasExpanded = useRef(expanded);
 
+  const stored = taskToFields(task);
+  const dirty = (Object.keys(stored) as (keyof EditableFields)[]).some((key) => fields[key] !== stored[key]);
+  const valid = fields.title.trim() !== "" && fields.dueDate !== "" && fields.labelId !== "";
+
+  // Leaving before writing, like every other commit path: the row collapses
+  // in place first, and only then does the saved due date move it.
+  function save() {
+    onCollapse();
+    if (dirty && valid) onSave({ ...fields, title: fields.title.trim() });
+  }
+
   /**
-   * Escape, or a pointer landing outside the row, closes it (#34) — with no
-   * `onHandOff`, because there is nothing here to commit on the way out that
-   * is not already committed: every keystroke is on `useTaskFields`'s 600ms
-   * debounce, and the flush-on-collapse effect below catches whatever that
-   * debounce still owes. It is the same reason this row says Close where the
-   * add editor says Cancel.
+   * Escape, or a pointer landing outside the row, closes it (#34) and keeps
+   * what was typed — the same rule the add form follows: walking away means
+   * attention moved on, not that the edit was rejected. Cancel is the
+   * explicit discard. A pointer that lands on another row (or any link) hands
+   * off: the edit is saved, and leaving is left to whatever was clicked.
    *
    * Escape disarms a pending delete first and closes only on the second press.
    * The confirm pair is a loaded destructive control, and collapsing the row
    * out from under it reads as "did that just delete it?" even though it
-   * didn't. An outside pointer skips that step and closes outright — clicking
-   * elsewhere is not ambiguous the way a keypress is — and the reset effect
-   * below disarms it on the next open regardless.
+   * didn't.
    */
   useOverlayDismiss({
     active: expanded,
@@ -152,14 +160,17 @@ export function OpenTaskRow({
         setConfirmingDelete(null);
         return;
       }
-      onCollapse();
+      save();
+    },
+    onHandOff: () => {
+      if (dirty && valid) onSave({ ...fields, title: fields.title.trim() });
     },
   });
 
-  // Local edit state only resets when the row *opens* (guarded on the
-  // collapsed→expanded transition) — never while it's already expanded, so
-  // this component's own optimistic save further up the tree can't stomp on
-  // keystrokes made after that save was scheduled.
+  // Local edit state resets only when the row *opens*: nothing is written
+  // while it is expanded, so the row's due date, label and size stay exactly
+  // where they were until Save — the task never jumps to another bucket
+  // mid-edit.
   useEffect(() => {
     if (expanded && !wasExpanded.current) {
       reset(task);
@@ -167,15 +178,6 @@ export function OpenTaskRow({
     }
     wasExpanded.current = expanded;
   }, [expanded, task, reset]);
-
-  // Flushes any still-pending debounce the moment the row leaves the
-  // expanded state, whether that's a deliberate Close, a completion, or the
-  // row being unmounted because a due-date edit just moved it to a
-  // different Bucket's list.
-  useEffect(() => {
-    if (!expanded) return;
-    return () => flush();
-  }, [expanded, flush]);
 
   return (
     <div ref={rowRef} className={`taskrow${expanded ? " expanded" : ""}${errored ? " errored" : ""}`}>
@@ -212,16 +214,15 @@ export function OpenTaskRow({
                 }
               : undefined
           }
-          onKeyDown={
-            !expanded && !pending
-              ? (event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    onExpand();
-                  }
-                }
-              : undefined
-          }
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || pending) return;
+            event.preventDefault();
+            if (expanded) {
+              if (valid) save();
+            } else {
+              onExpand();
+            }
+          }}
           aria-label="Title"
         />
         {lateText && <span className="latechip">{lateText}</span>}
@@ -250,7 +251,10 @@ export function OpenTaskRow({
             />
             <div className="editactions">
               <button type="button" className="ghostbtn" onClick={onCollapse}>
-                Close
+                Cancel
+              </button>
+              <button type="button" className="primary" disabled={!dirty || !valid} onClick={save}>
+                Save
               </button>
               <DeleteControls
                 recurring={task.recurrence !== null}
