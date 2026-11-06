@@ -155,6 +155,30 @@ export async function abbreviateLabel(
 }
 
 /**
+ * Changes a label's name, colour and abbreviation in one statement, so the
+ * settings screen's single Save is atomic — all three land or none do. The
+ * database's own constraints (unique name, colour format, abbreviation length)
+ * still decide what is acceptable (ADR-0001); each column is covered by its own
+ * column-level `update` grant.
+ */
+export async function updateLabel(
+  client: SupabaseClient,
+  id: string,
+  input: { name: string; color: string; abbreviation: string },
+): Promise<Label> {
+  const row = unwrap(
+    "Updating label",
+    await client
+      .from("label")
+      .update({ name: input.name, color: input.color, abbreviation: input.abbreviation })
+      .eq("id", id)
+      .select(COLUMNS)
+      .single<LabelRow>(),
+  );
+  return toLabel(row);
+}
+
+/**
  * Swaps a label with its neighbour in the given direction. A no-op at either
  * end of the order rather than an error — nothing left to swap with.
  */

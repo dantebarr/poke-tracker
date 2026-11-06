@@ -29,26 +29,72 @@ export type BaobaLineFacts = {
  * The mood bands, in order, each holding the line it selects. Cut by
  * **slack** — happiness measured in daily targets, i.e. how many quiet days
  * are banked — never by the raw value, so the same happiness means different
- * things to Rangers on different targets. `tier` is a label for readers
- * only — nothing branches on it, and the tests below assert on the phrase a
- * band produces rather than its name.
+ * things to Rangers on different targets. `tier` and `label` are for readers
+ * only — nothing branches on them, and the tests below assert on the phrase a
+ * band produces rather than its name. The mood indicator on the Pokémon card
+ * (`moodFor`) reads the very same bands, so the card and Baoba's line can
+ * never disagree about how the Pokémon is feeling.
  */
-const MOOD_BANDS: { max: number; tier: string; line: (nickname: string) => string }[] = [
+const MOOD_BANDS: { max: number; tier: string; label: string; line: (nickname: string) => string }[] = [
   {
     max: 0,
     tier: "sad",
+    label: "About to leave",
     line: (nickname) => `${nickname}'s not looking good, Ranger — one more bad day and it's gone for good.`,
   },
-  { max: 1, tier: "worried", line: (nickname) => `${nickname}'s restless. Best not let it go another quiet day.` },
-  { max: 2, tier: "neutral", line: (nickname) => `${nickname}'s settled in fine, Ranger — steady as you keep it.` },
-  { max: 4, tier: "happy", line: (nickname) => `${nickname}'s content, and banking a good stretch of slack.` },
-  { max: Infinity, tier: "beaming", line: (nickname) => `${nickname}'s thriving, Ranger — couldn't ask for better care.` },
+  {
+    max: 1,
+    tier: "worried",
+    label: "Restless",
+    line: (nickname) => `${nickname}'s restless. Best not let it go another quiet day.`,
+  },
+  {
+    max: 2,
+    tier: "neutral",
+    label: "Settled",
+    line: (nickname) => `${nickname}'s settled in fine, Ranger — steady as you keep it.`,
+  },
+  {
+    max: 4,
+    tier: "happy",
+    label: "Content",
+    line: (nickname) => `${nickname}'s content, and banking a good stretch of slack.`,
+  },
+  {
+    max: Infinity,
+    tier: "beaming",
+    label: "Thriving",
+    line: (nickname) => `${nickname}'s thriving, Ranger — couldn't ask for better care.`,
+  },
 ];
 
+/** How an Active Pokémon is feeling about sticking around, for the surfaces that show it rather than speak it. */
+export type Mood = {
+  /** 1 (about to leave) to 5 (thriving) — the band's position, so hearts and Baoba's line move together. */
+  level: 1 | 2 | 3 | 4 | 5;
+  label: string;
+  /** The two lowest bands: less than a full day of slack banked. The only ones worth a warning. */
+  atRisk: boolean;
+};
+
+function bandIndex(happiness: number, dailyTarget: number): number {
+  const slack = dailyTarget > 0 ? happiness / dailyTarget : happiness > 0 ? Infinity : -1;
+  const index = MOOD_BANDS.findIndex((b) => slack < b.max);
+  return index === -1 ? MOOD_BANDS.length - 1 : index;
+}
+
+/** The mood `moodLine` is picked from, as data — see {@link Mood}. */
+export function moodFor(happiness: number, dailyTarget: number): Mood {
+  const index = bandIndex(happiness, dailyTarget);
+  return {
+    level: (index + 1) as Mood["level"],
+    label: MOOD_BANDS[index].label,
+    atRisk: index <= 1,
+  };
+}
+
 function moodLine(happiness: number, dailyTarget: number, nickname: string): string {
-  const slack = happiness / dailyTarget;
-  const band = MOOD_BANDS.find((b) => slack < b.max) ?? MOOD_BANDS[MOOD_BANDS.length - 1];
-  return band.line(nickname);
+  return MOOD_BANDS[bandIndex(happiness, dailyTarget)].line(nickname);
 }
 
 function overdueClause(overdueCount: number): string {

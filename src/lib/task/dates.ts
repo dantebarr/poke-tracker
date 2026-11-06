@@ -274,3 +274,13 @@ export function todayPoints(
 ): number {
   return completedToday(tasks, timeZone, todayKey).reduce((sum, task) => sum + effortPoints(task.size), 0);
 }
+
+/**
+ * How late an open task is, as a short chip ("2d late"), or null when it is not
+ * overdue. The Overdue bucket gathers every past date into one heading, so this
+ * is what tells a row apart inside it.
+ */
+export function lateLabel(dueDate: string, todayKey: string): string | null {
+  const late = daysBetweenKeys(dueDate, todayKey);
+  return late > 0 ? `${late}d late` : null;
+}

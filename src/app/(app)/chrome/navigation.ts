@@ -27,8 +27,12 @@ import type { Task } from "@/lib/task/task";
  */
 export type Surface = "narrow" | "wide";
 
-/** The four places the nav row can take a Ranger. */
-export type Destination = "field-log" | "pokedex" | "logbook" | "settings";
+/**
+ * The places the nav can take a Ranger. `encounter` exists only on a narrow
+ * screen, where the Pokémon's scene is a screen of its own; a wide screen
+ * draws it beside the field log all the time, so there it is never marked.
+ */
+export type Destination = "field-log" | "encounter" | "pokedex" | "logbook" | "settings";
 
 /** The two halves of the chrome shell. On a wide screen both are drawn at once. */
 type Pane = "encounter" | "log";
@@ -37,33 +41,36 @@ export const PANE_PARAM = "pane";
 export const TASK_PARAM = "task";
 export const ADD_PARAM = "add";
 
-/** The pane parameter's only recognised value — its absence means the encounter view. */
-const LOG_PANE_VALUE = "log";
+/**
+ * The pane parameter's only recognised value — its absence means the field
+ * log. A narrow screen's home is the field log (the thing a task tracker is
+ * for), with the Pokémon's full scene one tap away at `?pane=encounter`.
+ */
+const ENCOUNTER_PANE_VALUE = "encounter";
 /** The add parameter's only recognised value; it is a flag, so the value is just "on". */
 const ADD_FLAG_VALUE = "1";
 
 /** Whatever `useSearchParams` hands back, narrowed to the one method these functions need. */
 export type ReadableSearchParams = Pick<URLSearchParams, "get">;
 
-export const ENCOUNTER_HREF = "/";
+/** The field log's address — also the plain home address, on both surfaces. */
+export const FIELD_LOG_HREF = "/";
 
 /**
- * The field log's address. It carries the pane parameter on both surfaces
- * — a single link, inert on a wide screen where the log is already drawn,
- * rather than one computed from the viewport, which would make the link's
- * destination differ between the server-rendered HTML and the hydrated page.
+ * The full encounter scene (Pokémon, status box, Warden Baoba) as a narrow
+ * screen's own screen. On a wide screen it resolves to the same two-pane home
+ * as everything else, so a shared link works on either.
  */
-export const FIELD_LOG_HREF = `/?${PANE_PARAM}=${LOG_PANE_VALUE}`;
+export const ENCOUNTER_HREF = `/?${PANE_PARAM}=${ENCOUNTER_PANE_VALUE}`;
 
-export const ADD_FORM_HREF = `${FIELD_LOG_HREF}&${ADD_PARAM}=${ADD_FLAG_VALUE}`;
+export const ADD_FORM_HREF = `${FIELD_LOG_HREF}?${ADD_PARAM}=${ADD_FLAG_VALUE}`;
 
 /**
- * A task's own address. The pane parameter rides alongside the task, so
- * leaving the task is a matter of dropping one parameter rather than
- * reconstructing where the Ranger was.
+ * A task's own address. Naming a task implies the log, so leaving the task
+ * is a matter of dropping one parameter.
  */
 export function taskHref(taskId: string): string {
-  return `${FIELD_LOG_HREF}&${TASK_PARAM}=${encodeURIComponent(taskId)}`;
+  return `${FIELD_LOG_HREF}?${TASK_PARAM}=${encodeURIComponent(taskId)}`;
 }
 
 const PATH_DESTINATIONS: Record<string, Destination> = {
@@ -74,50 +81,39 @@ const PATH_DESTINATIONS: Record<string, Destination> = {
 
 function readPane(params: ReadableSearchParams): Pane {
   // Naming a task implies the log pane regardless of the pane parameter's
-  // own value, the same way `taskHref` always bundles the two — so a link
-  // that names a task but was hand-built (or predates #32's link helper)
-  // without the pane parameter still resolves to the log rather than
-  // stranding a Ranger on the encounter view while a task is actually open.
+  // own value, so a link that names a task but also asks for the encounter
+  // scene still resolves to the log rather than stranding a Ranger on the
+  // scene while a task is actually open.
   if (params.get(TASK_PARAM) !== null) return "log";
-  return params.get(PANE_PARAM) === LOG_PANE_VALUE ? "log" : "encounter";
+  return params.get(PANE_PARAM) === ENCOUNTER_PANE_VALUE ? "encounter" : "log";
 }
 
 export type NavigationState = {
   /** The destination to mark as the one the Ranger is on, or `null` for none. */
   destination: Destination | null;
-  /** Whether the home arrow belongs on the nav row. */
-  homeVisible: boolean;
   /**
    * Whether the right pane — whichever destination the address names — is
    * showing. Always true on a wide screen, which draws both panes at once;
    * on a narrow screen it is the one thing that decides whether the chrome
-   * shell is sitting on the encounter view or has slid to a destination
-   * (#33). `AppStage` is the one place that reads it.
+   * shell is sitting on the encounter scene or on a destination (#33).
+   * `AppStage` is the one place that reads it.
    */
   rightVisible: boolean;
 };
 
 /**
- * What the status strip's nav row shows from a given address, and whether
- * the chrome shell's right pane is showing (#33).
+ * What the nav shows from a given address, and whether the chrome shell's
+ * right pane is showing (#33).
  *
- * The field log's marking is deliberately surface-dependent: on a wide
- * screen the field log is part of the home screen and is marked the whole
- * time a Ranger is there, while on a narrow screen it is a separate
- * destination and is marked only while it is the pane actually showing —
- * so the marking never claims a Ranger is somewhere they are not.
+ * The field log's marking is surface-dependent: on a wide screen it is part
+ * of the home screen and is marked the whole time a Ranger is there, while on
+ * a narrow screen the plain home address is the field log and the encounter
+ * scene (`?pane=encounter`) is marked as its own destination — so the marking
+ * never claims a Ranger is somewhere they are not.
  *
- * The home arrow follows from the same reading: it exists to get back to the
- * encounter view, so it is drawn everywhere except where a Ranger is already
- * looking at it, and never on a wide screen, where the field log icon
- * already leads to the one screen holding both panes.
- *
- * `rightVisible` follows the same `onEncounterView` reading: a wide screen
- * draws both panes regardless of the address, and a narrow screen shows the
- * right pane for exactly the addresses that are not the bare encounter view
- * — the three destination paths, and the home address once it names the log
- * pane (which a task's own address always does, since `taskHref` carries the
- * pane parameter alongside it).
+ * `rightVisible` follows from the same reading: a wide screen draws both
+ * panes regardless of the address, and a narrow screen shows the right pane
+ * for every address except the encounter scene's.
  */
 export function resolveNavigation({
   pathname,
@@ -129,15 +125,14 @@ export function resolveNavigation({
   surface: Surface;
 }): NavigationState {
   if (pathname !== "/") {
-    return { destination: PATH_DESTINATIONS[pathname] ?? null, homeVisible: surface === "narrow", rightVisible: true };
+    return { destination: PATH_DESTINATIONS[pathname] ?? null, rightVisible: true };
   }
 
-  const onEncounterView = surface === "narrow" && readPane(params) === "encounter";
+  const onEncounterScene = surface === "narrow" && readPane(params) === "encounter";
 
   return {
-    destination: onEncounterView ? null : "field-log",
-    homeVisible: surface === "narrow" && !onEncounterView,
-    rightVisible: !onEncounterView,
+    destination: onEncounterScene ? "encounter" : "field-log",
+    rightVisible: !onEncounterScene,
   };
 }
 

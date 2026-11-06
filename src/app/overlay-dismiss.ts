@@ -26,7 +26,7 @@ import { useEffect, useRef, type RefObject } from "react";
  * the same handler as a bonus.
  *
  * The bubble phase, not capture, so a handler inside the overlay gets to run
- * first and veto by calling `stopPropagation` — which is how `TaskFieldChips`
+ * first and veto by calling `stopPropagation` — which is how the task forms' date and select pickers (`keepEscapeInChip`)
  * keeps Escape inside an open `<select>` from closing the whole overlay.
  *
  * No `setTimeout` guarding against the overlay dismissing itself on the very

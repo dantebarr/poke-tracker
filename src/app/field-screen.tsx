@@ -14,7 +14,8 @@ import {
   reopenTaskAction,
   updateTaskAction,
 } from "@/app/actions/task";
-import { AddTaskSheet, FieldLogPanel } from "@/app/field-log-panel";
+import { AddTaskSheet } from "@/app/field-log/add-task";
+import { FieldLogPanel } from "@/app/field-log/field-log-panel";
 import { PENDING_ID_PREFIX } from "@/app/pending-task-id";
 import { describeRecurringForm, newTaskFormData, type NewTaskFields } from "@/app/recurring-fields";
 import { useSurface } from "@/app/responsive";
@@ -369,6 +370,7 @@ export function FieldScreen({
         failedDraft={failedDraft}
         expandedTaskId={view.expandedTaskId}
         addEditorOpen={view.addEditorOpen}
+        overlayOpen={overlayShowing}
         onComplete={handleComplete}
         onReopen={handleReopen}
         onSave={handleSave}
@@ -396,6 +398,7 @@ export function FieldScreen({
                 key={detailTask.id}
                 task={detailTask}
                 labels={labels}
+                todayKey={todayKey}
                 onCancel={leaveOverlay}
                 onSave={(fields) => {
                   leaveOverlay();

@@ -9,6 +9,7 @@ import {
   moveLabel,
   recolorLabel,
   renameLabel,
+  updateLabel,
   type Label,
 } from "@/lib/label/label";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -42,6 +43,21 @@ export async function createLabelAction(formData: FormData): Promise<Label> {
   const abbreviation = requiredField(formData, "abbreviation");
 
   const label = await createLabel(client, trainerId, { name, color, abbreviation });
+  revalidatePath("/settings");
+  return label;
+}
+
+/** Saves a label's name, colour and abbreviation together — the settings row's one Save. */
+export async function updateLabelAction(formData: FormData): Promise<Label> {
+  const client = await createSupabaseServerClient();
+  await requireTrainerId(client);
+
+  const id = requiredField(formData, "id");
+  const name = requiredField(formData, "name");
+  const color = requiredField(formData, "color");
+  const abbreviation = requiredField(formData, "abbreviation");
+
+  const label = await updateLabel(client, id, { name, color, abbreviation });
   revalidatePath("/settings");
   return label;
 }

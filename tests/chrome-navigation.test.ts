@@ -40,79 +40,56 @@ describe("which destination the nav marks", () => {
     expect(resolveNavigation({ pathname: "/nowhere", params: params(""), surface: "wide" }).destination).toBeNull();
   });
 
-  it("marks the field log on a wide screen's plain home address, where the log is already on screen", () => {
-    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "wide" }).destination).toBe("field-log");
+  it("marks the field log on the plain home address on either surface, since a narrow screen's home is the log", () => {
+    for (const surface of ["narrow", "wide"] as const) {
+      expect(resolveNavigation({ pathname: "/", params: params(""), surface }).destination).toBe("field-log");
+    }
   });
 
-  it("marks nothing on a narrow screen's plain home address, which is showing the encounter view", () => {
-    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "narrow" }).destination).toBeNull();
-  });
-
-  it("marks the field log on a narrow screen only once the log pane is the one showing", () => {
+  it("marks the encounter scene on a narrow screen asking for it", () => {
     expect(
-      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=log`), surface: "narrow" }).destination,
+      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=encounter`), surface: "narrow" }).destination,
+    ).toBe("encounter");
+  });
+
+  it("marks the field log on a wide screen asking for the encounter scene, which it already draws beside the log", () => {
+    expect(
+      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=encounter`), surface: "wide" }).destination,
     ).toBe("field-log");
   });
 
   it("keeps the field log marked on a narrow screen while a task from it is open", () => {
     expect(
+      resolveNavigation({ pathname: "/", params: params(`${TASK_PARAM}=task-1`), surface: "narrow" }).destination,
+    ).toBe("field-log");
+  });
+
+  it("prefers the log when an address names a task and also asks for the encounter scene", () => {
+    expect(
       resolveNavigation({
         pathname: "/",
-        params: params(`${PANE_PARAM}=log&${TASK_PARAM}=task-1`),
+        params: params(`${PANE_PARAM}=encounter&${TASK_PARAM}=task-1`),
         surface: "narrow",
       }).destination,
     ).toBe("field-log");
   });
 
-  it("marks the field log on a narrow screen for a task named without the pane parameter, so a hand-built link still lands on a coherent screen", () => {
+  it("still reads the legacy log pane parameter as the log", () => {
     expect(
-      resolveNavigation({ pathname: "/", params: params(`${TASK_PARAM}=task-1`), surface: "narrow" }).destination,
+      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=log`), surface: "narrow" }).destination,
     ).toBe("field-log");
   });
 });
 
-describe("whether the home arrow is drawn", () => {
-  it("is never drawn on a wide screen, where the field log icon already goes home", () => {
-    for (const query of ["", `${PANE_PARAM}=log`]) {
-      expect(resolveNavigation({ pathname: "/", params: params(query), surface: "wide" }).homeVisible).toBe(false);
-    }
-    expect(resolveNavigation({ pathname: "/settings", params: params(""), surface: "wide" }).homeVisible).toBe(false);
-  });
-
-  it("is not drawn on a narrow screen already showing the encounter view", () => {
-    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "narrow" }).homeVisible).toBe(false);
-  });
-
-  it("is drawn on a narrow screen showing the field log", () => {
-    expect(
-      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=log`), surface: "narrow" }).homeVisible,
-    ).toBe(true);
-  });
-
-  it("is drawn on a narrow screen showing an open task", () => {
-    expect(
-      resolveNavigation({
-        pathname: "/",
-        params: params(`${PANE_PARAM}=log&${TASK_PARAM}=task-1`),
-        surface: "narrow",
-      }).homeVisible,
-    ).toBe(true);
-  });
-
-  it("is drawn on every other narrow screen", () => {
-    for (const pathname of ["/pokedex", "/history", "/settings"]) {
-      expect(resolveNavigation({ pathname, params: params(""), surface: "narrow" }).homeVisible).toBe(true);
-    }
-  });
-});
-
 describe("whether the right pane is visible", () => {
-  it("is false for the plain home address on a narrow screen, where the encounter view fills the screen", () => {
-    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "narrow" }).rightVisible).toBe(false);
+  it("is true for the plain home address on a narrow screen, where the field log fills the screen", () => {
+    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "narrow" }).rightVisible).toBe(true);
   });
 
-  it("is true for the plain home address on a wide screen, which draws both panes", () => {
-    expect(resolveNavigation({ pathname: "/", params: params(""), surface: "wide" }).rightVisible).toBe(true);
+  it("is false on a narrow screen asking for the encounter scene", () => {
+    expect(
+      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=encounter`), surface: "narrow" }).rightVisible,
+    ).toBe(false);
   });
 
   it("is true on a narrow screen for each of the three destination paths", () => {
@@ -121,30 +98,17 @@ describe("whether the right pane is visible", () => {
     }
   });
 
-  it("is true on a narrow screen for the home address carrying the log pane parameter", () => {
-    expect(
-      resolveNavigation({ pathname: "/", params: params(`${PANE_PARAM}=log`), surface: "narrow" }).rightVisible,
-    ).toBe(true);
-  });
-
-  it("is true on a narrow screen for an address naming a task, which implies the log", () => {
-    expect(
-      resolveNavigation({
-        pathname: "/",
-        params: params(`${PANE_PARAM}=log&${TASK_PARAM}=task-1`),
-        surface: "narrow",
-      }).rightVisible,
-    ).toBe(true);
-  });
-
-  it("is true on a narrow screen for a task named without the pane parameter", () => {
+  it("is true on a narrow screen for an address naming a task", () => {
     expect(
       resolveNavigation({ pathname: "/", params: params(`${TASK_PARAM}=task-1`), surface: "narrow" }).rightVisible,
     ).toBe(true);
   });
 
   it("is true on a wide screen for every address, since a wide screen always draws both", () => {
-    for (const pathname of ["/", "/pokedex", "/history", "/settings"]) {
+    for (const query of ["", `${PANE_PARAM}=encounter`]) {
+      expect(resolveNavigation({ pathname: "/", params: params(query), surface: "wide" }).rightVisible).toBe(true);
+    }
+    for (const pathname of ["/pokedex", "/history", "/settings"]) {
       expect(resolveNavigation({ pathname, params: params(""), surface: "wide" }).rightVisible).toBe(true);
     }
   });

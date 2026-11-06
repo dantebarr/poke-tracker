@@ -64,11 +64,11 @@ export type NewTaskFields = EditableFields & RecurringFields;
 /** The monthly picker's options. The 29th through the 31st are offered and clamped, not withheld. */
 export const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, index) => index + 1);
 
-/** Every frequency, in the order the picker offers them, with the words it offers them in. */
+/** Every frequency, in the order the Repeat line offers them, with the words it offers them in. */
 export const FREQUENCY_OPTIONS: { frequency: RecurrenceFrequency; name: string }[] = [
-  { frequency: "daily", name: "Day" },
-  { frequency: "weekly", name: "Week" },
-  { frequency: "monthly", name: "Month" },
+  { frequency: "daily", name: "Daily" },
+  { frequency: "weekly", name: "Weekly" },
+  { frequency: "monthly", name: "Monthly" },
 ];
 
 /** Everything the two add surfaces render for the recurring half of the form. */
