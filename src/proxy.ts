@@ -14,8 +14,11 @@ import { supabaseAnonKey, supabaseUrl } from "@/lib/env";
  * boundary is row-level security plus the allow-list at the callback.
  */
 
-/** Paths a signed-out visitor may reach. */
-const PUBLIC_PREFIXES = ["/sign-in", "/auth"];
+/**
+ * Paths a signed-out visitor may reach. `/mcp` and its OAuth metadata carry no
+ * cookie session: the route authenticates its own bearer token.
+ */
+const PUBLIC_PREFIXES = ["/sign-in", "/auth", "/mcp", "/.well-known"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

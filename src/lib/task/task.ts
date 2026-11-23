@@ -108,6 +108,30 @@ export async function listTasks(client: SupabaseClient, trainerId: string): Prom
 }
 
 /**
+ * What an outside reader (Claude, over MCP) is shown: every open task, plus
+ * done tasks completed since `since`. Older done tasks are history, not
+ * content (CONTEXT.md). Row-level security scopes this to the caller's own.
+ */
+export async function listRecentTasks(
+  client: SupabaseClient,
+  trainerId: string,
+  since: Date,
+): Promise<Task[]> {
+  const { data, error } = await client
+    .from("tasks")
+    .select(COLUMNS)
+    .eq("trainer_id", trainerId)
+    .or(`status.eq.open,completed_at.gte.${since.toISOString()}`)
+    .order("due_date")
+    .returns<TaskRow[]>();
+
+  if (error) {
+    throw new DatabaseError("Listing recent tasks", error);
+  }
+  return data.map(toTask);
+}
+
+/**
  * Everything a task carries but the date it is due — which is also exactly
  * what a **Recurrence** stamps onto each task it generates, the due date being
  * the one field the rule works out for itself.
