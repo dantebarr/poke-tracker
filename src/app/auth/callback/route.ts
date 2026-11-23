@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  RETURN_PATH_COOKIE,
+  safeReturnPath,
+} from "@/lib/auth/return-path";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { completeSignIn } from "@/lib/trainer/sign-in";
 
@@ -29,15 +33,29 @@ export async function GET(request: NextRequest) {
   }
 
   const outcome = await completeSignIn();
+  const returnTo = request.cookies.get(RETURN_PATH_COOKIE)?.value;
 
   switch (outcome.status) {
-    case "signed-in":
-      return NextResponse.redirect(absoluteUrl(request, "/"));
+    case "signed-in": {
+      // Back to where the trainer was headed when sign-in interrupted them —
+      // the consent page, when Claude sent them.
+      return forgettingReturnPath(
+        NextResponse.redirect(absoluteUrl(request, safeReturnPath(returnTo))),
+      );
+    }
     case "rejected":
-      return NextResponse.redirect(signInWithError(request, "not_allow_listed"));
+      return forgettingReturnPath(
+        NextResponse.redirect(signInWithError(request, "not_allow_listed")),
+      );
     case "failed":
-      return NextResponse.redirect(signInWithError(request, "unavailable"));
+      return forgettingReturnPath(NextResponse.redirect(signInWithError(request, "unavailable")));
   }
+}
+
+/** Whatever the outcome, the remembered destination is spent — it must not leak to the next account. */
+function forgettingReturnPath(response: NextResponse): NextResponse {
+  response.cookies.delete(RETURN_PATH_COOKIE);
+  return response;
 }
 
 function signInWithError(request: NextRequest, reason: string): string {

@@ -18,7 +18,7 @@ application-side filtering.
 
 ```
 src/
-  app/                 routes: / (home), /history, /settings, /pokedex, /sign-in, /auth/callback
+  app/                 routes: / (home), /history, /settings, /pokedex, /sign-in, /auth/callback, /oauth/consent, /mcp
   app/(app)/chrome/    the Safari Zone shell every signed-in screen is drawn in
   app/actions/         server actions — every write goes through here
   lib/auth/            the allow-list
@@ -74,6 +74,27 @@ The tests run real server actions against a real Postgres built from the real mi
 the database is never mocked. A violated constraint surfaces as a genuine failure, which is
 the point: the invariants live in the database (ADR-0001), so that is where they have to be
 proved.
+
+## Connect Claude
+
+Claude reaches a trainer's tasks through the app's MCP endpoint, `/mcp`
+([ADR-0013](./docs/adr/0013-claude-writes-through-an-mcp-route.md)). Adding it takes you through
+Google sign-in and a consent page; once you approve, Claude acts as you, under your own
+permissions.
+
+- **claude.ai:** Settings → Connectors → Add custom connector, with
+  `https://<your deployed domain>/mcp` as the URL. Leave any client ID and secret blank — Claude
+  registers itself.
+- **Claude Code:** `claude mcp add --transport http poke-tracker https://<your deployed domain>/mcp`,
+  then run `/mcp` inside Claude Code and choose *poke-tracker* to sign in.
+
+An account the allow-list turns away can't approve a connection. To disconnect, revoke the grant
+from the Supabase dashboard; the app has no screen for it.
+
+Locally the endpoint is `http://127.0.0.1:3000/mcp`, and `supabase/config.toml` already turns on
+Supabase's OAuth server with the consent page at `/oauth/consent`. A deployed Supabase project
+needs the same set in its dashboard (Authentication → OAuth Server): server enabled, dynamic
+client registration on, and the authorization path set to `/oauth/consent`.
 
 ## Deploying
 
