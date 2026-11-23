@@ -16,9 +16,11 @@ Two conventions that `CONTEXT.md` does not yet cover:
   sign-in has one, including the ones the allow-list turns away, and only an admitted account
   gets a trainer record. `CONTEXT.md` lists "account" under `_Avoid_` for **Trainer**, which
   still holds — never use it as a synonym for one. Worth putting through `/domain-modeling`.
-- **Writes go through server actions.** The one exception is `/auth/callback`, which must be a
-  route handler because Google arrives there by GET redirect. It performs no write of its own;
-  it calls the `ensureTrainer` action.
+- **Writes go through server actions.** There are two exceptions. `/auth/callback` must be a
+  route handler because Google arrives there by GET redirect; it performs no write of its own
+  and calls the `ensureTrainer` action. The MCP route must be one because an MCP client speaks
+  HTTP; its tools call the same `src/lib/task` functions as the actions, under the trainer's own
+  OAuth-issued JWT (ADR-0013).
 
 New columns get a **column-level** `grant update` or none at all, so anything a later slice
 derives (happiness, the day ledger) is read-only to a trainer's own JWT by default.
