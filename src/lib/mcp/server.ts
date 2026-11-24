@@ -1,3 +1,4 @@
+import { ToolError } from "@/lib/mcp/arguments";
 import type { McpCaller } from "@/lib/mcp/auth";
 import { TOOLS } from "@/lib/mcp/tools";
 
@@ -70,9 +71,12 @@ export async function handleMessage(raw: string, caller: McpCaller): Promise<Mcp
       if (!tool) return failure(id, INVALID_PARAMS, `Unknown tool: ${String(params.name)}`);
 
       try {
-        const result = await tool.run(caller);
+        const result = await tool.run(caller, params.arguments);
         return success(id, { content: [{ type: "text", text: JSON.stringify(result) }] });
       } catch (error) {
+        if (error instanceof ToolError) {
+          return success(id, { isError: true, content: [{ type: "text", text: error.message }] });
+        }
         console.error(`MCP tool ${tool.name} failed`, error);
         return success(id, {
           isError: true,

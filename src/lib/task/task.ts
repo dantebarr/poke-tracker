@@ -274,8 +274,26 @@ export async function deleteOpenTasksForRecurrence(
 }
 
 /**
- * Edits a task's title, due date, label, size and notes. Row-level security
- * refuses this if the task belongs to another trainer — this throws rather
+ * One task by id, or null when there is none visible to the caller — which
+ * covers a task that belongs to another trainer, as row-level security hides it.
+ */
+export async function findTask(client: SupabaseClient, id: string): Promise<Task | null> {
+  const { data, error } = await client
+    .from("tasks")
+    .select(COLUMNS)
+    .eq("id", id)
+    .maybeSingle<TaskRow>();
+
+  if (error) {
+    throw new DatabaseError("Finding task", error);
+  }
+  return data && toTask(data);
+}
+
+/**
+ * Edits a task's title, due date, label, size and notes — only the fields
+ * given; the rest keep their values. Row-level security refuses this if the
+ * task belongs to another trainer — this throws rather
  * than silently touching nothing. Only the app's own reach is narrower than
  * the policy's: the interface offers no way to edit a task while it is done,
  * only after reopening it.
@@ -283,18 +301,18 @@ export async function deleteOpenTasksForRecurrence(
 export async function updateTask(
   client: SupabaseClient,
   id: string,
-  fields: TaskFields,
+  fields: Partial<TaskFields>,
 ): Promise<Task> {
   const row = unwrap(
     "Editing task",
     await client
       .from("tasks")
       .update({
-        task: fields.title,
-        due_date: fields.dueDate,
-        label_id: fields.labelId,
-        size: fields.size,
-        notes: fields.notes,
+        ...(fields.title !== undefined && { task: fields.title }),
+        ...(fields.dueDate !== undefined && { due_date: fields.dueDate }),
+        ...(fields.labelId !== undefined && { label_id: fields.labelId }),
+        ...(fields.size !== undefined && { size: fields.size }),
+        ...(fields.notes !== undefined && { notes: fields.notes }),
       })
       .eq("id", id)
       .select(COLUMNS)
