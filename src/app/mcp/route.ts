@@ -7,7 +7,7 @@ import { handleMessage } from "@/lib/mcp/server";
  * The remote MCP endpoint (ADR-0013): a route handler, not a server action,
  * because an MCP client speaks HTTP to a fixed URL.
  *
- * Reads only, for now. Every call runs under the calling trainer's own
+ * Every call runs under the calling trainer's own
  * OAuth-issued JWT, so row-level security applies as it does in the browser;
  * the work itself is in `@/lib/mcp`, so this stays HTTP handling.
  */

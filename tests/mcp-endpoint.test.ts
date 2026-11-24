@@ -1,10 +1,18 @@
 import { NextRequest } from "next/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
+const revalidated = vi.hoisted(() => [] as unknown[][]);
+vi.mock("next/cache", () => ({
+  revalidatePath: (...args: unknown[]) => {
+    revalidated.push(args);
+  },
+}));
+
 import { GET as protectedResourceMetadata } from "@/app/.well-known/oauth-protected-resource/[[...path]]/route";
 import { POST } from "@/app/mcp/route";
+import { provisionPool } from "@/lib/pokemon/pokemon";
 import { createRecurrence } from "@/lib/recurrence/recurrence";
 import { provisionTrainer } from "@/lib/trainer/trainer";
 
@@ -31,6 +39,7 @@ let created: string[] = [];
 
 beforeEach(() => {
   created = [];
+  revalidated.length = 0;
 });
 
 afterEach(async () => {
@@ -83,6 +92,21 @@ async function callTool(token: string, name: string, args: unknown = {}) {
   expect(body.error).toBeUndefined();
   expect(body.result.isError).not.toBe(true);
   return JSON.parse(body.result.content[0].text);
+}
+
+/** A tool call that is expected to fail, returning the message Claude is shown. */
+async function callToolError(token: string, name: string, args: unknown = {}): Promise<string> {
+  const response = await rpc(token, "tools/call", { name, arguments: args });
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body.error).toBeUndefined();
+  expect(body.result.isError).toBe(true);
+  return body.result.content[0].text;
+}
+
+async function taskRow(id: string) {
+  const { data } = await adminClient().from("tasks").select("*").eq("id", id).maybeSingle();
+  return data;
 }
 
 describe("the MCP endpoint's authentication", () => {
@@ -168,14 +192,19 @@ describe("the MCP protocol", () => {
     expect(response.status).toBe(202);
   });
 
-  it("lists list_tasks and list_labels", async () => {
+  it("lists the read and write tools", async () => {
     const { token } = await signedIn("ash@pallet.example");
 
     const body = await (await rpc(token, "tools/list")).json();
 
     expect(body.result.tools.map((tool: { name: string }) => tool.name).sort()).toEqual([
+      "complete_task",
+      "create_task",
+      "delete_task",
       "list_labels",
       "list_tasks",
+      "reopen_task",
+      "update_task",
     ]);
   });
 
@@ -309,6 +338,273 @@ describe("list_labels", () => {
     const labels = await callTool(ash.token, "list_labels");
 
     expect(labels).not.toContain("Gary only");
+  });
+});
+
+describe("create_task", () => {
+  it("creates an open task from a label name, a day and a size, and returns it", async () => {
+    const { token, id } = await signedIn("ash@pallet.example");
+    const [label] = await labelsFor(id);
+
+    const task = await callTool(token, "create_task", {
+      title: "Book the vet",
+      dueDate: "2030-03-04",
+      label: label.name,
+      size: "large",
+      notes: "  ask about shots  ",
+    });
+
+    expect(task).toEqual({
+      id: expect.any(String),
+      title: "Book the vet",
+      dueDate: "2030-03-04",
+      status: "open",
+      label: label.name,
+      size: "large",
+      notes: "ask about shots",
+      completedAt: null,
+      fromRecurrence: false,
+    });
+    expect(await taskRow(task.id)).toMatchObject({ trainer_id: id, label_id: label.id, status: "open" });
+    expect(revalidated).toContainEqual(["/", "layout"]);
+  });
+
+  it("matches a label name without regard to case and stores blank notes as null", async () => {
+    const { token, id } = await signedIn("ash@pallet.example");
+    const [label] = await labelsFor(id);
+
+    const task = await callTool(token, "create_task", {
+      title: "Case",
+      dueDate: "2030-03-04",
+      label: label.name.toUpperCase(),
+      size: "small",
+      notes: "   ",
+    });
+
+    expect(task.label).toBe(label.name);
+    expect((await taskRow(task.id))?.notes).toBeNull();
+  });
+
+  it("answers an unknown label with the trainer's labels", async () => {
+    const { token, id } = await signedIn("ash@pallet.example");
+    const labels = await labelsFor(id);
+
+    const message = await callToolError(token, "create_task", {
+      title: "Nope",
+      dueDate: "2030-03-04",
+      label: "No such label",
+      size: "small",
+    });
+
+    expect(message).toContain("No such label");
+    for (const label of labels) expect(message).toContain(label.name);
+  });
+
+  it("rejects a malformed or impossible date and an invalid size before the database", async () => {
+    const { token, id } = await signedIn("ash@pallet.example");
+    const [label] = await labelsFor(id);
+    const valid = { title: "Bad", dueDate: "2030-03-04", label: label.name, size: "small" };
+
+    expect(await callToolError(token, "create_task", { ...valid, dueDate: "04/03/2030" })).toContain("YYYY-MM-DD");
+    expect(await callToolError(token, "create_task", { ...valid, dueDate: "2030-02-30" })).toContain("YYYY-MM-DD");
+    expect(await callToolError(token, "create_task", { ...valid, size: "huge" })).toContain("small");
+    expect(await callToolError(token, "create_task", { ...valid, title: "  " })).toContain("title");
+
+    const { count } = await adminClient()
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("trainer_id", id);
+    expect(count).toBe(0);
+  });
+});
+
+/** A trainer with one open task, ready for the write tools. */
+async function withOpenTask(email = "ash@pallet.example", fields: { size?: "small" | "medium" | "large" } = {}) {
+  const session = await signedIn(email);
+  const [label, other] = await labelsFor(session.id);
+  const task = await insertTask({
+    trainerId: session.id,
+    labelId: label.id,
+    task: "Original",
+    dueDate: "2030-05-06",
+    size: fields.size ?? "small",
+  });
+  await adminClient().from("tasks").update({ notes: "Original notes" }).eq("id", task.id);
+  return { ...session, label, other, taskId: task.id };
+}
+
+/** A trainer with one open task a recurrence generated. */
+async function withGeneratedTask() {
+  const { jar, token, id } = await signedIn("ash@pallet.example");
+  const [label] = await labelsFor(id);
+  const rule = await createRecurrence(clientForJar(jar), id, {
+    frequency: "daily", dayOfWeek: null, dayOfMonth: null, startsOn: "2030-01-01",
+    title: "Stretch", labelId: label.id, size: "small", notes: null,
+  });
+  const { data } = await adminClient()
+    .from("tasks")
+    .insert({ trainer_id: id, recurrence_id: rule.id, label_id: label.id, task: "Stretch", due_date: "2030-01-01", size: "small" })
+    .select("id")
+    .single();
+  return { token, taskId: data?.id as string };
+}
+
+describe("update_task", () => {
+  it("changes only the fields sent", async () => {
+    const { token, taskId, label, other } = await withOpenTask();
+
+    const task = await callTool(token, "update_task", { id: taskId, title: "Renamed", label: other.name });
+
+    expect(task).toMatchObject({ id: taskId, title: "Renamed", label: other.name, dueDate: "2030-05-06", size: "small", notes: "Original notes" });
+    expect(await taskRow(taskId)).toMatchObject({ task: "Renamed", label_id: other.id, due_date: "2030-05-06" });
+    expect(label.id).not.toBe(other.id);
+    expect(revalidated).toContainEqual(["/", "layout"]);
+  });
+
+  it("changes the due date and size", async () => {
+    const { token, taskId } = await withOpenTask();
+
+    const task = await callTool(token, "update_task", { id: taskId, dueDate: "2031-01-02", size: "large" });
+
+    expect(task).toMatchObject({ dueDate: "2031-01-02", size: "large", title: "Original" });
+  });
+
+  it("clears notes with null and stores blank notes as null", async () => {
+    const { token, taskId } = await withOpenTask();
+
+    expect((await callTool(token, "update_task", { id: taskId, notes: null })).notes).toBeNull();
+    await adminClient().from("tasks").update({ notes: "again" }).eq("id", taskId);
+    await callTool(token, "update_task", { id: taskId, notes: "  " });
+    expect((await taskRow(taskId))?.notes).toBeNull();
+  });
+
+  it("rejects bad values before the database, and an empty change", async () => {
+    const { token, taskId } = await withOpenTask();
+
+    expect(await callToolError(token, "update_task", { id: taskId, dueDate: "tomorrow" })).toContain("YYYY-MM-DD");
+    expect(await callToolError(token, "update_task", { id: taskId, size: "tiny" })).toContain("size");
+    expect(await callToolError(token, "update_task", { id: taskId, label: "Nope" })).toContain("Your labels are");
+    expect(await callToolError(token, "update_task", { id: taskId })).toContain("Nothing to change");
+    expect(await taskRow(taskId)).toMatchObject({ task: "Original", due_date: "2030-05-06" });
+  });
+
+  it("can edit a task a recurrence generated", async () => {
+    const { token, taskId } = await withGeneratedTask();
+
+    const task = await callTool(token, "update_task", { id: taskId, title: "Stretch longer" });
+
+    expect(task).toMatchObject({ title: "Stretch longer", fromRecurrence: true });
+  });
+
+  it("cannot change another trainer's task", async () => {
+    const mine = await withOpenTask("ash@pallet.example");
+    const theirs = await withOpenTask("gary@oak.example");
+
+    const message = await callToolError(mine.token, "update_task", { id: theirs.taskId, title: "Hijacked" });
+
+    expect(message).toContain("No task with id");
+    expect((await taskRow(theirs.taskId))?.task).toBe("Original");
+  });
+});
+
+describe("complete_task", () => {
+  it("stamps the trainer's current Active Pokémon and returns the done task", async () => {
+    const { jar, token, id, taskId } = await withOpenTask();
+    await provisionPool(clientForJar(jar));
+    const { data: trainer } = await adminClient().from("trainer").select("active_instance_id").eq("id", id).single();
+    expect(trainer?.active_instance_id).not.toBeNull();
+
+    const task = await callTool(token, "complete_task", { id: taskId });
+
+    expect(task).toMatchObject({ id: taskId, status: "done", completedAt: expect.any(String) });
+    expect(await taskRow(taskId)).toMatchObject({ status: "done", completed_instance_id: trainer?.active_instance_id });
+    expect(revalidated).toContainEqual(["/", "layout"]);
+  });
+
+  it("stamps none when the trainer has no Active Pokémon", async () => {
+    const { token, id, taskId } = await withOpenTask();
+    await adminClient().from("trainer").update({ active_instance_id: null }).eq("id", id);
+
+    await callTool(token, "complete_task", { id: taskId });
+
+    expect(await taskRow(taskId)).toMatchObject({ status: "done", completed_instance_id: null });
+  });
+
+  it("can complete a task a recurrence generated", async () => {
+    const { token, taskId } = await withGeneratedTask();
+
+    const task = await callTool(token, "complete_task", { id: taskId });
+
+    expect(task).toMatchObject({ status: "done", fromRecurrence: true });
+  });
+
+  it("cannot complete another trainer's task, or one that does not exist", async () => {
+    const mine = await withOpenTask("ash@pallet.example");
+    const theirs = await withOpenTask("gary@oak.example");
+
+    expect(await callToolError(mine.token, "complete_task", { id: theirs.taskId })).toContain("No task with id");
+    expect(await callToolError(mine.token, "complete_task", { id: "not-a-uuid" })).toContain("No task with id");
+    expect((await taskRow(theirs.taskId))?.status).toBe("open");
+  });
+});
+
+describe("reopen_task", () => {
+  it("erases the completion", async () => {
+    const { jar, token, taskId } = await withOpenTask();
+    await provisionPool(clientForJar(jar));
+    await callTool(token, "complete_task", { id: taskId });
+
+    const task = await callTool(token, "reopen_task", { id: taskId });
+
+    expect(task).toMatchObject({ status: "open", completedAt: null });
+    expect(await taskRow(taskId)).toMatchObject({ status: "open", completed_at: null, completed_instance_id: null });
+    expect(revalidated).toContainEqual(["/", "layout"]);
+  });
+
+  it("cannot reopen another trainer's task", async () => {
+    const mine = await withOpenTask("ash@pallet.example");
+    const theirs = await withOpenTask("gary@oak.example");
+    await adminClient().from("tasks").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", theirs.taskId);
+
+    expect(await callToolError(mine.token, "reopen_task", { id: theirs.taskId })).toContain("No task with id");
+    expect((await taskRow(theirs.taskId))?.status).toBe("done");
+  });
+});
+
+describe("delete_task", () => {
+  it("deletes an open task", async () => {
+    const { token, taskId } = await withOpenTask();
+
+    await callTool(token, "delete_task", { id: taskId });
+
+    expect(await taskRow(taskId)).toBeNull();
+    expect(revalidated).toContainEqual(["/", "layout"]);
+  });
+
+  it("refuses a done task and says to reopen it first", async () => {
+    const { token, taskId } = await withOpenTask();
+    await callTool(token, "complete_task", { id: taskId });
+
+    const message = await callToolError(token, "delete_task", { id: taskId });
+
+    expect(message).toContain("reopen_task");
+    expect(await taskRow(taskId)).not.toBeNull();
+  });
+
+  it("can delete a task a recurrence generated", async () => {
+    const { token, taskId } = await withGeneratedTask();
+
+    await callTool(token, "delete_task", { id: taskId });
+
+    expect(await taskRow(taskId)).toBeNull();
+  });
+
+  it("cannot delete another trainer's task", async () => {
+    const mine = await withOpenTask("ash@pallet.example");
+    const theirs = await withOpenTask("gary@oak.example");
+
+    expect(await callToolError(mine.token, "delete_task", { id: theirs.taskId })).toContain("No task with id");
+    expect(await taskRow(theirs.taskId)).not.toBeNull();
   });
 });
 
