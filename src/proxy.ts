@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  RETURN_PATH_COOKIE,
+  RETURN_PATH_MAX_AGE_SECONDS,
+} from "@/lib/auth/return-path";
 import { supabaseAnonKey, supabaseUrl } from "@/lib/env";
 
 /**
@@ -60,7 +64,23 @@ export async function proxy(request: NextRequest) {
     const signIn = request.nextUrl.clone();
     signIn.pathname = "/sign-in";
     signIn.search = "";
-    return NextResponse.redirect(signIn);
+    const redirect = NextResponse.redirect(signIn);
+
+    // Remembered so sign-in can bring the trainer back to the consent page they
+    // were sent to — a pending OAuth authorization lives in its query. Only
+    // that page: any other signed-out request (an icon, a prefetch) would
+    // overwrite it with something the trainer never meant to return to.
+    const destination = `${path}${request.nextUrl.search}`;
+    if (path === "/oauth/consent") {
+      redirect.cookies.set(RETURN_PATH_COOKIE, destination, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: RETURN_PATH_MAX_AGE_SECONDS,
+      });
+    }
+    return redirect;
   }
 
   return response;

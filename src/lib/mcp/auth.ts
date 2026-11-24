@@ -48,7 +48,8 @@ export async function authenticate(request: NextRequest): Promise<Authentication
 /**
  * The app's own origin as a caller reaches it. `request.url` carries the
  * internal origin once the app is behind Vercel's proxy, so the forwarded host
- * wins where there is one (as in `/auth/callback`).
+ * wins where there is one (as in `/auth/callback`), and otherwise the `Host`
+ * the caller sent.
  */
 export function publicOrigin(request: NextRequest): string {
   const forwardedHost = request.headers.get("x-forwarded-host");
@@ -57,7 +58,11 @@ export function publicOrigin(request: NextRequest): string {
     const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
     return `${forwardedProto}://${forwardedHost}`;
   }
-  return new URL(request.url).origin;
+  // Not `request.url`: Next reports `localhost` there whatever host the client
+  // addressed, and a client rejects a resource that is not the URL it called.
+  const url = new URL(request.url);
+  const host = request.headers.get("host");
+  return host ? `${url.protocol}//${host}` : url.origin;
 }
 
 /** Where a caller learns which authorization server to use (RFC 9728). */

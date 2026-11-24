@@ -130,6 +130,20 @@ describe("the MCP endpoint's authentication", () => {
   });
 });
 
+describe("the resource a client is told to expect", () => {
+  it("is the host the client actually called, since a client rejects any other", async () => {
+    // Next's dev server reports `localhost` in the request URL whatever the
+    // client addressed; the Host header is what the client sent.
+    const response = await protectedResourceMetadata(
+      new NextRequest(`${ORIGIN}/.well-known/oauth-protected-resource/mcp`, {
+        headers: { host: "127.0.0.1:3000" },
+      }),
+    );
+
+    expect(await response.json()).toMatchObject({ resource: "http://127.0.0.1:3000/mcp" });
+  });
+});
+
 describe("the MCP protocol", () => {
   it("answers initialize with the tools capability", async () => {
     const { token } = await signedIn("ash@pallet.example");
